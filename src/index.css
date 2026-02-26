@@ -1,0 +1,481 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* モバイル最適化CSS */
+
+/* タッチターゲットサイズ（最小44px x 44px） */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px;
+  margin: 4px;
+}
+
+/* ボタン最適化 */
+.mobile-btn {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-btn-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.mobile-btn-primary:hover {
+  background-color: #2563eb;
+}
+
+.mobile-btn-secondary {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.mobile-btn-secondary:hover {
+  background-color: #d1d5db;
+}
+
+.mobile-btn-danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.mobile-btn-danger:hover {
+  background-color: #dc2626;
+}
+
+.mobile-btn-success {
+  background-color: #10b981;
+  color: white;
+}
+
+.mobile-btn-success:hover {
+  background-color: #059669;
+}
+
+/* フォーム入力最適化 */
+.mobile-input {
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px; /* iOS zoomを防ぐ */
+  background-color: #ffffff;
+  transition: border-color 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.mobile-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.mobile-input:invalid {
+  border-color: #ef4444;
+}
+
+.mobile-input::placeholder {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* セレクトボックス最適化 */
+.mobile-select {
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 48px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.mobile-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* テキストエリア最適化 */
+.mobile-textarea {
+  min-height: 120px;
+  padding: 12px 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: #ffffff;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.mobile-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* チェックボックス・ラジオボタン最適化 */
+.mobile-checkbox,
+.mobile-radio {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.mobile-checkbox-label,
+.mobile-radio-label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* リンク最適化 */
+.mobile-link {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: #3b82f6;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-link:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.mobile-link:active {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+/* カード最適化 */
+.mobile-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.mobile-card:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* リスト項目最適化 */
+.mobile-list-item {
+  min-height: 48px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-list-item:hover {
+  background-color: #f9fafb;
+}
+
+.mobile-list-item:active {
+  background-color: #f3f4f6;
+}
+
+.mobile-list-item:last-child {
+  border-bottom: none;
+}
+
+/* 通知・アラート最適化 */
+.mobile-alert {
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mobile-alert-success {
+  background-color: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.mobile-alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.mobile-alert-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fed7aa;
+  color: #d97706;
+}
+
+.mobile-alert-info {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}
+
+/* フォームグループ最適化 */
+.mobile-form-group {
+  margin-bottom: 20px;
+}
+
+.mobile-form-section {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.mobile-form-header {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.mobile-form-field {
+  margin-bottom: 24px;
+}
+
+.mobile-form-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.mobile-form-error {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+}
+
+.mobile-form-hint {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ナビゲーション最適化 */
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  padding: 8px 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  min-width: 60px;
+  min-height: 44px;
+  color: #6b7280;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item.active {
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.95);
+}
+
+.mobile-nav-icon {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+}
+
+.mobile-nav-label {
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* コンテナ最適化 */
+.mobile-container {
+  padding: 16px;
+  margin-bottom: 80px; /* ナビゲーション分の余白 */
+}
+
+.mobile-header {
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* ローディング最適化 */
+.mobile-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: #6b7280;
+}
+
+.mobile-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: mobile-spin 1s linear infinite;
+}
+
+@keyframes mobile-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 空状態最適化 */
+.mobile-empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: #6b7280;
+}
+
+.mobile-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  opacity: 0.5;
+}
+
+.mobile-empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.mobile-empty-description {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+/* メディアクエリ */
+@media (max-width: 768px) {
+  /* テーブル横スクロール */
+  .mobile-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .mobile-table {
+    min-width: 600px;
+  }
+  
+  /* フォント調整 */
+  .mobile-text-lg {
+    font-size: 18px;
+  }
+  
+  .mobile-text-base {
+    font-size: 16px;
+  }
+  
+  .mobile-text-sm {
+    font-size: 14px;
+  }
+  
+  .mobile-text-xs {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 小さいモバイル端末最適化 */
+  .mobile-container {
+    padding: 12px;
+  }
+  
+  .mobile-card {
+    padding: 12px;
+  }
+  
+  .mobile-btn {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  
+  .mobile-input,
+  .mobile-select,
+  .mobile-textarea {
+    font-size: 16px; /* iOS zoomを防ぐ */
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f3f4f6;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

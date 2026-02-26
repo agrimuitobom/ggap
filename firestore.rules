@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ユーザープロフィール（認証済みユーザーのみアクセス可能）
+    match /users/{userId} {
+      // 自分のデータは読み書き可能
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // 他のユーザー情報は読み取りのみ（作業担当者選択のため）
+      allow read: if request.auth != null;
+    }
+    
+    // 作業日誌（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /workLogs/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 圃場管理（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /fields/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 種子管理（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /seeds/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 種子使用記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /seedUses/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 肥料管理（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /fertilizers/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 肥料使用記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /fertilizerUses/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 農薬管理（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /pesticides/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 農薬使用記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /pesticideUses/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 収穫記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /harvests/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 出荷記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /shipments/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 訪問者記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /visitors/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 教育・訓練記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /trainings/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 圃場点検記録（認証済みユーザーのみ自分のデータにアクセス可能）
+    match /fieldInspections/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // 管理者機能（admin roleを持つユーザーのみアクセス可能）
+    match /admin/{document=**} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // 監査ログ（読み取り専用、管理者のみアクセス可能）
+    match /auditLogs/{logId} {
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if request.auth != null; // システムによる自動作成のみ
+    }
+    
+    // その他のドキュメントは明示的に拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
