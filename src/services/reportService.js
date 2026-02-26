@@ -184,28 +184,36 @@ export class ReportService {
     }
   }
 
-  // 収穫・出荷トレーサビリティレポート
+  // 収穫・出荷トレーサビリティレポート（拡張版）
   async getTraceabilityReport(startDate, endDate) {
     try {
-      const harvestsQuery = this.createDateRangeQuery('harvests', 'harvestDate', startDate, endDate);
-      const harvestsSnapshot = await getDocs(harvestsQuery);
-      
-      const shipmentsQuery = this.createDateRangeQuery('shipments', 'shipmentDate', startDate, endDate);
-      const shipmentsSnapshot = await getDocs(shipmentsQuery);
-      
+      // 並列でデータ取得
+      const [harvestsSnapshot, shipmentsSnapshot, pesticideUsesSnapshot, fertilizerUsesSnapshot, workLogsSnapshot] = await Promise.all([
+        getDocs(this.createDateRangeQuery('harvests', 'harvestDate', startDate, endDate)),
+        getDocs(this.createDateRangeQuery('shipments', 'shipmentDate', startDate, endDate)),
+        getDocs(this.createDateRangeQuery('pesticideUses', 'date', startDate, endDate)),
+        getDocs(this.createDateRangeQuery('fertilizerUses', 'date', startDate, endDate)),
+        getDocs(this.createDateRangeQuery('workLogs', 'date', startDate, endDate))
+      ]);
+
       const harvests = [];
       const shipments = [];
-      
+      const pesticideUses = [];
+      const fertilizerUses = [];
+      const workLogs = [];
+
       harvestsSnapshot.forEach(doc => {
         const data = doc.data();
         harvests.push({
           id: doc.id,
           date: data.harvestDate?.toDate() || new Date(),
+          fieldId: data.fieldId,
           fieldName: data.fieldName,
           cropName: data.cropName,
           quantity: data.quantity,
           unit: data.unit,
-          qualityGrade: data.qualityGrade,
+          qualityGrade: data.qualityGrade || data.quality,
+          lotNumber: data.lotNumber,
           notes: data.notes
         });
       });
@@ -217,6 +225,7 @@ export class ReportService {
           date: data.shipmentDate?.toDate() || new Date(),
           destination: data.destination,
           cropName: data.cropName,
+          fieldName: data.fieldName,
           quantity: data.quantity,
           unit: data.unit,
           lotNumber: data.lotNumber,
@@ -226,7 +235,56 @@ export class ReportService {
         });
       });
 
-      return { harvests, shipments };
+      pesticideUsesSnapshot.forEach(doc => {
+        const data = doc.data();
+        pesticideUses.push({
+          id: doc.id,
+          type: 'pesticide',
+          date: data.date?.toDate() || new Date(),
+          fieldId: data.fieldId,
+          fieldName: data.fieldName,
+          name: data.pesticideName,
+          targetPest: data.targetPest,
+          dilutionRate: data.dilutionRate,
+          method: data.method,
+          applicator: data.appliedByName,
+          notes: data.notes
+        });
+      });
+
+      fertilizerUsesSnapshot.forEach(doc => {
+        const data = doc.data();
+        fertilizerUses.push({
+          id: doc.id,
+          type: 'fertilizer',
+          date: data.date?.toDate() || new Date(),
+          fieldId: data.fieldId,
+          fieldName: data.fieldName,
+          name: data.fertilizerName,
+          amount: data.amount,
+          unit: data.unit,
+          method: data.method,
+          applicator: data.appliedByName,
+          notes: data.notes
+        });
+      });
+
+      workLogsSnapshot.forEach(doc => {
+        const data = doc.data();
+        workLogs.push({
+          id: doc.id,
+          type: 'workLog',
+          date: data.date?.toDate() || new Date(),
+          fieldId: data.fieldId,
+          fieldName: data.fieldName,
+          workType: data.workType,
+          workHours: data.workHours,
+          workers: data.workerNames || [],
+          notes: data.notes
+        });
+      });
+
+      return { harvests, shipments, pesticideUses, fertilizerUses, workLogs };
     } catch (error) {
       businessLogger.error('トレーサビリティレポートの取得エラー', { operation: 'getTraceabilityReport', userId: this.userId }, error);
       throw error;

@@ -22,8 +22,18 @@ const HarvestForm = () => {
   const [unit, setUnit] = useState('kg');
   const [quality, setQuality] = useState('良');
   const [notes, setNotes] = useState('');
+  const [lotNumber, setLotNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditing);
+
+  // ロット番号自動生成
+  const generateLotNumber = (fieldName, cropName, date) => {
+    const dateStr = date.replace(/-/g, '');
+    const fieldCode = fieldName ? fieldName.substring(0, 2).toUpperCase() : 'XX';
+    const cropCode = cropName ? cropName.substring(0, 2).toUpperCase() : 'XX';
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${dateStr}-${fieldCode}-${cropCode}-${random}`;
+  };
 
   // 圃場データの読み込み
   useEffect(() => {
@@ -74,7 +84,8 @@ const HarvestForm = () => {
             setUnit(data.unit || 'kg');
             setQuality(data.quality || '良');
             setNotes(data.notes || '');
-            
+            setLotNumber(data.lotNumber || '');
+
             setInitialLoading(false);
           } else {
             toast.error('収穫記録が見つかりませんでした');
@@ -95,10 +106,23 @@ const HarvestForm = () => {
   const handleFieldChange = (e) => {
     const selectedFieldId = e.target.value;
     setFieldId(selectedFieldId);
-    
+
     const selectedField = fields.find(field => field.id === selectedFieldId);
     if (selectedField) {
       setFieldName(selectedField.name);
+      // ロット番号を自動生成（まだ生成されていない場合）
+      if (!lotNumber && harvestDate && cropName) {
+        setLotNumber(generateLotNumber(selectedField.name, cropName, harvestDate));
+      }
+    }
+  };
+
+  // ロット番号自動生成ボタン
+  const handleGenerateLotNumber = () => {
+    if (fieldName && cropName && harvestDate) {
+      setLotNumber(generateLotNumber(fieldName, cropName, harvestDate));
+    } else {
+      toast.error('圃場、作物名、収穫日を入力してください');
     }
   };
 
@@ -113,6 +137,9 @@ const HarvestForm = () => {
     
     setLoading(true);
     
+    // ロット番号がない場合は自動生成
+    const finalLotNumber = lotNumber || generateLotNumber(fieldName, cropName, harvestDate);
+
     // 保存するデータの作成
     const harvestData = {
       cropName,
@@ -122,6 +149,7 @@ const HarvestForm = () => {
       quantity: Number(quantity),
       unit,
       quality,
+      lotNumber: finalLotNumber,
       notes,
       userId: currentUser.uid,
       updatedAt: new Date()
@@ -268,6 +296,33 @@ const HarvestForm = () => {
                 <option value="良">良</option>
                 <option value="可">可</option>
               </select>
+            </div>
+
+            {/* ロット番号 */}
+            <div>
+              <label htmlFor="lotNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                ロット番号
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  id="lotNumber"
+                  value={lotNumber}
+                  onChange={(e) => setLotNumber(e.target.value)}
+                  placeholder="自動生成または入力"
+                  className="mt-1 flex-1 py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateLotNumber}
+                  className="mt-1 py-2 px-3 border border-green-500 text-green-600 rounded-md hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  生成
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                トレーサビリティ用の識別番号（空欄時は自動生成）
+              </p>
             </div>
           </div>
           
