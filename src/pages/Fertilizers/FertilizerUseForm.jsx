@@ -93,7 +93,7 @@ const FertilizerUseForm = () => {
             });
           } else {
             setError('指定された肥料使用記録が見つかりません。');
-            navigate('/fertilizers');
+            navigate('/fertilizer-uses');
           }
         }
       } catch (err) {
@@ -157,25 +157,12 @@ const FertilizerUseForm = () => {
         fertilizerUseData.createdAt = serverTimestamp();
         await addDoc(collection(db, 'fertilizerUses'), fertilizerUseData);
         setMessage('肥料使用記録が正常に登録されました');
-        
-        // フォームをリセット（肥料IDは保持）
-        setFormData({
-          date: new Date().toISOString().split('T')[0],
-          fertilizerId: formData.fertilizerId,
-          fieldId: '',
-          amount: '',
-          unit: 'kg',
-          method: '',
-          notes: ''
-        });
       }
-      
-      if (isEditMode) {
-        // 成功メッセージを表示後、一覧画面に戻る
-        setTimeout(() => {
-          navigate('/fertilizers');
-        }, 2000);
-      }
+
+      // 成功後、一覧画面に遷移
+      setTimeout(() => {
+        navigate('/fertilizer-uses');
+      }, 1000);
     } catch (err) {
       console.error('Error saving fertilizer use record:', err);
       setError('肥料使用記録の保存中にエラーが発生しました: ' + err.message);
@@ -358,7 +345,7 @@ const FertilizerUseForm = () => {
           <button
             className="mobile-btn mobile-btn-secondary w-full md:w-auto order-1 md:order-2"
             type="button"
-            onClick={() => navigate('/fertilizers')}
+            onClick={() => navigate('/fertilizer-uses')}
           >
             キャンセル
           </button>
