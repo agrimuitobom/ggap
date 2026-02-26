@@ -1,13 +1,14 @@
 // src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { auth, db } from '../services/firebase';
+import { auth, db, googleProvider } from '../services/firebase';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { authLogger } from '../utils/logger';
 
@@ -66,6 +67,18 @@ export function AuthProvider({ children }) {
 
   function login(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
+  }
+
+  async function loginWithGoogle() {
+    try {
+      authLogger.info('Googleログイン開始');
+      const result = await signInWithPopup(auth, googleProvider);
+      authLogger.info('Googleログイン成功', { uid: result.user.uid, email: result.user.email });
+      return result;
+    } catch (error) {
+      authLogger.error('Googleログインエラー', {}, error);
+      throw error;
+    }
   }
 
   function logout() {
@@ -131,6 +144,7 @@ export function AuthProvider({ children }) {
     userProfile,
     signup,
     login,
+    loginWithGoogle,
     logout
   };
 
