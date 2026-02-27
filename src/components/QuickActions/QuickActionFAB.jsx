@@ -48,12 +48,13 @@ const QuickActionFAB = () => {
 
   return (
     <>
-      {/* メインFABボタン */}
+      {/* メインFABボタン - ボトムナビゲーションの上に配置 */}
       <button
-        className="mobile-fab fixed bottom-6 right-6 w-16 h-16 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 z-50"
+        className="mobile-fab fixed right-4 w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 z-50 md:bottom-6 md:right-6 md:w-16 md:h-16"
+        style={{ bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}
         onClick={toggleMenu}
       >
-        <span className={`text-2xl transition-transform duration-200 ${isOpen ? 'rotate-45' : ''}`}>
+        <span className={`text-2xl transition-transform duration-200 inline-block ${isOpen ? 'rotate-45' : ''}`}>
           +
         </span>
       </button>
@@ -62,36 +63,42 @@ const QuickActionFAB = () => {
       {isOpen && (
         <>
           {/* 背景オーバーレイ */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-30 z-40"
             onClick={toggleMenu}
           ></div>
-          
+
           {/* アクションボタン群 */}
-          <div className="fixed bottom-24 right-6 z-50 space-y-3">
+          <div
+            className="fixed right-4 z-50 space-y-3 md:right-6"
+            style={{ bottom: 'calc(150px + env(safe-area-inset-bottom, 0px))' }}
+          >
             {quickActions.map((action, index) => (
               <Link
                 key={action.label}
                 to={action.link}
                 onClick={closeMenu}
-                className={`mobile-quick-action flex items-center justify-center w-14 h-14 ${action.color} text-white rounded-full shadow-lg transition-all duration-200 hover:scale-105`}
+                className={`mobile-quick-action flex items-center justify-center w-12 h-12 md:w-14 md:h-14 ${action.color} text-white rounded-full shadow-lg transition-all duration-200 hover:scale-105`}
                 style={{
                   animationDelay: `${index * 50}ms`,
                   animation: isOpen ? 'slideInUp 0.3s ease-out forwards' : ''
                 }}
                 title={action.label}
               >
-                <span className="text-xl">{action.icon}</span>
+                <span className="text-lg md:text-xl">{action.icon}</span>
               </Link>
             ))}
           </div>
-          
+
           {/* アクションラベル */}
-          <div className="fixed bottom-24 right-24 z-50 space-y-3">
+          <div
+            className="fixed right-20 z-50 space-y-3 md:right-24"
+            style={{ bottom: 'calc(150px + env(safe-area-inset-bottom, 0px))' }}
+          >
             {quickActions.map((action, index) => (
               <div
                 key={`label-${action.label}`}
-                className="flex items-center justify-end h-14"
+                className="flex items-center justify-end h-12 md:h-14"
                 style={{
                   animationDelay: `${index * 50}ms`,
                   animation: isOpen ? 'slideInRight 0.3s ease-out forwards' : ''
