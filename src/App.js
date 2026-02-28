@@ -47,6 +47,10 @@ import VisitorForm from './pages/Visitors/VisitorForm';
 import TrainingsList from './pages/Trainings/TrainingsList';
 import TrainingForm from './pages/Trainings/TrainingForm';
 
+// 従業員管理
+import WorkersList from './pages/Workers/WorkersList';
+import WorkerForm from './pages/Workers/WorkerForm';
+
 // レポート・分析
 import ReportsDashboard from './pages/Reports/ReportsDashboard';
 import PesticideUsageReport from './pages/Reports/PesticideUsageReport';
@@ -152,6 +156,11 @@ function App() {
             <Route path="trainings" element={<TrainingsList />} />
             <Route path="trainings/new" element={<TrainingForm />} />
             <Route path="trainings/edit/:id" element={<TrainingForm />} />
+
+            {/* 従業員管理 */}
+            <Route path="workers" element={<WorkersList />} />
+            <Route path="workers/new" element={<WorkerForm />} />
+            <Route path="workers/edit/:id" element={<WorkerForm />} />
             
             {/* レポート・分析 */}
             <Route path="reports" element={<ReportsDashboard />} />

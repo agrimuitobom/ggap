@@ -1,7 +1,7 @@
 // src/pages/Trainings/TrainingForm.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -67,15 +67,23 @@ const TrainingForm = () => {
   ];
 
   useEffect(() => {
-    fetchUsers();
-    if (isEditMode && currentUser) {
-      fetchTrainingData();
+    if (currentUser) {
+      fetchUsers();
+      if (isEditMode) {
+        fetchTrainingData();
+      }
     }
   }, [id, isEditMode, currentUser]);
 
   const fetchUsers = async () => {
+    if (!currentUser) return;
+
     try {
-      const usersQuery = query(collection(db, 'users'));
+      // 自組織の従業員を取得
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('organizationId', '==', currentUser.uid)
+      );
       const usersSnapshot = await getDocs(usersQuery);
       const usersList = [];
       usersSnapshot.forEach((doc) => {
@@ -84,10 +92,12 @@ const TrainingForm = () => {
           ...doc.data()
         });
       });
+      // 名前でソート
+      usersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setUsers(usersList);
     } catch (err) {
       console.error('Error fetching users:', err);
-      toast.error('ユーザーデータの取得中にエラーが発生しました');
+      toast.error('従業員データの取得中にエラーが発生しました');
     }
   };
 
@@ -393,21 +403,37 @@ const TrainingForm = () => {
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="participants">
             参加者 <span className="text-red-500">*</span>
           </label>
-          <select
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="participants"
-            name="participants"
-            multiple
-            value={formData.participants}
-            onChange={handleParticipantChange}
-            required
-            size="4"
-          >
-            {users.map(user => (
-              <option key={user.id} value={user.id}>{user.name}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">※Ctrlキーを押しながら複数選択できます</p>
+          {users.length === 0 ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+              <p className="text-sm text-yellow-800 mb-2">
+                従業員が登録されていません。
+              </p>
+              <a
+                href="/workers/new"
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                従業員管理から従業員を登録してください
+              </a>
+            </div>
+          ) : (
+            <>
+              <select
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                id="participants"
+                name="participants"
+                multiple
+                value={formData.participants}
+                onChange={handleParticipantChange}
+                required
+                size="4"
+              >
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">※Ctrlキーを押しながら複数選択できます</p>
+            </>
+          )}
         </div>
         
         <div className="mb-4">

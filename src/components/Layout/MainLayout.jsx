@@ -17,6 +17,7 @@ const MainLayout = () => {
     seedManagement: false,
     fieldManagement: false,
     harvestShipment: false,
+    workerManagement: false,
     others: false,
     reports: false
   });
@@ -218,6 +219,29 @@ const MainLayout = () => {
             )}
           </div>
           
+          {/* 従業員管理 */}
+          <div className="mt-2">
+            <button
+              onClick={() => toggleSection('workerManagement')}
+              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
+            >
+              <span>従業員管理</span>
+              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.workerManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {expandedSections.workerManagement && (
+              <div className="ml-4 mt-1 space-y-1">
+                <Link to="/workers" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  従業員一覧
+                </Link>
+                <Link to="/workers/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  従業員登録
+                </Link>
+              </div>
+            )}
+          </div>
+
           {/* その他の記録 */}
           <div className="mt-2">
             <button
