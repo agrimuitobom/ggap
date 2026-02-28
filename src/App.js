@@ -58,12 +58,14 @@ import TraceabilityReport from './pages/Reports/TraceabilityReport';
 // ルート保護用コンポーネント
 import PrivateRoute from './components/Auth/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import InstallPrompt from './components/PWA/InstallPrompt';
 
 function App() {
   return (
     <ErrorBoundary>
       <Router>
         <AuthProvider>
+        <InstallPrompt />
         <Toaster position="top-right" toastOptions={{
           duration: 3000,
           style: {
