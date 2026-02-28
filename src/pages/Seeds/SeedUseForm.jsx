@@ -155,24 +155,12 @@ const SeedUseForm = () => {
         seedUseData.createdAt = serverTimestamp();
         await addDoc(collection(db, 'seedUses'), seedUseData);
         setMessage('播種・定植記録が正常に登録されました');
-        
-        // フォームをリセット（種子IDは保持）
-        setFormData({
-          date: new Date().toISOString().split('T')[0],
-          seedId: formData.seedId,
-          fieldId: '',
-          amount: '',
-          method: '',
-          notes: ''
-        });
       }
-      
-      if (isEditMode) {
-        // 成功メッセージを表示後、一覧画面に戻る
-        setTimeout(() => {
-          navigate('/seeds');
-        }, 2000);
-      }
+
+      // 成功メッセージを表示後、播種・定植記録一覧に遷移
+      setTimeout(() => {
+        navigate('/seed-uses');
+      }, 2000);
     } catch (err) {
       uiLogger.error('Error saving seed use record', { component: 'SeedUseForm', isEditMode, seedId: formData.seedId }, err);
       setError('播種・定植記録の保存中にエラーが発生しました: ' + err.message);
