@@ -51,6 +51,10 @@ import TrainingForm from './pages/Trainings/TrainingForm';
 import WorkersList from './pages/Workers/WorkersList';
 import WorkerForm from './pages/Workers/WorkerForm';
 
+// グループ管理
+import GroupsList from './pages/Groups/GroupsList';
+import GroupForm from './pages/Groups/GroupForm';
+
 // レポート・分析
 import ReportsDashboard from './pages/Reports/ReportsDashboard';
 import PesticideUsageReport from './pages/Reports/PesticideUsageReport';
@@ -161,6 +165,11 @@ function App() {
             <Route path="workers" element={<WorkersList />} />
             <Route path="workers/new" element={<WorkerForm />} />
             <Route path="workers/edit/:id" element={<WorkerForm />} />
+
+            {/* グループ管理 */}
+            <Route path="groups" element={<GroupsList />} />
+            <Route path="groups/new" element={<GroupForm />} />
+            <Route path="groups/edit/:id" element={<GroupForm />} />
             
             {/* レポート・分析 */}
             <Route path="reports" element={<ReportsDashboard />} />

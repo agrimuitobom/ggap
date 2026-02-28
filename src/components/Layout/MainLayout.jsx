@@ -225,7 +225,7 @@ const MainLayout = () => {
               onClick={() => toggleSection('workerManagement')}
               className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
             >
-              <span>従業員管理</span>
+              <span>従業員・グループ</span>
               <svg className={`w-4 h-4 transform transition-transform ${expandedSections.workerManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
@@ -237,6 +237,12 @@ const MainLayout = () => {
                 </Link>
                 <Link to="/workers/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   従業員登録
+                </Link>
+                <Link to="/groups" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  グループ一覧
+                </Link>
+                <Link to="/groups/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  グループ登録
                 </Link>
               </div>
             )}
