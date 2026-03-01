@@ -1,10 +1,11 @@
 // src/pages/Workers/WorkersList.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, doc, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import CSVImporter from '../../components/Import/CSVImporter';
 
 const WorkersList = () => {
   const { currentUser } = useAuth();
@@ -21,6 +22,48 @@ const WorkersList = () => {
     '研修生',
     '季節労働者',
     'その他'
+  ];
+
+  // CSVテンプレートの列定義
+  const templateColumns = [
+    { key: 'name', label: '名前', required: true },
+    { key: 'role', label: '役職', required: true },
+    { key: 'email', label: 'メールアドレス', required: false },
+    { key: 'phone', label: '電話番号', required: false },
+    { key: 'department', label: '部署・担当', required: false },
+    { key: 'hireDate', label: '入社日', required: false, type: 'date' },
+    { key: 'status', label: '在籍状態', required: false, defaultValue: '在籍' },
+    { key: 'certifications', label: '保有資格', required: false },
+    { key: 'skills', label: 'スキル', required: false },
+    { key: 'notes', label: '備考', required: false }
+  ];
+
+  // サンプルデータ
+  const sampleData = [
+    {
+      name: '山田太郎',
+      role: '正社員',
+      email: 'yamada@example.com',
+      phone: '090-1234-5678',
+      department: '生産部門',
+      hireDate: '2024-04-01',
+      status: '在籍',
+      certifications: '農薬管理指導士',
+      skills: 'トラクター操作、剪定',
+      notes: ''
+    },
+    {
+      name: '鈴木花子',
+      role: '研修生',
+      email: 'suzuki@example.com',
+      phone: '080-9876-5432',
+      department: '',
+      hireDate: '2025-04-01',
+      status: '在籍',
+      certifications: '',
+      skills: '',
+      notes: '令和7年度入学'
+    }
   ];
 
   useEffect(() => {
@@ -71,6 +114,71 @@ const WorkersList = () => {
     }
   };
 
+  // CSVインポート処理
+  const handleImport = async (data) => {
+    const batch = [];
+
+    for (const row of data) {
+      const workerData = {
+        organizationId: currentUser.uid,
+        name: row.name || '',
+        role: row.role || '',
+        email: row.email || '',
+        phone: row.phone || '',
+        department: row.department || '',
+        hireDate: row.hireDate ? new Date(row.hireDate) : null,
+        status: row.status || '在籍',
+        certifications: row.certifications || '',
+        skills: row.skills || '',
+        notes: row.notes || '',
+        emergencyContact: '',
+        emergencyPhone: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      batch.push(addDoc(collection(db, 'users'), workerData));
+    }
+
+    await Promise.all(batch);
+    await fetchWorkers(); // リストを再読み込み
+  };
+
+  // CSVエクスポート
+  const handleExport = () => {
+    if (workers.length === 0) {
+      toast.error('エクスポートするデータがありません');
+      return;
+    }
+
+    const headers = templateColumns.map(col => col.label).join(',');
+    const rows = workers.map(worker => {
+      return templateColumns.map(col => {
+        let value = '';
+        if (col.key === 'hireDate' && worker.hireDate) {
+          const date = worker.hireDate.toDate ? worker.hireDate.toDate() : new Date(worker.hireDate);
+          value = date.toISOString().split('T')[0];
+        } else {
+          value = worker[col.key] || '';
+        }
+        // カンマや改行を含む場合はダブルクォートで囲む
+        if (value.toString().includes(',') || value.toString().includes('\n') || value.toString().includes('"')) {
+          return `"${value.toString().replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(',');
+    }).join('\n');
+
+    const csvContent = '\uFEFF' + headers + '\n' + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `従業員一覧_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast.success('CSVをエクスポートしました');
+  };
+
   const filteredWorkers = workers.filter(worker => {
     const matchesSearch =
       (worker.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -94,15 +202,33 @@ const WorkersList = () => {
     <div className="container mx-auto p-4">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold">従業員管理</h1>
-        <Link
-          to="/workers/new"
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-flex items-center justify-center"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          従業員を追加
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <CSVImporter
+            templateColumns={templateColumns}
+            templateFileName="従業員インポートテンプレート.csv"
+            onImport={handleImport}
+            sampleData={sampleData}
+            title="従業員データのインポート"
+          />
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 inline-flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            CSVエクスポート
+          </button>
+          <Link
+            to="/workers/new"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            従業員を追加
+          </Link>
+        </div>
       </div>
 
       {/* 検索・フィルター */}
@@ -144,7 +270,7 @@ const WorkersList = () => {
           <p className="mt-1 text-sm text-gray-500">
             従業員を追加して、教育訓練記録の参加者として選択できるようにしましょう。
           </p>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col md:flex-row justify-center gap-3">
             <Link
               to="/workers/new"
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
@@ -154,6 +280,13 @@ const WorkersList = () => {
               </svg>
               従業員を追加
             </Link>
+            <CSVImporter
+              templateColumns={templateColumns}
+              templateFileName="従業員インポートテンプレート.csv"
+              onImport={handleImport}
+              sampleData={sampleData}
+              title="従業員データのインポート"
+            />
           </div>
         </div>
       ) : (
@@ -208,7 +341,11 @@ const WorkersList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                       <span className="text-sm text-gray-900">
-                        {worker.hireDate ? new Date(worker.hireDate.toDate()).toLocaleDateString('ja-JP') : '-'}
+                        {worker.hireDate
+                          ? (worker.hireDate.toDate
+                            ? worker.hireDate.toDate().toLocaleDateString('ja-JP')
+                            : new Date(worker.hireDate).toLocaleDateString('ja-JP'))
+                          : '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
