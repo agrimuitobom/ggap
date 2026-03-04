@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const PesticideUseForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [pesticides, setPesticides] = useState([]);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
@@ -47,13 +47,13 @@ const PesticideUseForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentOrganization) return;
+
       try {
         // 農薬データを取得
         const pesticidesQuery = query(
           collection(db, 'pesticides'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const pesticidesSnapshot = await getDocs(pesticidesQuery);
         const pesticidesList = [];
@@ -68,7 +68,7 @@ const PesticideUseForm = () => {
         // 圃場データを取得
         const fieldsQuery = query(
           collection(db, 'fields'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const fieldsSnapshot = await getDocs(fieldsQuery);
         const fieldsList = [];
@@ -115,7 +115,7 @@ const PesticideUseForm = () => {
     };
 
     fetchData();
-  }, [id, isEditMode, navigate, currentUser]);
+  }, [id, isEditMode, navigate, currentOrganization]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -127,9 +127,9 @@ const PesticideUseForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!currentUser) {
-      setError('ユーザー認証が必要です。');
+
+    if (!currentOrganization) {
+      setError('組織情報が必要です。');
       return;
     }
     
@@ -149,9 +149,7 @@ const PesticideUseForm = () => {
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
         targetPest: formData.targetPest,
-        appliedBy: currentUser.uid,
-        appliedByName: currentUser.displayName || currentUser.email,
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,

@@ -3,21 +3,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const FertilizersList = () => {
   const [fertilizers, setFertilizers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
 
   const fetchFertilizers = useCallback(async () => {
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
       const q = query(
         collection(db, 'fertilizers'),
-        where('userId', '==', currentUser.uid)
+        where('organizationId', '==', currentOrganization.id)
       );
       const querySnapshot = await getDocs(q);
       const fertilizersList = [];
@@ -35,7 +37,7 @@ const FertilizersList = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   useEffect(() => {
     fetchFertilizers();

@@ -2,21 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const ShipmentsList = () => {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
 
   useEffect(() => {
     const fetchShipments = async () => {
+      if (!currentOrganization) return;
+
       try {
         const shipmentsQuery = query(
           collection(db, 'shipments'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('shipmentDate', 'desc')
         );
         
@@ -36,7 +38,7 @@ const ShipmentsList = () => {
     };
 
     fetchShipments();
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const handleDelete = async (id) => {
     if (window.confirm('この出荷記録を削除してもよろしいですか？')) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, getDoc, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 // 将来的に使用するためコメントアウト // import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -10,7 +10,7 @@ const ShipmentForm = () => {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   
   // フォームフィールド
   const [harvests, setHarvests] = useState([]);
@@ -30,10 +30,12 @@ const ShipmentForm = () => {
   // 収穫データの読み込み
   useEffect(() => {
     const fetchHarvests = async () => {
+      if (!currentOrganization) return;
+
       try {
         const harvestsQuery = query(
           collection(db, 'harvests'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         
         const querySnapshot = await getDocs(harvestsQuery);
@@ -50,7 +52,7 @@ const ShipmentForm = () => {
     };
 
     fetchHarvests();
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   // 編集時のデータ読み込み
   useEffect(() => {
@@ -130,7 +132,7 @@ const ShipmentForm = () => {
       status,
       lotNumber,
       notes,
-      userId: currentUser.uid,
+      organizationId: currentOrganization.id,
       updatedAt: new Date()
     };
     

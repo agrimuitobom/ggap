@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import CSVImporter from '../../components/Import/CSVImporter';
 
 const VisitorsList = () => {
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,17 +61,19 @@ const VisitorsList = () => {
   ];
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchVisitors();
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const fetchVisitors = async () => {
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
       const q = query(
         collection(db, 'visitors'),
-        where('userId', '==', currentUser.uid),
+        where('organizationId', '==', currentOrganization.id),
         orderBy('visitDate', 'desc')
       );
       const querySnapshot = await getDocs(q);
@@ -121,7 +123,7 @@ const VisitorsList = () => {
 
     for (const row of data) {
       const visitorData = {
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         visitDate: row.visitDate ? new Date(row.visitDate) : new Date(),
         visitorName: row.visitorName || '',
         organization: row.organization || '',

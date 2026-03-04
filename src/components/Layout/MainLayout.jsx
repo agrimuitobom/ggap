@@ -2,12 +2,14 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import QuickActionFAB from '../QuickActions/QuickActionFAB';
 import MobileBottomNav from './MobileBottomNav';
 import { authLogger } from '../../utils/logger';
 
 const MainLayout = () => {
   const { currentUser, userProfile, logout } = useAuth();
+  const { currentOrganization, invitations } = useOrganization();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,7 +21,8 @@ const MainLayout = () => {
     harvestShipment: false,
     workerManagement: false,
     others: false,
-    reports: false
+    reports: false,
+    organization: false
   });
 
   const handleLogout = async () => {
@@ -299,6 +302,44 @@ const MainLayout = () => {
               </div>
             )}
           </div>
+
+          {/* 組織管理 */}
+          <div className="mt-2">
+            <button
+              onClick={() => toggleSection('organization')}
+              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
+            >
+              <span className="flex items-center">
+                組織管理
+                {invitations.length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {invitations.length}
+                  </span>
+                )}
+              </span>
+              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.organization ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {expandedSections.organization && (
+              <div className="ml-4 mt-1 space-y-1">
+                <Link to="/organizations/switch" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  組織の切り替え
+                </Link>
+                <Link to="/organizations/settings" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  組織設定
+                </Link>
+                <Link to="/organizations/invitations" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100 flex items-center justify-between">
+                  <span>招待一覧</span>
+                  {invitations.length > 0 && (
+                    <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                      {invitations.length}
+                    </span>
+                  )}
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
       </div>
       
@@ -315,21 +356,29 @@ const MainLayout = () => {
         {/* ヘッダー */}
         <header className="bg-white shadow-md z-10 mobile-header">
           <div className="h-16 px-4 flex items-center justify-between">
-            <button 
-              onClick={toggleSidebar} 
+            <button
+              onClick={toggleSidebar}
               className="md:hidden touch-target mobile-btn mobile-btn-secondary"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            
-            <div className="flex items-center space-x-4">
+
+            <div className="flex items-center space-x-2 md:space-x-4">
+              {currentOrganization && (
+                <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded">
+                  <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">{currentOrganization.name}</span>
+                </div>
+              )}
               {currentUser && (
                 <>
                   <span className="hidden md:inline mobile-text-sm">{userProfile?.name || currentUser.email}</span>
-                  <button 
-                    onClick={handleLogout} 
+                  <button
+                    onClick={handleLogout}
                     className="mobile-btn mobile-btn-primary"
                   >
                     ログアウト

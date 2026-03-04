@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const FertilizerUseForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [fertilizers, setFertilizers] = useState([]);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
@@ -42,13 +42,13 @@ const FertilizerUseForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentOrganization) return;
+
       try {
         // 肥料データを取得
         const fertilizersQuery = query(
           collection(db, 'fertilizers'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const fertilizersSnapshot = await getDocs(fertilizersQuery);
         const fertilizersList = [];
@@ -63,7 +63,7 @@ const FertilizerUseForm = () => {
         // 圃場データを取得
         const fieldsQuery = query(
           collection(db, 'fields'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const fieldsSnapshot = await getDocs(fieldsQuery);
         const fieldsList = [];
@@ -105,7 +105,7 @@ const FertilizerUseForm = () => {
     };
 
     fetchData();
-  }, [id, isEditMode, navigate, currentUser]);
+  }, [id, isEditMode, navigate, currentOrganization]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -117,9 +117,9 @@ const FertilizerUseForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!currentUser) {
-      setError('ユーザー認証が必要です。');
+
+    if (!currentOrganization) {
+      setError('組織情報が必要です。');
       return;
     }
     
@@ -138,9 +138,7 @@ const FertilizerUseForm = () => {
         fertilizerName: selectedFertilizer ? selectedFertilizer.name : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        appliedBy: currentUser.uid,
-        appliedByName: currentUser.displayName || currentUser.email,
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,
         method: formData.method,

@@ -3,33 +3,33 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const FertilizerUsesList = () => {
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [fertilizerUses, setFertilizerUses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchFertilizerUses();
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const fetchFertilizerUses = async () => {
-    if (!currentUser) return;
-    
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
-      
+
       // デバッグログ: クエリ実行前
-      console.log('DEBUG: FertilizerUsesList - Fetching data for user:', currentUser.uid);
-      
+      console.log('DEBUG: FertilizerUsesList - Fetching data for organization:', currentOrganization.id);
+
       const q = query(
-        collection(db, 'fertilizerUses'), 
-        where('userId', '==', currentUser.uid),
+        collection(db, 'fertilizerUses'),
+        where('organizationId', '==', currentOrganization.id),
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(q);

@@ -3,29 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const PesticidesList = () => {
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchPesticides();
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const fetchPesticides = async () => {
-    if (!currentUser) return;
-    
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
       const q = query(
-        collection(db, 'pesticides'), 
-        where('userId', '==', currentUser.uid),
+        collection(db, 'pesticides'),
+        where('organizationId', '==', currentOrganization.id),
         orderBy('name', 'asc')
       );
       const querySnapshot = await getDocs(q);

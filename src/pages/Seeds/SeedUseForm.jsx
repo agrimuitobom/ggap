@@ -3,14 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { uiLogger } from '../../utils/logger';
 
 const SeedUseForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [seeds, setSeeds] = useState([]);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
@@ -42,13 +42,13 @@ const SeedUseForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentOrganization) return;
+
       try {
-        // 種子データを取得（ユーザーIDでフィルタリング）
+        // 種子データを取得（組織IDでフィルタリング）
         const seedsQuery = query(
           collection(db, 'seeds'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const seedsSnapshot = await getDocs(seedsQuery);
         const seedsList = [];
@@ -60,10 +60,10 @@ const SeedUseForm = () => {
         });
         setSeeds(seedsList);
 
-        // 圃場データを取得（ユーザーIDでフィルタリング）
+        // 圃場データを取得（組織IDでフィルタリング）
         const fieldsQuery = query(
           collection(db, 'fields'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const fieldsSnapshot = await getDocs(fieldsQuery);
         const fieldsList = [];
@@ -104,7 +104,7 @@ const SeedUseForm = () => {
     };
 
     fetchData();
-  }, [id, isEditMode, navigate, currentUser]);
+  }, [id, isEditMode, navigate, currentOrganization]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -116,9 +116,9 @@ const SeedUseForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!currentUser) {
-      setError('ユーザー認証が必要です。');
+
+    if (!currentOrganization) {
+      setError('組織情報が必要です。');
       return;
     }
     
@@ -137,9 +137,7 @@ const SeedUseForm = () => {
         seedName: selectedSeed ? `${selectedSeed.name} (${selectedSeed.variety})` : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        plantedBy: currentUser.uid,
-        plantedByName: currentUser.displayName || currentUser.email,
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         amount: formData.amount ? Number(formData.amount) : null,
         method: formData.method,
         notes: formData.notes,

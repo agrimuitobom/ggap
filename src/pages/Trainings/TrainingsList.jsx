@@ -3,29 +3,31 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const TrainingsList = () => {
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [trainings, setTrainings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchTrainings();
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const fetchTrainings = async () => {
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
       const q = query(
         collection(db, 'trainings'),
-        where('userId', '==', currentUser.uid),
+        where('organizationId', '==', currentOrganization.id),
         orderBy('trainingDate', 'desc')
       );
       const querySnapshot = await getDocs(q);

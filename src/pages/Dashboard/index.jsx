@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { uiLogger } from '../../utils/logger';
 
 const Dashboard = () => {
   const { userProfile, currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [recentWorkLogs, setRecentWorkLogs] = useState([]);
   const [recentHarvests, setRecentHarvests] = useState([]);
   const [recentShipments, setRecentShipments] = useState([]);
@@ -20,13 +22,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchRecentData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentOrganization) return;
+
       try {
         // 最近の作業日誌を取得
         const workLogsQuery = query(
           collection(db, 'workLogs'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('date', 'desc'),
           limit(5)
         );
@@ -44,7 +46,7 @@ const Dashboard = () => {
         // 最近の収穫記録を取得
         const harvestsQuery = query(
           collection(db, 'harvests'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('harvestDate', 'desc'),
           limit(5)
         );
@@ -62,7 +64,7 @@ const Dashboard = () => {
         // 最近の出荷記録を取得
         const shipmentsQuery = query(
           collection(db, 'shipments'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('shipmentDate', 'desc'),
           limit(5)
         );
@@ -80,7 +82,7 @@ const Dashboard = () => {
         // 最近の教育記録を取得
         const trainingsQuery = query(
           collection(db, 'trainings'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('trainingDate', 'desc'),
           limit(5)
         );
@@ -98,7 +100,7 @@ const Dashboard = () => {
         // 最近の訪問者記録を取得
         const visitorsQuery = query(
           collection(db, 'visitors'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('visitDate', 'desc'),
           limit(5)
         );
@@ -122,7 +124,7 @@ const Dashboard = () => {
     };
 
     fetchRecentData();
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   if (loading) {
     return (

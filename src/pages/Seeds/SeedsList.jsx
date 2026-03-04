@@ -3,29 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const SeedsList = () => {
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [seeds, setSeeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchSeeds();
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const fetchSeeds = async () => {
-    if (!currentUser) return;
-    
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
       const q = query(
         collection(db, 'seeds'),
-        where('userId', '==', currentUser.uid)
+        where('organizationId', '==', currentOrganization.id)
       );
       const querySnapshot = await getDocs(q);
       const seedsList = [];
@@ -65,12 +65,12 @@ const SeedsList = () => {
     setDeleteConfirm(null);
   };
 
-  if (!currentUser) {
+  if (!currentOrganization) {
     return (
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-4">種子・苗一覧</h1>
         <div className="flex justify-center items-center h-64">
-          <span className="text-gray-500">ユーザー認証が必要です。</span>
+          <span className="text-gray-500">組織情報が必要です。</span>
         </div>
       </div>
     );

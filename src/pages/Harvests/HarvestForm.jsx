@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, getDoc, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
 
 const HarvestForm = () => {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
 
   // フォームフィールド
   const [fields, setFields] = useState([]);
@@ -51,10 +51,12 @@ const HarvestForm = () => {
   // 圃場データの読み込み
   useEffect(() => {
     const fetchFields = async () => {
+      if (!currentOrganization) return;
+
       try {
         const fieldsQuery = query(
           collection(db, 'fields'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
 
         const querySnapshot = await getDocs(fieldsQuery);
@@ -71,7 +73,7 @@ const HarvestForm = () => {
     };
 
     fetchFields();
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   // 編集時のデータ読み込み
   useEffect(() => {
@@ -176,7 +178,7 @@ const HarvestForm = () => {
       disposalRate: parseFloat(calculatedDisposalRate.toFixed(1)),
       totalAmount: totalAmount,
       notes,
-      userId: currentUser.uid,
+      organizationId: currentOrganization.id,
       updatedAt: new Date()
     };
 

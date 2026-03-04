@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const FieldInspectionForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -43,13 +43,13 @@ const FieldInspectionForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentOrganization) return;
+
       try {
-        // 圃場データを取得（ユーザーIDでフィルタリング）
+        // 圃場データを取得（組織IDでフィルタリング）
         const fieldsQuery = query(
           collection(db, 'fields'),
-          where('userId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         );
         const fieldsSnapshot = await getDocs(fieldsQuery);
         const fieldsList = [];
@@ -93,7 +93,7 @@ const FieldInspectionForm = () => {
     };
 
     fetchData();
-  }, [id, isEditMode, navigate, currentUser]);
+  }, [id, isEditMode, navigate, currentOrganization]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -117,8 +117,7 @@ const FieldInspectionForm = () => {
         date: new Date(formData.date),
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        inspector: currentUser.uid,
-        inspectorName: currentUser.displayName || currentUser.email,
+        organizationId: currentOrganization.id,
         soilPH: formData.soilPH ? Number(formData.soilPH) : null,
         waterQuality: formData.waterQuality,
         facilityCondition: formData.facilityCondition,

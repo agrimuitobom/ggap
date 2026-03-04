@@ -2,21 +2,26 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const HarvestsList = () => {
   const [harvests, setHarvests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
 
   useEffect(() => {
     const fetchHarvests = async () => {
+      if (!currentOrganization) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const harvestsQuery = query(
           collection(db, 'harvests'),
-          where('userId', '==', currentUser.uid),
+          where('organizationId', '==', currentOrganization.id),
           orderBy('harvestDate', 'desc')
         );
 
@@ -36,7 +41,7 @@ const HarvestsList = () => {
     };
 
     fetchHarvests();
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   // 全体の廃棄率を計算
   const totalStats = useMemo(() => {

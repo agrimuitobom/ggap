@@ -3,29 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const FieldsList = () => {
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchFields();
     }
-  }, [currentUser]);
+  }, [currentOrganization]);
 
   const fetchFields = async () => {
-    if (!currentUser) return;
-    
+    if (!currentOrganization) return;
+
     try {
       setLoading(true);
       const q = query(
         collection(db, 'fields'),
-        where('userId', '==', currentUser.uid)
+        where('organizationId', '==', currentOrganization.id)
       );
       const querySnapshot = await getDocs(q);
       const fieldsList = [];

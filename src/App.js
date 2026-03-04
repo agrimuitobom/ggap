@@ -2,6 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { OrganizationProvider } from './contexts/OrganizationContext';
 import { Toaster } from 'react-hot-toast';
 
 // レイアウトコンポーネント
@@ -63,6 +64,11 @@ import BusinessAnalytics from './pages/Reports/BusinessAnalytics';
 import TrainingReport from './pages/Reports/TrainingReport';
 import TraceabilityReport from './pages/Reports/TraceabilityReport';
 
+// 組織管理
+import OrganizationSettings from './pages/Organizations/OrganizationSettings';
+import OrganizationSwitcher from './pages/Organizations/OrganizationSwitcher';
+import InvitationsPage from './pages/Organizations/InvitationsPage';
+
 // ルート保護用コンポーネント
 import PrivateRoute from './components/Auth/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
@@ -73,8 +79,9 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-        <InstallPrompt />
-        <Toaster position="top-right" toastOptions={{
+          <OrganizationProvider>
+            <InstallPrompt />
+            <Toaster position="top-right" toastOptions={{
           duration: 3000,
           style: {
             background: '#fff',
@@ -178,8 +185,14 @@ function App() {
             <Route path="reports/business-analytics" element={<BusinessAnalytics />} />
             <Route path="reports/training" element={<TrainingReport />} />
             <Route path="reports/traceability" element={<TraceabilityReport />} />
+
+            {/* 組織管理 */}
+            <Route path="organizations/settings" element={<OrganizationSettings />} />
+            <Route path="organizations/switch" element={<OrganizationSwitcher />} />
+            <Route path="organizations/invitations" element={<InvitationsPage />} />
           </Route>
         </Routes>
+          </OrganizationProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>
