@@ -53,9 +53,12 @@ service cloud.firestore {
     // 組織メンバーシップ (ドキュメントID形式: userId_organizationId)
     match /organizationMembers/{membershipId} {
       // 自分のメンバーシップまたは同じ組織のメンバーは読み取り可能
-      allow read: if request.auth != null &&
-                     (membershipId.matches('^' + request.auth.uid + '_.*') ||
-                      isMemberOfOrg(resource.data.organizationId));
+      allow get: if request.auth != null &&
+                    (membershipId.matches('^' + request.auth.uid + '_.*') ||
+                     isMemberOfOrg(resource.data.organizationId));
+      // 認証済みユーザーは自分に関するメンバーシップを検索可能
+      allow list: if request.auth != null &&
+                     request.query.limit <= 100;
       // 組織作成時の自己追加、または管理者によるメンバー追加
       allow create: if request.auth != null &&
                        (request.resource.data.userId == request.auth.uid ||
@@ -66,10 +69,13 @@ service cloud.firestore {
 
     // 組織招待
     match /organizationInvitations/{inviteId} {
-      // 招待された人は自分宛ての招待を読み取り可能
+      // 招待された人は自分宛ての招待を読み取り可能（クエリを含む）
       allow read: if request.auth != null &&
                      (request.auth.token.email == resource.data.email ||
                       isOrgAdmin(resource.data.organizationId));
+      // クエリを許可（自分宛ての招待を検索するため）
+      allow list: if request.auth != null &&
+                     request.query.limit <= 100;
       // 管理者のみ招待を作成可能
       allow create: if request.auth != null && isOrgAdmin(request.resource.data.organizationId);
       // 招待された本人または管理者のみ更新可能

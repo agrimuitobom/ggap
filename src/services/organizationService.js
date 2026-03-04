@@ -52,25 +52,45 @@ export const createOrganization = async (userId, name, description = '') => {
  */
 export const getUserOrganizations = async (userId) => {
   try {
-    const membershipsQuery = query(
-      collection(db, 'organizationMembers'),
-      where('userId', '==', userId)
-    );
+    // ユーザー情報から組織IDリストを取得
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      return [];
+    }
 
-    const snapshot = await getDocs(membershipsQuery);
+    const userData = userDoc.data();
+    const orgIds = userData.organizations || [];
+
+    if (orgIds.length === 0) {
+      return [];
+    }
+
     const organizations = [];
 
-    for (const memberDoc of snapshot.docs) {
-      const memberData = memberDoc.data();
-      const orgDoc = await getDoc(doc(db, 'organizations', memberData.organizationId));
+    for (const orgId of orgIds) {
+      try {
+        // メンバーシップ情報を取得
+        const membershipDoc = await getDoc(doc(db, 'organizationMembers', `${userId}_${orgId}`));
 
-      if (orgDoc.exists()) {
-        organizations.push({
-          id: orgDoc.id,
-          ...orgDoc.data(),
-          role: memberData.role,
-          joinedAt: memberData.joinedAt
-        });
+        if (!membershipDoc.exists()) {
+          continue;
+        }
+
+        const memberData = membershipDoc.data();
+
+        // 組織情報を取得
+        const orgDoc = await getDoc(doc(db, 'organizations', orgId));
+
+        if (orgDoc.exists()) {
+          organizations.push({
+            id: orgDoc.id,
+            ...orgDoc.data(),
+            role: memberData.role,
+            joinedAt: memberData.joinedAt
+          });
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch organization ${orgId}:`, err);
       }
     }
 
