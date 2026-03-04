@@ -165,7 +165,8 @@ export const deleteOrganization = async (organizationId) => {
  */
 export const addMemberToOrganization = async (organizationId, userId, role = 'member') => {
   try {
-    const memberRef = doc(collection(db, 'organizationMembers'));
+    // ドキュメントIDを userId_organizationId の形式にする
+    const memberRef = doc(db, 'organizationMembers', `${userId}_${organizationId}`);
     await setDoc(memberRef, {
       organizationId,
       userId,

@@ -1,107 +1,192 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ユーザープロフィール（認証済みユーザーのみアクセス可能）
+
+    // ヘルパー関数: ユーザーが組織のメンバーかチェック
+    function isMemberOfOrg(orgId) {
+      return exists(/databases/$(database)/documents/organizationMembers/$(getMembershipId(orgId)));
+    }
+
+    // ヘルパー関数: メンバーシップIDを取得
+    function getMembershipId(orgId) {
+      // organizationMembersコレクションをクエリして該当するドキュメントを探す
+      // 簡易的なアプローチ: userId_organizationId形式を想定
+      return request.auth.uid + '_' + orgId;
+    }
+
+    // ヘルパー関数: ユーザーの組織における役割を取得
+    function getOrgRole(orgId) {
+      let membershipId = getMembershipId(orgId);
+      return get(/databases/$(database)/documents/organizationMembers/$(membershipId)).data.role;
+    }
+
+    // ヘルパー関数: 管理者かチェック
+    function isOrgAdmin(orgId) {
+      return isMemberOfOrg(orgId) && getOrgRole(orgId) == 'admin';
+    }
+
+    // ヘルパー関数: メンバーまたは管理者かチェック（書き込み権限）
+    function canWriteToOrg(orgId) {
+      return isMemberOfOrg(orgId) && (getOrgRole(orgId) == 'admin' || getOrgRole(orgId) == 'member');
+    }
+
+    // ユーザープロフィール
     match /users/{userId} {
       // 自分のデータは読み書き可能
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      // 他のユーザー情報は読み取りのみ（作業担当者選択のため）
+      // 他のユーザー情報は読み取りのみ（メンバー管理のため）
       allow read: if request.auth != null;
     }
-    
-    // 作業日誌（認証済みユーザーのみ自分のデータにアクセス可能）
+
+    // 組織管理
+    match /organizations/{orgId} {
+      // 組織メンバーは読み取り可能
+      allow read: if request.auth != null && isMemberOfOrg(orgId);
+      // 管理者のみ更新可能
+      allow update: if request.auth != null && isOrgAdmin(orgId);
+      // 認証済みユーザーは新規作成可能
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      // オーナーのみ削除可能
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+
+    // 組織メンバーシップ (ドキュメントID形式: userId_organizationId)
+    match /organizationMembers/{membershipId} {
+      // 自分のメンバーシップまたは同じ組織のメンバーは読み取り可能
+      allow read: if request.auth != null &&
+                     (membershipId.matches('^' + request.auth.uid + '_.*') ||
+                      isMemberOfOrg(resource.data.organizationId));
+      // 組織作成時の自己追加、または管理者によるメンバー追加
+      allow create: if request.auth != null &&
+                       (request.resource.data.userId == request.auth.uid ||
+                        isOrgAdmin(request.resource.data.organizationId));
+      // 管理者のみ更新・削除可能
+      allow update, delete: if request.auth != null && isOrgAdmin(resource.data.organizationId);
+    }
+
+    // 組織招待
+    match /organizationInvitations/{inviteId} {
+      // 招待された人は自分宛ての招待を読み取り可能
+      allow read: if request.auth != null &&
+                     (request.auth.token.email == resource.data.email ||
+                      isOrgAdmin(resource.data.organizationId));
+      // 管理者のみ招待を作成可能
+      allow create: if request.auth != null && isOrgAdmin(request.resource.data.organizationId);
+      // 招待された本人または管理者のみ更新可能
+      allow update: if request.auth != null &&
+                       (request.auth.token.email == resource.data.email ||
+                        isOrgAdmin(resource.data.organizationId));
+      allow delete: if request.auth != null && isOrgAdmin(resource.data.organizationId);
+    }
+
+    // 組織ベースのデータ（作業日誌、圃場、収穫記録など）
+    // 共通ルール: 組織メンバーは閲覧可能、管理者・メンバーは編集可能
+
     match /workLogs/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 圃場管理（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /fields/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 種子管理（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /seeds/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 種子使用記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /seedUses/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 肥料管理（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /fertilizers/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 肥料使用記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /fertilizerUses/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 農薬管理（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /pesticides/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 農薬使用記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /pesticideUses/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 収穫記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /harvests/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 出荷記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /shipments/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 訪問者記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /visitors/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 教育・訓練記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /trainings/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
-    // 圃場点検記録（認証済みユーザーのみ自分のデータにアクセス可能）
+
     match /fieldInspections/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
-    
+
+    match /workers/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /groups/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 管理者機能（admin roleを持つユーザーのみアクセス可能）
     match /admin/{document=**} {
-      allow read, write: if request.auth != null && 
+      allow read, write: if request.auth != null &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
+
     // 監査ログ（読み取り専用、管理者のみアクセス可能）
     match /auditLogs/{logId} {
-      allow read: if request.auth != null && 
+      allow read: if request.auth != null &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow create: if request.auth != null; // システムによる自動作成のみ
+      allow create: if request.auth != null;
     }
-    
+
     // その他のドキュメントは明示的に拒否
     match /{document=**} {
       allow read, write: if false;
