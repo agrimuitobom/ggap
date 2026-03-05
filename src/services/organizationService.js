@@ -213,17 +213,9 @@ export const addMemberToOrganization = async (organizationId, userId, role = 'me
  */
 export const removeMemberFromOrganization = async (organizationId, userId) => {
   try {
-    // メンバー情報を削除
-    const membersQuery = query(
-      collection(db, 'organizationMembers'),
-      where('organizationId', '==', organizationId),
-      where('userId', '==', userId)
-    );
-    const snapshot = await getDocs(membersQuery);
-
-    for (const memberDoc of snapshot.docs) {
-      await deleteDoc(memberDoc.ref);
-    }
+    // メンバーシップを直接削除
+    const memberRef = doc(db, 'organizationMembers', `${userId}_${organizationId}`);
+    await deleteDoc(memberRef);
 
     // ユーザーの所属組織リストを更新
     const userRef = doc(db, 'users', userId);
@@ -282,20 +274,12 @@ export const getOrganizationMembers = async (organizationId) => {
  */
 export const updateMemberRole = async (organizationId, userId, newRole) => {
   try {
-    const membersQuery = query(
-      collection(db, 'organizationMembers'),
-      where('organizationId', '==', organizationId),
-      where('userId', '==', userId)
-    );
-
-    const snapshot = await getDocs(membersQuery);
-
-    for (const memberDoc of snapshot.docs) {
-      await updateDoc(memberDoc.ref, {
-        role: newRole,
-        updatedAt: serverTimestamp()
-      });
-    }
+    // メンバーシップを直接更新
+    const memberRef = doc(db, 'organizationMembers', `${userId}_${organizationId}`);
+    await updateDoc(memberRef, {
+      role: newRole,
+      updatedAt: serverTimestamp()
+    });
   } catch (error) {
     console.error('Error updating member role:', error);
     throw error;
@@ -310,19 +294,14 @@ export const updateMemberRole = async (organizationId, userId, newRole) => {
  */
 export const getUserRoleInOrganization = async (organizationId, userId) => {
   try {
-    const membersQuery = query(
-      collection(db, 'organizationMembers'),
-      where('organizationId', '==', organizationId),
-      where('userId', '==', userId)
-    );
+    // ドキュメントIDを直接指定して取得
+    const membershipDoc = await getDoc(doc(db, 'organizationMembers', `${userId}_${organizationId}`));
 
-    const snapshot = await getDocs(membersQuery);
-
-    if (snapshot.empty) {
+    if (!membershipDoc.exists()) {
       return null;
     }
 
-    return snapshot.docs[0].data().role;
+    return membershipDoc.data().role;
   } catch (error) {
     console.error('Error fetching user role:', error);
     throw error;
