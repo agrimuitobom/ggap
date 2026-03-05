@@ -89,93 +89,156 @@ service cloud.firestore {
     // 共通ルール: 組織メンバーは閲覧可能、管理者・メンバーは編集可能
 
     match /workLogs/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      // 読み取り: organizationIdまたはuserIdでチェック（移行期間中）
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
+      // 作成: organizationIdが必須
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      // 更新・削除: organizationIdまたはuserIdでチェック
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /fields/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /seeds/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /seedUses/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /fertilizers/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /fertilizerUses/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /pesticides/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /pesticideUses/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /harvests/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /shipments/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /visitors/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /trainings/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /fieldInspections/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /workers/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     match /groups/{docId} {
-      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow read: if request.auth != null &&
+                     (('organizationId' in resource.data && isMemberOfOrg(resource.data.organizationId)) ||
+                      ('userId' in resource.data && resource.data.userId == request.auth.uid));
       allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
-      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow update, delete: if request.auth != null &&
+                               (('organizationId' in resource.data && canWriteToOrg(resource.data.organizationId)) ||
+                                ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
     // 管理者機能（admin roleを持つユーザーのみアクセス可能）
