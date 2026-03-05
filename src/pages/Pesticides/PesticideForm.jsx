@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const PesticideForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [formData, setFormData] = useState({
     name: '',
     manufacturer: '',
@@ -80,8 +80,8 @@ const PesticideForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!currentUser) {
-      setError('ユーザー認証が必要です。');
+    if (!currentOrganization) {
+      setError('組織情報が確認できません。');
       return;
     }
     
@@ -95,7 +95,7 @@ const PesticideForm = () => {
         concentration: formData.concentration ? Number(formData.concentration) : null,
         purchaseDate: new Date(formData.purchaseDate),
         expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : null,
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         updatedAt: serverTimestamp()
       };
       

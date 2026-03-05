@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 
 // カスタムフック
@@ -19,7 +19,7 @@ import PesticideSection from '../../components/WorkLog/PesticideSection';
 const WorkLogForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const isEditMode = !!id;
 
   // カスタムフックの使用
@@ -91,9 +91,9 @@ const WorkLogForm = () => {
         fertilizerName: selectedFertilizer ? selectedFertilizer.name : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        appliedBy: currentUser.uid,
-        appliedByName: currentUser.displayName || currentUser.email,
-        userId: currentUser.uid,
+        appliedBy: currentOrganization.id,
+        appliedByName: currentOrganization.name || '',
+        organizationId: currentOrganization.id,
         amount: formData.fertilizerAmount ? Number(formData.fertilizerAmount) : null,
         unit: formData.fertilizerUnit,
         method: formData.fertilizerMethod,
@@ -130,9 +130,9 @@ const WorkLogForm = () => {
         seedName: selectedSeed ? `${selectedSeed.name} (${selectedSeed.variety})` : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        plantedBy: currentUser.uid,
-        plantedByName: currentUser.displayName || currentUser.email,
-        userId: currentUser.uid,
+        plantedBy: currentOrganization.id,
+        plantedByName: currentOrganization.name || '',
+        organizationId: currentOrganization.id,
         amount: formData.seedAmount ? Number(formData.seedAmount) : null,
         method: formData.seedMethod,
         notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
@@ -153,9 +153,9 @@ const WorkLogForm = () => {
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
         targetPest: formData.targetPest,
-        appliedBy: currentUser.uid,
-        appliedByName: currentUser.displayName || currentUser.email,
-        userId: currentUser.uid,
+        appliedBy: currentOrganization.id,
+        appliedByName: currentOrganization.name || '',
+        organizationId: currentOrganization.id,
         dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
         amount: formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
         unit: formData.pesticideUnit,
@@ -213,8 +213,8 @@ const WorkLogForm = () => {
     setFormMessage('');
 
     try {
-      if (!currentUser) {
-        setFormErrors('ユーザー認証が確認できません。');
+      if (!currentOrganization) {
+        setFormErrors('組織情報が確認できません。');
         return;
       }
 
@@ -230,7 +230,7 @@ const WorkLogForm = () => {
       const selectedWorkers = users.filter(user => formData.workers.includes(user.id));
 
       const workLogData = {
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         date: new Date(formData.date),
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',

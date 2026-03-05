@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
 
 const VisitorForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [formData, setFormData] = useState({
     visitDate: new Date().toISOString().split('T')[0],
     visitorName: '',
@@ -48,10 +48,10 @@ const VisitorForm = () => {
   ];
 
   useEffect(() => {
-    if (isEditMode && currentUser) {
+    if (isEditMode && currentOrganization) {
       fetchVisitorData();
     }
-  }, [id, isEditMode, currentUser]);
+  }, [id, isEditMode, currentOrganization]);
 
   const fetchVisitorData = async () => {
     try {
@@ -110,15 +110,15 @@ const VisitorForm = () => {
     setLoading(true);
     setError('');
     
-    if (!currentUser) {
-      setError('ユーザー認証が確認できません。');
+    if (!currentOrganization) {
+      setError('組織情報が確認できません。');
       setLoading(false);
       return;
     }
     
     try {
       const visitorData = {
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         visitDate: new Date(formData.visitDate),
         visitorName: formData.visitorName,
         organization: formData.organization,

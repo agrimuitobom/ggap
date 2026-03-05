@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const FieldForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -61,16 +61,16 @@ const FieldForm = () => {
     setLoading(true);
     setError('');
     setMessage('');
-    
+
     try {
-      if (!currentUser) {
-        setError('ユーザー認証が確認できません。');
+      if (!currentOrganization) {
+        setError('組織情報が確認できません。');
         return;
       }
-      
+
       const fieldData = {
         ...formData,
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         area: Number(formData.area),
         updatedAt: serverTimestamp()
       };

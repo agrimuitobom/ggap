@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
 
 const TrainingForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
@@ -69,27 +69,27 @@ const TrainingForm = () => {
   ];
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentOrganization) {
       fetchData();
       if (isEditMode) {
         fetchTrainingData();
       }
     }
-  }, [id, isEditMode, currentUser]);
+  }, [id, isEditMode, currentOrganization]);
 
   const fetchData = async () => {
-    if (!currentUser) return;
+    if (!currentOrganization) return;
 
     try {
       // 従業員とグループを並行して取得
       const [usersSnapshot, groupsSnapshot] = await Promise.all([
         getDocs(query(
           collection(db, 'users'),
-          where('organizationId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         )),
         getDocs(query(
           collection(db, 'groups'),
-          where('organizationId', '==', currentUser.uid)
+          where('organizationId', '==', currentOrganization.id)
         ))
       ]);
 
@@ -225,8 +225,8 @@ const TrainingForm = () => {
     setLoading(true);
     setError('');
 
-    if (!currentUser) {
-      setError('ユーザー認証が確認できません。');
+    if (!currentOrganization) {
+      setError('組織情報が確認できません。');
       setLoading(false);
       return;
     }
@@ -242,7 +242,7 @@ const TrainingForm = () => {
       const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
       const trainingData = {
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         trainingDate: new Date(formData.trainingDate),
         title: formData.title,
         category: formData.category,

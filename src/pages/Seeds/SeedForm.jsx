@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 
 const SeedForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [formData, setFormData] = useState({
     name: '',
     variety: '',
@@ -70,8 +70,8 @@ const SeedForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!currentUser) {
-      setError('ユーザー認証が必要です。');
+    if (!currentOrganization) {
+      setError('組織情報が確認できません。');
       return;
     }
     
@@ -83,7 +83,7 @@ const SeedForm = () => {
       const seedData = {
         ...formData,
         purchaseDate: new Date(formData.purchaseDate),
-        userId: currentUser.uid,
+        organizationId: currentOrganization.id,
         updatedAt: serverTimestamp()
       };
       
@@ -121,12 +121,12 @@ const SeedForm = () => {
     }
   };
 
-  if (!currentUser) {
+  if (!currentOrganization) {
     return (
       <div className="container mx-auto p-4 max-w-2xl">
         <h1 className="text-2xl font-bold mb-4">{isEditMode ? '種子・苗データ編集' : '種子・苗データ登録'}</h1>
         <div className="flex justify-center items-center h-64">
-          <span className="text-gray-500">ユーザー認証が必要です。</span>
+          <span className="text-gray-500">組織情報が確認できません。</span>
         </div>
       </div>
     );
