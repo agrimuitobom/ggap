@@ -14,6 +14,7 @@ import {
   arrayRemove
 } from 'firebase/firestore';
 import { db } from './firebase';
+import logger from '../utils/logger';
 
 /**
  * 新しい組織を作成
@@ -40,7 +41,7 @@ export const createOrganization = async (userId, name, description = '') => {
 
     return orgRef.id;
   } catch (error) {
-    console.error('Error creating organization:', error);
+    logger.error('Error creating organization', {}, error);
     throw error;
   }
 };
@@ -90,13 +91,13 @@ export const getUserOrganizations = async (userId) => {
           });
         }
       } catch (err) {
-        console.warn(`Failed to fetch organization ${orgId}:`, err);
+        logger.warn('Failed to fetch organization', { orgId });
       }
     }
 
     return organizations;
   } catch (error) {
-    console.error('Error fetching user organizations:', error);
+    logger.error('Error fetching user organizations', {}, error);
     throw error;
   }
 };
@@ -119,7 +120,7 @@ export const getOrganization = async (organizationId) => {
       ...orgDoc.data()
     };
   } catch (error) {
-    console.error('Error fetching organization:', error);
+    logger.error('Error fetching organization', {}, error);
     throw error;
   }
 };
@@ -136,7 +137,7 @@ export const updateOrganization = async (organizationId, updates) => {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error('Error updating organization:', error);
+    logger.error('Error updating organization', {}, error);
     throw error;
   }
 };
@@ -172,7 +173,7 @@ export const deleteOrganization = async (organizationId) => {
     // 組織を削除
     await deleteDoc(doc(db, 'organizations', organizationId));
   } catch (error) {
-    console.error('Error deleting organization:', error);
+    logger.error('Error deleting organization', {}, error);
     throw error;
   }
 };
@@ -201,7 +202,7 @@ export const addMemberToOrganization = async (organizationId, userId, role = 'me
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error('Error adding member to organization:', error);
+    logger.error('Error adding member to organization', {}, error);
     throw error;
   }
 };
@@ -224,7 +225,7 @@ export const removeMemberFromOrganization = async (organizationId, userId) => {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error('Error removing member from organization:', error);
+    logger.error('Error removing member from organization', {}, error);
     throw error;
   }
 };
@@ -261,7 +262,7 @@ export const getOrganizationMembers = async (organizationId) => {
 
     return members;
   } catch (error) {
-    console.error('Error fetching organization members:', error);
+    logger.error('Error fetching organization members', {}, error);
     throw error;
   }
 };
@@ -281,7 +282,7 @@ export const updateMemberRole = async (organizationId, userId, newRole) => {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error('Error updating member role:', error);
+    logger.error('Error updating member role', {}, error);
     throw error;
   }
 };
@@ -303,7 +304,7 @@ export const getUserRoleInOrganization = async (organizationId, userId) => {
 
     return membershipDoc.data().role;
   } catch (error) {
-    console.error('Error fetching user role:', error);
+    logger.error('Error fetching user role', {}, error);
     throw error;
   }
 };
@@ -331,7 +332,7 @@ export const inviteMemberToOrganization = async (organizationId, email, role, in
 
     return inviteRef.id;
   } catch (error) {
-    console.error('Error inviting member:', error);
+    logger.error('Error inviting member', {}, error);
     throw error;
   }
 };
@@ -366,7 +367,7 @@ export const acceptInvitation = async (invitationId, userId) => {
       acceptedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error('Error accepting invitation:', error);
+    logger.error('Error accepting invitation', {}, error);
     throw error;
   }
 };
@@ -411,7 +412,7 @@ export const getUserInvitations = async (email) => {
 
     return invitations;
   } catch (error) {
-    console.error('Error fetching user invitations:', error);
+    logger.error('Error fetching user invitations', {}, error);
     throw error;
   }
 };
@@ -440,7 +441,7 @@ export const migrateUserDataToOrganization = async (userId, organizationId, coll
       }
     }
   } catch (error) {
-    console.error('Error migrating user data to organization:', error);
+    logger.error('Error migrating user data to organization', {}, error);
     throw error;
   }
 };

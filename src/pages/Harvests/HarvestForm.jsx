@@ -4,6 +4,7 @@ import { collection, addDoc, getDoc, updateDoc, doc, getDocs, query, where } fro
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const HarvestForm = () => {
   const { id } = useParams();
@@ -67,7 +68,7 @@ const HarvestForm = () => {
 
         setFields(fieldsList);
       } catch (error) {
-        console.error('Error fetching fields:', error);
+        logger.error('Error fetching fields', {}, error);
         toast.error('圃場データの取得中にエラーが発生しました');
       }
     };
@@ -109,7 +110,7 @@ const HarvestForm = () => {
             navigate('/harvests');
           }
         } catch (error) {
-          console.error('Error fetching harvest data:', error);
+          logger.error('Error fetching harvest data', {}, error);
           toast.error('収穫記録の取得中にエラーが発生しました');
           setInitialLoading(false);
         }
@@ -196,7 +197,7 @@ const HarvestForm = () => {
 
       navigate('/harvests');
     } catch (error) {
-      console.error('Error saving harvest data:', error);
+      logger.error('Error saving harvest data', {}, error);
       toast.error('収穫記録の保存中にエラーが発生しました');
     } finally {
       setLoading(false);

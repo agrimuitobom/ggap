@@ -6,6 +6,7 @@ import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import CSVImporter from '../../components/Import/CSVImporter';
+import logger from '../../utils/logger';
 
 const WorkersList = () => {
   const { currentUser } = useAuth();
@@ -92,7 +93,7 @@ const WorkersList = () => {
       workersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setWorkers(workersList);
     } catch (err) {
-      console.error('Error fetching workers:', err);
+      logger.error('Error fetching workers', {}, err);
       toast.error('従業員データの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
@@ -109,7 +110,7 @@ const WorkersList = () => {
       setWorkers(workers.filter(worker => worker.id !== workerId));
       toast.success('従業員を削除しました');
     } catch (err) {
-      console.error('Error deleting worker:', err);
+      logger.error('Error deleting worker', {}, err);
       toast.error('従業員の削除中にエラーが発生しました');
     }
   };

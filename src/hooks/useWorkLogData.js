@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 
 export const useWorkLogData = (editId = null) => {
   const { currentUser } = useAuth();
@@ -70,7 +71,7 @@ export const useWorkLogData = (editId = null) => {
         setPesticides(pesticidesList);
 
       } catch (err) {
-        console.error('Error fetching form data:', err);
+        logger.error('Error fetching form data', {}, err);
         setError('データの取得中にエラーが発生しました。');
       } finally {
         setLoading(false);
@@ -121,7 +122,7 @@ export const useWorkLogData = (editId = null) => {
         throw new Error('指定された作業日誌データが見つかりません。');
       }
     } catch (err) {
-      console.error('Error fetching existing data:', err);
+      logger.error('Error fetching existing data', {}, err);
       throw err;
     }
   };

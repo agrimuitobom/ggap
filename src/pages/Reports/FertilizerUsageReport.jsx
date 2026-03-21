@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import ReportService from '../../services/reportService';
 import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const FertilizerUsageReport = () => {
   const { currentUser } = useAuth();
@@ -33,7 +34,7 @@ const FertilizerUsageReport = () => {
         timestamp: new Date().toISOString()
       };
       
-      console.log('DEBUG: Fetching report with params:', debugData);
+      logger.debug('Fetching fertilizer report with params', debugData);
       setDebugInfo(debugData);
 
       const data = await reportService.getFertilizerUsageReport(
@@ -41,7 +42,7 @@ const FertilizerUsageReport = () => {
         new Date(endDate)
       );
       
-      console.log('DEBUG: Report data received:', {
+      logger.debug('Fertilizer report data received', {
         dataLength: data.length,
         firstItem: data[0] || null,
         dateRange: data.map(d => d.date).sort()
@@ -55,7 +56,7 @@ const FertilizerUsageReport = () => {
       }));
       
     } catch (error) {
-      console.error('肥料使用記録レポートの取得エラー:', error);
+      logger.error('肥料使用記録レポートの取得エラー', {}, error);
       setDebugInfo(prev => ({
         ...prev,
         error: error.message,

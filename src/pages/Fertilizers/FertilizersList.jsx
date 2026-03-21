@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import logger from '../../utils/logger';
 
 const FertilizersList = () => {
   const [fertilizers, setFertilizers] = useState([]);
@@ -32,7 +33,7 @@ const FertilizersList = () => {
       });
       setFertilizers(fertilizersList);
     } catch (err) {
-      console.error('Error fetching fertilizers:', err);
+      logger.error('Error fetching fertilizers', {}, err);
       setError('肥料データの取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -54,7 +55,7 @@ const FertilizersList = () => {
       setFertilizers(fertilizers.filter(fertilizer => fertilizer.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting fertilizer:', err);
+      logger.error('Error deleting fertilizer', {}, err);
       setError('肥料データの削除中にエラーが発生しました。');
     }
   };

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import logger from '../../utils/logger';
 
 const PesticideForm = () => {
   const { id } = useParams();
@@ -58,7 +59,7 @@ const PesticideForm = () => {
             navigate('/pesticides');
           }
         } catch (err) {
-          console.error('Error fetching pesticide data:', err);
+          logger.error('Error fetching pesticide data', {}, err);
           setError('データの取得中にエラーが発生しました。');
         } finally {
           setFetchLoading(false);
@@ -131,7 +132,7 @@ const PesticideForm = () => {
         navigate('/pesticides');
       }, 2000);
     } catch (err) {
-      console.error('Error saving pesticide data:', err);
+      logger.error('Error saving pesticide data', {}, err);
       setError('農薬データの保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

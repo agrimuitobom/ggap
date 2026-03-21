@@ -5,6 +5,7 @@ import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/fire
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const GroupsList = () => {
   const { currentUser } = useAuth();
@@ -38,7 +39,7 @@ const GroupsList = () => {
       groupsList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setGroups(groupsList);
     } catch (err) {
-      console.error('Error fetching groups:', err);
+      logger.error('Error fetching groups', {}, err);
       toast.error('グループデータの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ const GroupsList = () => {
       setGroups(groups.filter(group => group.id !== groupId));
       toast.success('グループを削除しました');
     } catch (err) {
-      console.error('Error deleting group:', err);
+      logger.error('Error deleting group', {}, err);
       toast.error('グループの削除中にエラーが発生しました');
     }
   };

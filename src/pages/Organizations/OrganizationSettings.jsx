@@ -9,6 +9,7 @@ import {
   updateMemberRole
 } from '../../services/organizationService';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const OrganizationSettings = () => {
   const { currentOrganization, userRole, fetchMembers, refreshOrganizations } = useOrganization();
@@ -35,7 +36,7 @@ const OrganizationSettings = () => {
       const membersList = await fetchMembers(currentOrganization.id);
       setMembers(membersList);
     } catch (error) {
-      console.error('Error loading members:', error);
+      logger.error('Error loading members', {}, error);
       toast.error('メンバー一覧の取得に失敗しました');
     } finally {
       setLoading(false);
@@ -52,7 +53,7 @@ const OrganizationSettings = () => {
       setEditingName(false);
       await refreshOrganizations();
     } catch (error) {
-      console.error('Error updating organization:', error);
+      logger.error('Error updating organization', {}, error);
       toast.error('組織情報の更新に失敗しました');
     }
   };
@@ -77,7 +78,7 @@ const OrganizationSettings = () => {
       setInviteRole('member');
       setShowInviteForm(false);
     } catch (error) {
-      console.error('Error inviting member:', error);
+      logger.error('Error inviting member', {}, error);
       toast.error('メンバーの招待に失敗しました');
     }
   };
@@ -92,7 +93,7 @@ const OrganizationSettings = () => {
       toast.success('メンバーを削除しました');
       await loadMembers();
     } catch (error) {
-      console.error('Error removing member:', error);
+      logger.error('Error removing member', {}, error);
       toast.error('メンバーの削除に失敗しました');
     }
   };
@@ -103,7 +104,7 @@ const OrganizationSettings = () => {
       toast.success('権限を変更しました');
       await loadMembers();
     } catch (error) {
-      console.error('Error updating role:', error);
+      logger.error('Error updating role', {}, error);
       toast.error('権限の変更に失敗しました');
     }
   };

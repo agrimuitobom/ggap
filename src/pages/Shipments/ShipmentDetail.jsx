@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import logger from '../../utils/logger';
 
 const ShipmentDetail = () => {
   const { id } = useParams();
@@ -24,7 +25,7 @@ const ShipmentDetail = () => {
           navigate('/shipments');
           }
       } catch (error) {
-      console.error('Error fetching shipment:', error);
+      logger.error('Error fetching shipment', {}, error);
       alert('出荷記録の取得中にエラーが発生しました');
       } finally {
         setLoading(false);
@@ -41,7 +42,7 @@ const ShipmentDetail = () => {
         alert('出荷記録を削除しました');
         navigate('/shipments');
       } catch (error) {
-        console.error('Error deleting shipment:', error);
+        logger.error('Error deleting shipment', {}, error);
         alert('出荷記録の削除中にエラーが発生しました');
       }
     }

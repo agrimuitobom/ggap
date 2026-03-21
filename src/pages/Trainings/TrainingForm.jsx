@@ -5,6 +5,7 @@ import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimes
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const TrainingForm = () => {
   const { id } = useParams();
@@ -113,7 +114,7 @@ const TrainingForm = () => {
       groupsList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setGroups(groupsList);
     } catch (err) {
-      console.error('Error fetching data:', err);
+      logger.error('Error fetching data', {}, err);
       toast.error('データの取得中にエラーが発生しました');
     }
   };
@@ -155,7 +156,7 @@ const TrainingForm = () => {
         navigate('/trainings');
       }
     } catch (err) {
-      console.error('Error fetching training data:', err);
+      logger.error('Error fetching training data', {}, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -305,7 +306,7 @@ const TrainingForm = () => {
         navigate('/trainings');
       }, 1000);
     } catch (err) {
-      console.error('Error saving training:', err);
+      logger.error('Error saving training', {}, err);
       setError('教育・訓練記録の保存中にエラーが発生しました: ' + err.message);
       toast.error('教育・訓練記録の保存中にエラーが発生しました');
     } finally {

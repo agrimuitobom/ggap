@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import logger from '../../utils/logger';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 
 // カスタムフック
@@ -77,7 +78,7 @@ const WorkLogForm = () => {
       const selectedFertilizer = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
 
       // デバッグログ: 選択された肥料のNPK成分を確認
-      console.log('DEBUG: Selected fertilizer data:', {
+      logger.debug('Selected fertilizer data', {
         id: selectedFertilizer?.id,
         name: selectedFertilizer?.name,
         nitrogenContent: selectedFertilizer?.nitrogenContent,
@@ -108,7 +109,7 @@ const WorkLogForm = () => {
       };
 
       // デバッグログ: fertilizerUsesコレクションに保存するデータを確認
-      console.log('DEBUG: fertilizerUseData to be saved:', {
+      logger.debug('fertilizerUseData to be saved', {
         fertilizerId: fertilizerUseData.fertilizerId,
         fertilizerName: fertilizerUseData.fertilizerName,
         nitrogen: fertilizerUseData.nitrogen,
@@ -287,7 +288,7 @@ const WorkLogForm = () => {
         navigate('/work-logs');
       }, 2000);
     } catch (err) {
-      console.error('Error saving work log:', err);
+      logger.error('Error saving work log', {}, err);
       setFormErrors('作業日誌の保存中にエラーが発生しました: ' + err.message);
     } finally {
       setFormLoading(false);

@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const ReportsDashboard = () => {
   const { currentUser } = useAuth();
@@ -59,7 +60,7 @@ const ReportsDashboard = () => {
       const data = await reportService.getBusinessAnalytics(startDate, endDate);
       setAnalytics(data);
     } catch (error) {
-      console.error('分析データの取得エラー:', error);
+      logger.error('分析データの取得エラー', {}, error);
       toast.error('分析データの取得中にエラーが発生しました');
     } finally {
       setLoading(false);

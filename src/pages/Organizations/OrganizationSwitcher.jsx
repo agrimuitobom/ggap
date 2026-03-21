@@ -5,6 +5,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { createOrganization } from '../../services/organizationService';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const OrganizationSwitcher = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const OrganizationSwitcher = () => {
       toast.success('組織を切り替えました');
       navigate('/dashboard');
     } catch (error) {
-      console.error('Error switching organization:', error);
+      logger.error('Error switching organization', {}, error);
       toast.error('組織の切り替えに失敗しました');
     }
   };
@@ -44,7 +45,7 @@ const OrganizationSwitcher = () => {
       setShowCreateForm(false);
       await refreshOrganizations();
     } catch (error) {
-      console.error('Error creating organization:', error);
+      logger.error('Error creating organization', {}, error);
       toast.error('組織の作成に失敗しました');
     } finally {
       setCreating(false);

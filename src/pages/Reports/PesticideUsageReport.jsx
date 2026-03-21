@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import ReportService from '../../services/reportService';
 import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const PesticideUsageReport = () => {
   const { currentUser } = useAuth();
@@ -25,7 +26,7 @@ const PesticideUsageReport = () => {
       );
       setReportData(data);
     } catch (error) {
-      console.error('農薬使用記録レポートの取得エラー:', error);
+      logger.error('農薬使用記録レポートの取得エラー', {}, error);
       toast.error('レポートの取得中にエラーが発生しました');
     } finally {
       setLoading(false);

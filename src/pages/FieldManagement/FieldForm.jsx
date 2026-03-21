@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import logger from '../../utils/logger';
 
 const FieldForm = () => {
   const { id } = useParams();
@@ -37,7 +38,7 @@ const FieldForm = () => {
             navigate('/fields');
           }
         } catch (err) {
-          console.error('Error fetching field data:', err);
+          logger.error('Error fetching field data', {}, err);
           setError('データの取得中にエラーが発生しました。');
         } finally {
           setFetchLoading(false);
@@ -100,7 +101,7 @@ const FieldForm = () => {
         navigate('/fields');
       }, 2000);
     } catch (err) {
-      console.error('Error saving field data:', err);
+      logger.error('Error saving field data', {}, err);
       setError('圃場データの保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import logger from '../../utils/logger';
 
 const FieldsList = () => {
   const { currentOrganization } = useOrganization();
@@ -37,7 +38,7 @@ const FieldsList = () => {
       });
       setFields(fieldsList);
     } catch (err) {
-      console.error('Error fetching fields:', err);
+      logger.error('Error fetching fields', {}, err);
       setError('圃場データの取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ const FieldsList = () => {
       setFields(fields.filter(field => field.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting field:', err);
+      logger.error('Error deleting field', {}, err);
       setError('圃場データの削除中にエラーが発生しました。');
     }
   };

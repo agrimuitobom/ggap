@@ -7,6 +7,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import CSVImporter from '../../components/Import/CSVImporter';
+import logger from '../../utils/logger';
 
 const VisitorsList = () => {
   const { currentOrganization } = useOrganization();
@@ -87,7 +88,7 @@ const VisitorsList = () => {
       });
       setVisitors(visitorsData);
     } catch (err) {
-      console.error('Error fetching visitors:', err);
+      logger.error('Error fetching visitors', {}, err);
       setError('訪問者記録の取得中にエラーが発生しました。');
       toast.error('訪問者記録の取得中にエラーが発生しました');
     } finally {
@@ -107,7 +108,7 @@ const VisitorsList = () => {
       setDeleteConfirm(null);
       toast.success('訪問者記録を削除しました');
     } catch (err) {
-      console.error('Error deleting visitor:', err);
+      logger.error('Error deleting visitor', {}, err);
       setError('訪問者記録の削除中にエラーが発生しました。');
       toast.error('訪問者記録の削除中にエラーが発生しました');
     }

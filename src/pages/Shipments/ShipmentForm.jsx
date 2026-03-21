@@ -5,6 +5,7 @@ import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 // 将来的に使用するためコメントアウト // import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const ShipmentForm = () => {
   const { id } = useParams();
@@ -46,7 +47,7 @@ const ShipmentForm = () => {
         
         setHarvests(harvestsList);
       } catch (error) {
-        console.error('Error fetching harvests:', error);
+        logger.error('Error fetching harvests', {}, error);
         toast.error('収穫データの取得中にエラーが発生しました');
       }
     };
@@ -87,7 +88,7 @@ const ShipmentForm = () => {
             navigate('/shipments');
           }
         } catch (error) {
-          console.error('Error fetching shipment data:', error);
+          logger.error('Error fetching shipment data', {}, error);
           toast.error('出荷記録の取得中にエラーが発生しました');
           setInitialLoading(false);
         }
@@ -150,7 +151,7 @@ const ShipmentForm = () => {
       
       navigate('/shipments');
     } catch (error) {
-      console.error('Error saving shipment data:', error);
+      logger.error('Error saving shipment data', {}, error);
       toast.error('出荷記録の保存中にエラーが発生しました');
     } finally {
       setLoading(false);

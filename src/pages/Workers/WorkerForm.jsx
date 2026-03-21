@@ -5,6 +5,7 @@ import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'fir
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 const WorkerForm = () => {
   const { id } = useParams();
@@ -78,7 +79,7 @@ const WorkerForm = () => {
         navigate('/workers');
       }
     } catch (err) {
-      console.error('Error fetching worker data:', err);
+      logger.error('Error fetching worker data', {}, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -142,7 +143,7 @@ const WorkerForm = () => {
         navigate('/workers');
       }, 1000);
     } catch (err) {
-      console.error('Error saving worker:', err);
+      logger.error('Error saving worker', {}, err);
       setError('従業員情報の保存中にエラーが発生しました: ' + err.message);
       toast.error('従業員情報の保存中にエラーが発生しました');
     } finally {

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import logger from '../../utils/logger';
 
 const SeedUsesList = () => {
   const { currentOrganization } = useOrganization();
@@ -39,7 +40,7 @@ const SeedUsesList = () => {
       });
       setSeedUses(uses);
     } catch (err) {
-      console.error('Error fetching seed uses:', err);
+      logger.error('Error fetching seed uses', {}, err);
       setError('播種・定植記録の取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -57,7 +58,7 @@ const SeedUsesList = () => {
       setSeedUses(seedUses.filter(use => use.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting seed use:', err);
+      logger.error('Error deleting seed use', {}, err);
       setError('播種・定植記録の削除中にエラーが発生しました。');
     }
   };
