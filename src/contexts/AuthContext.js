@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   updateProfile
@@ -71,10 +72,8 @@ export function AuthProvider({ children }) {
 
   async function loginWithGoogle() {
     try {
-      authLogger.info('Googleログイン開始');
-      const result = await signInWithPopup(auth, googleProvider);
-      authLogger.info('Googleログイン成功', { uid: result.user.uid, email: result.user.email });
-      return result;
+      authLogger.info('Googleログイン開始（リダイレクト方式）');
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       authLogger.error('Googleログインエラー', {}, error);
       throw error;
@@ -122,17 +121,28 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // リダイレクト認証の結果を処理
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          authLogger.info('Googleリダイレクトログイン成功', { uid: result.user.uid, email: result.user.email });
+        }
+      })
+      .catch((error) => {
+        authLogger.error('Googleリダイレクト認証エラー', {}, error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       authLogger.info('認証状態変更', { status: user ? 'ログイン' : 'ログアウト', email: user?.email });
       setCurrentUser(user);
-      
+
       if (user) {
         const profile = await fetchUserProfile(user);
         setUserProfile(profile);
       } else {
         setUserProfile(null);
       }
-      
+
       setLoading(false);
     });
 

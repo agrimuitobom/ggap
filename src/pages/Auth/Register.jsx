@@ -19,17 +19,10 @@ const Register = () => {
       setError('');
       setLoading(true);
       await loginWithGoogle();
-      navigate('/');
+      // リダイレクト方式のため、ここでnavigateは不要（リダイレクト後にonAuthStateChangedで処理）
     } catch (error) {
       authLogger.error("Googleログインエラー", { errorCode: error.code }, error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        setError('ログインがキャンセルされました');
-      } else if (error.code === 'auth/popup-blocked') {
-        setError('ポップアップがブロックされました。ポップアップを許可してください');
-      } else {
-        setError('Googleログインに失敗しました: ' + error.message);
-      }
-    } finally {
+      setError('Googleログインに失敗しました: ' + error.message);
       setLoading(false);
     }
   };
