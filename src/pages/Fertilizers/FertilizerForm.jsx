@@ -4,6 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('FertilizerForm');
 
 const FertilizerForm = () => {
   const { id } = useParams();
@@ -54,7 +57,7 @@ const FertilizerForm = () => {
             navigate('/fertilizers');
           }
         } catch (err) {
-          console.error('Error fetching fertilizer data:', err);
+          pageLogger.error('Error fetching fertilizer data', { id }, err);
           setError('データの取得中にエラーが発生しました。');
         } finally {
           setFetchLoading(false);
@@ -126,7 +129,7 @@ const FertilizerForm = () => {
         navigate('/fertilizers');
       }, 2000);
     } catch (err) {
-      console.error('Error saving fertilizer data:', err);
+      pageLogger.error('Error saving fertilizer data', { id, isEditMode }, err);
       setError('肥料データの保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

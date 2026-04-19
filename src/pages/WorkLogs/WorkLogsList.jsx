@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('WorkLogsList');
 
 const WorkLogsList = () => {
   const { currentOrganization } = useOrganization();
@@ -33,7 +36,7 @@ const WorkLogsList = () => {
       });
       setWorkLogs(logs);
     } catch (err) {
-      console.error('Error fetching work logs:', err);
+      pageLogger.error('Error fetching work logs', {}, err);
       setError('作業日誌の取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -57,7 +60,7 @@ const WorkLogsList = () => {
       setWorkLogs(workLogs.filter(log => log.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting work log:', err);
+      pageLogger.error('Error deleting work log', { id }, err);
       setError('作業日誌の削除中にエラーが発生しました。');
     }
   };

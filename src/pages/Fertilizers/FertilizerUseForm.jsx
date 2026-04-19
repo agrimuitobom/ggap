@@ -4,6 +4,9 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('FertilizerUseForm');
 
 const FertilizerUseForm = () => {
   const { id } = useParams();
@@ -97,7 +100,7 @@ const FertilizerUseForm = () => {
           }
         }
       } catch (err) {
-        console.error('Error fetching form data:', err);
+        pageLogger.error('Error fetching form data', { id, isEditMode }, err);
         setError('データの取得中にエラーが発生しました。');
       } finally {
         setFetchLoading(false);
@@ -162,7 +165,7 @@ const FertilizerUseForm = () => {
         navigate('/fertilizer-uses');
       }, 1000);
     } catch (err) {
-      console.error('Error saving fertilizer use record:', err);
+      pageLogger.error('Error saving fertilizer use record', { id, fertilizerId: formData.fertilizerId, fieldId: formData.fieldId, isEditMode }, err);
       setError('肥料使用記録の保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

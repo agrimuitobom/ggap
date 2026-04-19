@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('FertilizerUsesList');
 
 const FertilizerUsesList = () => {
   const { currentOrganization } = useOrganization();
@@ -25,7 +28,7 @@ const FertilizerUsesList = () => {
       setLoading(true);
 
       // デバッグログ: クエリ実行前
-      console.log('DEBUG: FertilizerUsesList - Fetching data for organization:', currentOrganization.id);
+      pageLogger.debug('Fetching data for organization', { organizationId: currentOrganization.id });
 
       const q = query(
         collection(db, 'fertilizerUses'),
@@ -35,14 +38,14 @@ const FertilizerUsesList = () => {
       const querySnapshot = await getDocs(q);
       
       // デバッグログ: クエリ結果
-      console.log('DEBUG: FertilizerUsesList - Query result count:', querySnapshot.size);
+      pageLogger.debug('Query result count', { count: querySnapshot.size });
       
       const uses = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         
         // デバッグログ: 各ドキュメント
-        console.log('DEBUG: FertilizerUsesList - Document:', {
+        pageLogger.debug('Document', {
           id: doc.id,
           date: data.date?.toDate?.() || data.date,
           dateType: typeof data.date,
@@ -58,15 +61,14 @@ const FertilizerUsesList = () => {
         });
       });
       
-      console.log('DEBUG: FertilizerUsesList - Final processed count:', uses.length);
-      console.log('DEBUG: FertilizerUsesList - Date range:', 
-        uses.map(u => u.date).filter(d => d).sort()
-      );
+      pageLogger.debug('Final processed count', { count: uses.length });
+      pageLogger.debug('Date range', {
+        dates: uses.map(u => u.date).filter(d => d).sort()
+      });
       
       setFertilizerUses(uses);
     } catch (err) {
-      console.error('DEBUG: FertilizerUsesList - Error:', err);
-      console.error('Error fetching fertilizer uses:', err);
+      pageLogger.error('Error fetching fertilizer uses', { organizationId: currentOrganization?.id }, err);
       setError('施肥記録の取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -84,7 +86,7 @@ const FertilizerUsesList = () => {
       setFertilizerUses(fertilizerUses.filter(use => use.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting fertilizer use:', err);
+      pageLogger.error('Error deleting fertilizer use', { id }, err);
       setError('施肥記録の削除中にエラーが発生しました。');
     }
   };

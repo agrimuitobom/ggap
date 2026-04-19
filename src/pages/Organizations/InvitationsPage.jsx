@@ -6,6 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { acceptInvitation } from '../../services/organizationService';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('InvitationsPage');
 
 const InvitationsPage = () => {
   const navigate = useNavigate();
@@ -29,7 +32,7 @@ const InvitationsPage = () => {
       await refreshOrganizations();
       navigate('/organizations/switch');
     } catch (error) {
-      console.error('Error accepting invitation:', error);
+      pageLogger.error('Error accepting invitation', { invitationId }, error);
       if (error.message === 'Invitation expired') {
         toast.error('この招待は期限切れです');
       } else {

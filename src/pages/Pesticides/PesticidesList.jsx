@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('PesticidesList');
 
 const PesticidesList = () => {
   const { currentOrganization } = useOrganization();
@@ -40,7 +43,7 @@ const PesticidesList = () => {
       });
       setPesticides(pesticidesList);
     } catch (err) {
-      console.error('Error fetching pesticides:', err);
+      pageLogger.error('Error fetching pesticides', { organizationId: currentOrganization?.id }, err);
       if (err.message && err.message.includes('index')) {
         setError('データベースのインデックスを準備中です。しばらく待ってから再度お試しください。');
       } else {
@@ -62,7 +65,7 @@ const PesticidesList = () => {
       setPesticides(pesticides.filter(pesticide => pesticide.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting pesticide:', err);
+      pageLogger.error('Error deleting pesticide', { id }, err);
       setError('農薬データの削除中にエラーが発生しました。');
     }
   };

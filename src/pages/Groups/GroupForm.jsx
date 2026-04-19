@@ -5,6 +5,9 @@ import { collection, addDoc, updateDoc, doc, getDoc, getDocs, query, where, serv
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('GroupForm');
 
 const GroupForm = () => {
   const { id } = useParams();
@@ -49,7 +52,7 @@ const GroupForm = () => {
       workersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setWorkers(workersList);
     } catch (err) {
-      console.error('Error fetching workers:', err);
+      pageLogger.error('Error fetching workers', {}, err);
       toast.error('従業員データの取得中にエラーが発生しました');
     }
   };
@@ -72,7 +75,7 @@ const GroupForm = () => {
         navigate('/groups');
       }
     } catch (err) {
-      console.error('Error fetching group data:', err);
+      pageLogger.error('Error fetching group data', { id }, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -156,7 +159,7 @@ const GroupForm = () => {
         navigate('/groups');
       }, 1000);
     } catch (err) {
-      console.error('Error saving group:', err);
+      pageLogger.error('Error saving group', { id, isEditMode }, err);
       setError('グループの保存中にエラーが発生しました: ' + err.message);
       toast.error('グループの保存中にエラーが発生しました');
     } finally {

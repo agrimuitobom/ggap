@@ -4,6 +4,9 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('FieldInspectionForm');
 
 const FieldInspectionForm = () => {
   const { id } = useParams();
@@ -85,7 +88,7 @@ const FieldInspectionForm = () => {
           }
         }
       } catch (err) {
-        console.error('Error fetching form data:', err);
+        pageLogger.error('Error fetching form data', { id, isEditMode }, err);
         setError('データの取得中にエラーが発生しました。');
       } finally {
         setFetchLoading(false);
@@ -159,7 +162,7 @@ const FieldInspectionForm = () => {
         }, 2000);
       }
     } catch (err) {
-      console.error('Error saving field inspection:', err);
+      pageLogger.error('Error saving field inspection', { id, fieldId: formData.fieldId, isEditMode }, err);
       setError('圃場点検記録の保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

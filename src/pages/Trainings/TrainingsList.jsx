@@ -6,6 +6,9 @@ import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('TrainingsList');
 
 const TrainingsList = () => {
   const { currentOrganization } = useOrganization();
@@ -41,7 +44,7 @@ const TrainingsList = () => {
       });
       setTrainings(trainingsData);
     } catch (err) {
-      console.error('Error fetching trainings:', err);
+      pageLogger.error('Error fetching trainings', {}, err);
       setError('教育・訓練記録の取得中にエラーが発生しました。');
       toast.error('教育・訓練記録の取得中にエラーが発生しました');
     } finally {
@@ -61,7 +64,7 @@ const TrainingsList = () => {
       setDeleteConfirm(null);
       toast.success('教育・訓練記録を削除しました');
     } catch (err) {
-      console.error('Error deleting training:', err);
+      pageLogger.error('Error deleting training', { id }, err);
       setError('教育・訓練記録の削除中にエラーが発生しました。');
       toast.error('教育・訓練記録の削除中にエラーが発生しました');
     }

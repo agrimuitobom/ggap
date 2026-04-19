@@ -4,6 +4,9 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('PesticideUseForm');
 
 const PesticideUseForm = () => {
   const { id } = useParams();
@@ -107,7 +110,7 @@ const PesticideUseForm = () => {
           }
         }
       } catch (err) {
-        console.error('Error fetching form data:', err);
+        pageLogger.error('Error fetching form data', { id, isEditMode }, err);
         setError('データの取得中にエラーが発生しました。');
       } finally {
         setFetchLoading(false);
@@ -195,7 +198,7 @@ const PesticideUseForm = () => {
         }, 2000);
       }
     } catch (err) {
-      console.error('Error saving pesticide use record:', err);
+      pageLogger.error('Error saving pesticide use record', { id, isEditMode }, err);
       setError('農薬使用記録の保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

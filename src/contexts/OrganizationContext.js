@@ -10,6 +10,9 @@ import {
   getUserInvitations,
   migrateUserDataToOrganization
 } from '../services/organizationService';
+import { createLogger } from '../utils/logger';
+
+const orgLogger = createLogger('OrganizationContext');
 
 const OrganizationContext = createContext();
 
@@ -49,7 +52,7 @@ export function OrganizationProvider({ children }) {
         }
       }
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      orgLogger.error('Error fetching organizations', {}, error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +91,7 @@ export function OrganizationProvider({ children }) {
       // 組織一覧を再取得
       await fetchUserOrganizations();
     } catch (error) {
-      console.error('Error creating personal organization:', error);
+      orgLogger.error('Error creating personal organization', {}, error);
     }
   };
 
@@ -104,7 +107,7 @@ export function OrganizationProvider({ children }) {
       // 選択した組織をローカルストレージに保存
       localStorage.setItem('currentOrganizationId', organizationId);
     } catch (error) {
-      console.error('Error switching organization:', error);
+      orgLogger.error('Error switching organization', { organizationId }, error);
     }
   };
 
@@ -116,7 +119,7 @@ export function OrganizationProvider({ children }) {
       const invites = await getUserInvitations(currentUser.email);
       setInvitations(invites);
     } catch (error) {
-      console.error('Error fetching invitations:', error);
+      orgLogger.error('Error fetching invitations', {}, error);
     }
   };
 
@@ -125,7 +128,7 @@ export function OrganizationProvider({ children }) {
     try {
       return await getOrganizationMembers(organizationId);
     } catch (error) {
-      console.error('Error fetching members:', error);
+      orgLogger.error('Error fetching members', { organizationId }, error);
       return [];
     }
   };

@@ -3,6 +3,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ReportService } from '../../services/reportService';
 import { format } from 'date-fns';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('TrainingReport');
 
 const TrainingReport = () => {
   const { currentUser } = useAuth();
@@ -34,7 +37,7 @@ const TrainingReport = () => {
       
       setReport(data);
     } catch (err) {
-      console.error('Error fetching training report:', err);
+      pageLogger.error('Error fetching training report', { startDate, endDate }, err);
       setError('教育・訓練記録の取得中にエラーが発生しました。');
     } finally {
       setLoading(false);

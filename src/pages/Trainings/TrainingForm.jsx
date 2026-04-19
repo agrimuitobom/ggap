@@ -5,6 +5,9 @@ import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimes
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('TrainingForm');
 
 const TrainingForm = () => {
   const { id } = useParams();
@@ -113,7 +116,7 @@ const TrainingForm = () => {
       groupsList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setGroups(groupsList);
     } catch (err) {
-      console.error('Error fetching data:', err);
+      pageLogger.error('Error fetching data', { organizationId: currentOrganization?.id }, err);
       toast.error('データの取得中にエラーが発生しました');
     }
   };
@@ -155,7 +158,7 @@ const TrainingForm = () => {
         navigate('/trainings');
       }
     } catch (err) {
-      console.error('Error fetching training data:', err);
+      pageLogger.error('Error fetching training data', { id }, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -305,7 +308,7 @@ const TrainingForm = () => {
         navigate('/trainings');
       }, 1000);
     } catch (err) {
-      console.error('Error saving training:', err);
+      pageLogger.error('Error saving training', { id, isEditMode }, err);
       setError('教育・訓練記録の保存中にエラーが発生しました: ' + err.message);
       toast.error('教育・訓練記録の保存中にエラーが発生しました');
     } finally {

@@ -15,6 +15,9 @@ import BasicInfoSection from '../../components/WorkLog/BasicInfoSection';
 import FertilizerSection from '../../components/WorkLog/FertilizerSection';
 import SeedSection from '../../components/WorkLog/SeedSection';
 import PesticideSection from '../../components/WorkLog/PesticideSection';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('WorkLogForm');
 
 const WorkLogForm = () => {
   const { id } = useParams();
@@ -77,7 +80,7 @@ const WorkLogForm = () => {
       const selectedFertilizer = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
 
       // デバッグログ: 選択された肥料のNPK成分を確認
-      console.log('DEBUG: Selected fertilizer data:', {
+      pageLogger.debug('Selected fertilizer data', {
         id: selectedFertilizer?.id,
         name: selectedFertilizer?.name,
         nitrogenContent: selectedFertilizer?.nitrogenContent,
@@ -108,7 +111,7 @@ const WorkLogForm = () => {
       };
 
       // デバッグログ: fertilizerUsesコレクションに保存するデータを確認
-      console.log('DEBUG: fertilizerUseData to be saved:', {
+      pageLogger.debug('fertilizerUseData to be saved', {
         fertilizerId: fertilizerUseData.fertilizerId,
         fertilizerName: fertilizerUseData.fertilizerName,
         nitrogen: fertilizerUseData.nitrogen,
@@ -287,7 +290,7 @@ const WorkLogForm = () => {
         navigate('/work-logs');
       }, 2000);
     } catch (err) {
-      console.error('Error saving work log:', err);
+      pageLogger.error('Error saving work log', { id, isEditMode }, err);
       setFormErrors('作業日誌の保存中にエラーが発生しました: ' + err.message);
     } finally {
       setFormLoading(false);

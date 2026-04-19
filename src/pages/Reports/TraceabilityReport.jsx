@@ -5,6 +5,9 @@ import { ReportService } from '../../services/reportService';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('TraceabilityReport');
 
 const TraceabilityReport = () => {
   const { currentUser } = useAuth();
@@ -45,7 +48,7 @@ const TraceabilityReport = () => {
 
       setReport(data);
     } catch (err) {
-      console.error('Error fetching traceability report:', err);
+      pageLogger.error('Error fetching traceability report', { startDate, endDate }, err);
       setError('トレーサビリティレポートの取得中にエラーが発生しました。');
     } finally {
       setLoading(false);

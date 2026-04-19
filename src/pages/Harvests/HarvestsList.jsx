@@ -5,6 +5,9 @@ import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('HarvestsList');
 
 const HarvestsList = () => {
   const [harvests, setHarvests] = useState([]);
@@ -34,7 +37,7 @@ const HarvestsList = () => {
         setHarvests(harvestsList);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching harvests:', error);
+        pageLogger.error('Error fetching harvests', { organizationId: currentOrganization?.id }, error);
         toast.error('収穫記録の取得中にエラーが発生しました');
         setLoading(false);
       }
@@ -71,7 +74,7 @@ const HarvestsList = () => {
         setHarvests(harvests.filter(harvest => harvest.id !== id));
         toast.success('収穫記録を削除しました');
       } catch (error) {
-        console.error('Error deleting harvest:', error);
+        pageLogger.error('Error deleting harvest', { id }, error);
         toast.error('収穫記録の削除中にエラーが発生しました');
       }
     }

@@ -3,6 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import toast from 'react-hot-toast';
+import { createLogger } from '../../utils/logger';
+
+const pageLogger = createLogger('HarvestDetail');
 
 const HarvestDetail = () => {
   const { id } = useParams();
@@ -25,7 +28,7 @@ const HarvestDetail = () => {
           navigate('/harvests');
         }
       } catch (error) {
-        console.error('Error fetching harvest:', error);
+        pageLogger.error('Error fetching harvest', { id }, error);
         toast.error('収穫記録の取得中にエラーが発生しました');
       } finally {
         setLoading(false);
@@ -42,7 +45,7 @@ const HarvestDetail = () => {
         toast.success('収穫記録を削除しました');
         navigate('/harvests');
       } catch (error) {
-        console.error('Error deleting harvest:', error);
+        pageLogger.error('Error deleting harvest', { id }, error);
         toast.error('収穫記録の削除中にエラーが発生しました');
       }
     }
