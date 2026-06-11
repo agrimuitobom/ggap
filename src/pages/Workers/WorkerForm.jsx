@@ -4,12 +4,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
 const WorkerForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,7 +57,7 @@ const WorkerForm = () => {
   const fetchWorkerData = async () => {
     try {
       setFetchLoading(true);
-      const docRef = doc(db, 'users', id);
+      const docRef = doc(db, 'workers', id);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
@@ -78,7 +81,7 @@ const WorkerForm = () => {
         navigate('/workers');
       }
     } catch (err) {
-      console.error('Error fetching worker data:', err);
+      firestoreLogger.error('従業員データの取得エラー', { workerId: id }, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -99,8 +102,8 @@ const WorkerForm = () => {
     setLoading(true);
     setError('');
 
-    if (!currentUser) {
-      setError('ユーザー認証が確認できません。');
+    if (!currentUser || !currentOrganization) {
+      setError('ユーザー認証または組織情報が確認できません。');
       setLoading(false);
       return;
     }
@@ -125,16 +128,16 @@ const WorkerForm = () => {
         certifications: formData.certifications.trim(),
         skills: formData.skills.trim(),
         notes: formData.notes.trim(),
-        organizationId: currentUser.uid,
+        organizationId: currentOrganization.id,
         updatedAt: serverTimestamp()
       };
 
       if (isEditMode) {
-        await updateDoc(doc(db, 'users', id), workerData);
+        await updateDoc(doc(db, 'workers', id), workerData);
         toast.success('従業員情報を更新しました');
       } else {
         workerData.createdAt = serverTimestamp();
-        await addDoc(collection(db, 'users'), workerData);
+        await addDoc(collection(db, 'workers'), workerData);
         toast.success('従業員を登録しました');
       }
 
@@ -142,7 +145,7 @@ const WorkerForm = () => {
         navigate('/workers');
       }, 1000);
     } catch (err) {
-      console.error('Error saving worker:', err);
+      firestoreLogger.error('従業員情報の保存エラー', { workerId: id, organizationId: currentOrganization?.id }, err);
       setError('従業員情報の保存中にエラーが発生しました: ' + err.message);
       toast.error('従業員情報の保存中にエラーが発生しました');
     } finally {

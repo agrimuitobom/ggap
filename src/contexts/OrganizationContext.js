@@ -10,6 +10,8 @@ import {
   getUserInvitations,
   migrateUserDataToOrganization
 } from '../services/organizationService';
+import { firestoreLogger } from '../utils/logger';
+import toast from 'react-hot-toast';
 
 const OrganizationContext = createContext();
 
@@ -49,7 +51,8 @@ export function OrganizationProvider({ children }) {
         }
       }
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      firestoreLogger.error('組織一覧の取得エラー', { userId: currentUser?.uid }, error);
+      toast.error('組織情報の取得に失敗しました。再読み込みしてください。');
     } finally {
       setLoading(false);
     }
@@ -88,7 +91,8 @@ export function OrganizationProvider({ children }) {
       // 組織一覧を再取得
       await fetchUserOrganizations();
     } catch (error) {
-      console.error('Error creating personal organization:', error);
+      firestoreLogger.error('個人組織の自動作成エラー', { userId: currentUser?.uid }, error);
+      toast.error('組織の初期設定に失敗しました。再読み込みしてください。');
     }
   };
 
@@ -104,7 +108,8 @@ export function OrganizationProvider({ children }) {
       // 選択した組織をローカルストレージに保存
       localStorage.setItem('currentOrganizationId', organizationId);
     } catch (error) {
-      console.error('Error switching organization:', error);
+      firestoreLogger.error('組織の切り替えエラー', { organizationId }, error);
+      toast.error('組織の切り替えに失敗しました');
     }
   };
 
@@ -116,7 +121,8 @@ export function OrganizationProvider({ children }) {
       const invites = await getUserInvitations(currentUser.email);
       setInvitations(invites);
     } catch (error) {
-      console.error('Error fetching invitations:', error);
+      // 招待一覧は補助的な情報のためトーストは出さず、ログのみ残す
+      firestoreLogger.error('招待一覧の取得エラー', {}, error);
     }
   };
 
@@ -125,7 +131,8 @@ export function OrganizationProvider({ children }) {
     try {
       return await getOrganizationMembers(organizationId);
     } catch (error) {
-      console.error('Error fetching members:', error);
+      firestoreLogger.error('組織メンバーの取得エラー', { organizationId }, error);
+      toast.error('メンバー一覧の取得に失敗しました');
       return [];
     }
   };

@@ -2,8 +2,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import ReportService from '../../services/reportService';
-import { 
+import { firestoreLogger } from '../../utils/logger';
+import {
   BarChart, 
   Bar, 
   XAxis, 
@@ -20,11 +22,12 @@ import toast from 'react-hot-toast';
 
 const ReportsDashboard = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('3months');
 
-  const reportService = useMemo(() => new ReportService(currentUser?.uid), [currentUser?.uid]);
+  const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
   const getPeriodDates = (period) => {
     const endDate = new Date();
@@ -51,7 +54,7 @@ const ReportsDashboard = () => {
   };
 
   const fetchAnalytics = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     setLoading(true);
     try {
@@ -59,12 +62,15 @@ const ReportsDashboard = () => {
       const data = await reportService.getBusinessAnalytics(startDate, endDate);
       setAnalytics(data);
     } catch (error) {
-      console.error('分析データの取得エラー:', error);
+      firestoreLogger.error('分析データの取得エラー', {
+        organizationId: currentOrganization?.id,
+        selectedPeriod
+      }, error);
       toast.error('分析データの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
     }
-  }, [currentUser, selectedPeriod, reportService]);
+  }, [currentUser, currentOrganization, selectedPeriod, reportService]);
 
   useEffect(() => {
     fetchAnalytics();

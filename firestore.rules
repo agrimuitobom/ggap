@@ -15,27 +15,35 @@ service cloud.firestore {
     }
 
     // ヘルパー関数: ユーザーの組織における役割を取得
+    // メンバーシップが存在しない場合は空文字を返す（存在しないドキュメントの
+    // get() による評価エラーを防ぐ）
     function getOrgRole(orgId) {
-      let membershipId = getMembershipId(orgId);
-      return get(/databases/$(database)/documents/organizationMembers/$(membershipId)).data.role;
+      return isMemberOfOrg(orgId)
+        ? get(/databases/$(database)/documents/organizationMembers/$(getMembershipId(orgId))).data.role
+        : '';
     }
 
     // ヘルパー関数: 管理者かチェック
     function isOrgAdmin(orgId) {
-      return isMemberOfOrg(orgId) && getOrgRole(orgId) == 'admin';
+      return getOrgRole(orgId) == 'admin';
     }
 
     // ヘルパー関数: メンバーまたは管理者かチェック（書き込み権限）
     function canWriteToOrg(orgId) {
-      return isMemberOfOrg(orgId) && (getOrgRole(orgId) == 'admin' || getOrgRole(orgId) == 'member');
+      return getOrgRole(orgId) in ['admin', 'member'];
     }
 
     // ユーザープロフィール
     match /users/{userId} {
       // 自分のデータは読み書き可能
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      // 他のユーザー情報は読み取りのみ（メンバー管理のため）
-      allow read: if request.auth != null;
+      // 他のユーザー情報は単体取得のみ（メンバー管理のため）。
+      // 全ユーザーの一覧取得（list）は不可
+      allow get: if request.auth != null;
+      // 旧形式の従業員データ（organizationId = 自分のUID）の移行用に、
+      // 自分が所有するドキュメントに限定したクエリのみ許可
+      allow list: if request.auth != null &&
+                     resource.data.organizationId == request.auth.uid;
     }
 
     // 組織管理
@@ -56,9 +64,10 @@ service cloud.firestore {
       allow get: if request.auth != null &&
                     (membershipId.matches('^' + request.auth.uid + '_.*') ||
                      isMemberOfOrg(resource.data.organizationId));
-      // 認証済みユーザーは自分に関するメンバーシップを検索可能
+      // 自分のメンバーシップ、または自分が所属する組織のメンバーのみ検索可能
       allow list: if request.auth != null &&
-                     request.query.limit <= 100;
+                     (resource.data.userId == request.auth.uid ||
+                      isMemberOfOrg(resource.data.organizationId));
       // 組織作成時の自己追加、または管理者によるメンバー追加
       allow create: if request.auth != null &&
                        (request.resource.data.userId == request.auth.uid ||
@@ -73,9 +82,10 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (request.auth.token.email == resource.data.email ||
                       isOrgAdmin(resource.data.organizationId));
-      // クエリを許可（自分宛ての招待を検索するため）
+      // 自分宛ての招待、または自分が管理者である組織の招待のみ検索可能
       allow list: if request.auth != null &&
-                     request.query.limit <= 100;
+                     (resource.data.email == request.auth.token.email ||
+                      isOrgAdmin(resource.data.organizationId));
       // 管理者のみ招待を作成可能
       allow create: if request.auth != null && isOrgAdmin(request.resource.data.organizationId);
       // 招待された本人または管理者のみ更新可能

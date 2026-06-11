@@ -3,12 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { getWorkers } from '../../services/workerService';
+import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
 const TrainingForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const { currentOrganization } = useOrganization();
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -82,26 +86,15 @@ const TrainingForm = () => {
 
     try {
       // 従業員とグループを並行して取得
-      const [usersSnapshot, groupsSnapshot] = await Promise.all([
-        getDocs(query(
-          collection(db, 'users'),
-          where('organizationId', '==', currentOrganization.id)
-        )),
+      const [workersList, groupsSnapshot] = await Promise.all([
+        getWorkers(currentOrganization.id, currentUser?.uid),
         getDocs(query(
           collection(db, 'groups'),
           where('organizationId', '==', currentOrganization.id)
         ))
       ]);
 
-      const usersList = [];
-      usersSnapshot.forEach((doc) => {
-        usersList.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      usersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      setUsers(usersList);
+      setUsers(workersList);
 
       const groupsList = [];
       groupsSnapshot.forEach((doc) => {
@@ -113,7 +106,7 @@ const TrainingForm = () => {
       groupsList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setGroups(groupsList);
     } catch (err) {
-      console.error('Error fetching data:', err);
+      firestoreLogger.error('従業員・グループの取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('データの取得中にエラーが発生しました');
     }
   };
@@ -155,7 +148,10 @@ const TrainingForm = () => {
         navigate('/trainings');
       }
     } catch (err) {
-      console.error('Error fetching training data:', err);
+      firestoreLogger.error('教育・訓練記録の取得に失敗しました', {
+        trainingId: id,
+        organizationId: currentOrganization?.id
+      }, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -305,7 +301,11 @@ const TrainingForm = () => {
         navigate('/trainings');
       }, 1000);
     } catch (err) {
-      console.error('Error saving training:', err);
+      firestoreLogger.error('教育・訓練記録の保存に失敗しました', {
+        trainingId: id || null,
+        organizationId: currentOrganization?.id,
+        isEditMode
+      }, err);
       setError('教育・訓練記録の保存中にエラーが発生しました: ' + err.message);
       toast.error('教育・訓練記録の保存中にエラーが発生しました');
     } finally {

@@ -1,6 +1,7 @@
 // src/pages/Reports/BusinessAnalytics.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import ReportService from '../../services/reportService';
 import { 
   LineChart, 
@@ -21,12 +22,13 @@ import { businessLogger } from '../../utils/logger';
 
 const BusinessAnalytics = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('1year');
   const [monthlyData, setMonthlyData] = useState([]);
 
-  const reportService = new ReportService(currentUser?.uid);
+  const reportService = new ReportService(currentOrganization?.id);
 
   const getPeriodDates = (period) => {
     const endDate = new Date();
@@ -50,7 +52,7 @@ const BusinessAnalytics = () => {
   };
 
   const fetchAnalytics = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     setLoading(true);
     try {
@@ -101,7 +103,7 @@ const BusinessAnalytics = () => {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [currentUser, selectedPeriod]);
+  }, [currentUser, currentOrganization, selectedPeriod]);
 
   // 生産性指標の計算
   const calculateProductivityMetrics = () => {

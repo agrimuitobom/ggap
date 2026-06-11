@@ -1,21 +1,24 @@
 // src/pages/Reports/PesticideUsageReport.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import ReportService from '../../services/reportService';
+import { firestoreLogger } from '../../utils/logger';
 import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const PesticideUsageReport = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 3), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const reportService = useMemo(() => new ReportService(currentUser?.uid), [currentUser?.uid]);
+  const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
   const fetchReport = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     setLoading(true);
     try {
@@ -25,12 +28,16 @@ const PesticideUsageReport = () => {
       );
       setReportData(data);
     } catch (error) {
-      console.error('農薬使用記録レポートの取得エラー:', error);
+      firestoreLogger.error('農薬使用記録レポートの取得エラー', {
+        organizationId: currentOrganization?.id,
+        startDate,
+        endDate
+      }, error);
       toast.error('レポートの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
     }
-  }, [currentUser, reportService, startDate, endDate]);
+  }, [currentUser, currentOrganization, reportService, startDate, endDate]);
 
   useEffect(() => {
     fetchReport();

@@ -3,9 +3,13 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
+import { getWorkers } from '../services/workerService';
+import { firestoreLogger } from '../utils/logger';
 
 export const useWorkLogData = (editId = null) => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [fields, setFields] = useState([]);
   const [users, setUsers] = useState([]);
   const [fertilizers, setFertilizers] = useState([]);
@@ -16,24 +20,26 @@ export const useWorkLogData = (editId = null) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentUser || !currentOrganization) return;
+
       try {
         setLoading(true);
-        
+
+        const orgId = currentOrganization.id;
+
         // 並行してデータを取得
         const [
           fieldsSnapshot,
-          usersSnapshot,
+          workersList,
           fertilizersSnapshot,
           seedsSnapshot,
           pesticidesSnapshot
         ] = await Promise.all([
-          getDocs(query(collection(db, 'fields'), where('userId', '==', currentUser.uid))),
-          getDocs(query(collection(db, 'users'))),
-          getDocs(query(collection(db, 'fertilizers'), where('userId', '==', currentUser.uid))),
-          getDocs(query(collection(db, 'seeds'), where('userId', '==', currentUser.uid))),
-          getDocs(query(collection(db, 'pesticides'), where('userId', '==', currentUser.uid)))
+          getDocs(query(collection(db, 'fields'), where('organizationId', '==', orgId))),
+          getWorkers(orgId, currentUser.uid),
+          getDocs(query(collection(db, 'fertilizers'), where('organizationId', '==', orgId))),
+          getDocs(query(collection(db, 'seeds'), where('organizationId', '==', orgId))),
+          getDocs(query(collection(db, 'pesticides'), where('organizationId', '==', orgId)))
         ]);
 
         // データを配列に変換
@@ -41,22 +47,17 @@ export const useWorkLogData = (editId = null) => {
           id: doc.id,
           ...doc.data()
         }));
-        
-        const usersList = usersSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
+
         const fertilizersList = fertilizersSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         const seedsList = seedsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         const pesticidesList = pesticidesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -64,13 +65,13 @@ export const useWorkLogData = (editId = null) => {
 
         // 状態を更新
         setFields(fieldsList);
-        setUsers(usersList);
+        setUsers(workersList);
         setFertilizers(fertilizersList);
         setSeeds(seedsList);
         setPesticides(pesticidesList);
 
       } catch (err) {
-        console.error('Error fetching form data:', err);
+        firestoreLogger.error('作業日誌フォームデータの取得エラー', { organizationId: currentOrganization?.id }, err);
         setError('データの取得中にエラーが発生しました。');
       } finally {
         setLoading(false);
@@ -78,7 +79,7 @@ export const useWorkLogData = (editId = null) => {
     };
 
     fetchData();
-  }, [currentUser]);
+  }, [currentUser, currentOrganization]);
 
   // 既存データを取得する関数
   const fetchExistingData = async (id) => {
@@ -121,7 +122,7 @@ export const useWorkLogData = (editId = null) => {
         throw new Error('指定された作業日誌データが見つかりません。');
       }
     } catch (err) {
-      console.error('Error fetching existing data:', err);
+      firestoreLogger.error('作業日誌の既存データ取得エラー', { workLogId: id }, err);
       throw err;
     }
   };
