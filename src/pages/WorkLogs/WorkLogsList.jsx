@@ -1,6 +1,6 @@
 // src/pages/WorkLogs/WorkLogsList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -8,6 +8,7 @@ import { firestoreLogger } from '../../utils/logger';
 
 const WorkLogsList = () => {
   const { currentOrganization } = useOrganization();
+  const navigate = useNavigate();
   const [workLogs, setWorkLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -129,7 +130,11 @@ const WorkLogsList = () => {
             </thead>
             <tbody>
               {workLogs.map((log) => (
-                <tr key={log.id} className="border-t border-gray-200 hover:bg-gray-50">
+                <tr
+                  key={log.id}
+                  onClick={() => navigate(`/work-logs/edit/${log.id}`)}
+                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
+                >
                   <td className="py-3 px-4 whitespace-nowrap">{log.date?.toLocaleDateString() || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.fieldName || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">
@@ -144,7 +149,8 @@ const WorkLogsList = () => {
                   <td className="py-3 px-4 whitespace-nowrap">{log.workHours ? `${log.workHours}時間` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.harvestAmount ? `${log.harvestAmount} kg` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.wasteAmount ? `${log.wasteAmount} kg` : '-'}</td>
-                  <td className="py-3 px-4">
+                  {/* 操作列のタップは行クリック（編集画面へ）と分離する */}
+                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                     {deleteConfirm === log.id ? (
                       <div className="flex space-x-2">
                         <button 
