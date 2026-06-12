@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
 
 const ShipmentsList = () => {
+  const navigate = useNavigate();
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentOrganization } = useOrganization();
@@ -100,7 +101,10 @@ const ShipmentsList = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {shipments.map((shipment) => (
-                <tr key={shipment.id} className="hover:bg-gray-50">
+                <tr
+                  key={shipment.id}
+                  onClick={() => navigate(`/shipments/${shipment.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {shipment.shipmentDate instanceof Date 
                       ? format(shipment.shipmentDate, 'yyyy年MM月dd日')
@@ -128,10 +132,10 @@ const ShipmentsList = () => {
                       {shipment.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td onClick={(e) => e.stopPropagation()} className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <Link 
-                        to={`/shipments/${shipment.id}`} 
+                      <Link
+                        to={`/shipments/${shipment.id}`}
                         className="text-indigo-600 hover:text-indigo-900"
                       >
                         詳細

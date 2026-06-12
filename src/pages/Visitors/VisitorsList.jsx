@@ -1,6 +1,6 @@
 // src/pages/Visitors/VisitorsList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -10,6 +10,7 @@ import CSVImporter from '../../components/Import/CSVImporter';
 import { firestoreLogger } from '../../utils/logger';
 
 const VisitorsList = () => {
+  const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -249,7 +250,10 @@ const VisitorsList = () => {
             </thead>
             <tbody>
               {visitors.map((visitor) => (
-                <tr key={visitor.id} className="border-t border-gray-200 hover:bg-gray-50">
+                <tr
+                  key={visitor.id}
+                  onClick={() => navigate(`/visitors/edit/${visitor.id}`)}
+                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4">
                     {visitor.visitDate ? format(visitor.visitDate, 'yyyy年MM月dd日') : '-'}
                   </td>
@@ -266,7 +270,7 @@ const VisitorsList = () => {
                       {visitor.hygieneCompliance ? '適合' : '不適合'}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {deleteConfirm === visitor.id ? (
                       <div className="flex space-x-2">
                         <button

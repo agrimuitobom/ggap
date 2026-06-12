@@ -1,6 +1,6 @@
 // src/pages/Pesticides/PesticidesList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -14,6 +14,7 @@ const STOCK_STYLES = {
 };
 
 const PesticidesList = () => {
+  const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -162,10 +163,11 @@ const PesticidesList = () => {
             </thead>
             <tbody>
               {pesticides.map((pesticide) => (
-                <tr 
-                  key={pesticide.id} 
-                  className={`border-t border-gray-200 hover:bg-gray-50 ${
-                    isExpired(pesticide.expiryDate) ? 'bg-red-50' : 
+                <tr
+                  key={pesticide.id}
+                  onClick={() => navigate(`/pesticides/edit/${pesticide.id}`)}
+                  className={`border-t border-gray-200 hover:bg-gray-50 cursor-pointer ${
+                    isExpired(pesticide.expiryDate) ? 'bg-red-50' :
                     isExpiringSoon(pesticide.expiryDate) ? 'bg-yellow-50' : ''
                   }`}
                 >
@@ -210,7 +212,7 @@ const PesticidesList = () => {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {deleteConfirm === pesticide.id ? (
                       <div className="flex space-x-2">
                         <button 
