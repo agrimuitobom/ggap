@@ -427,6 +427,24 @@ const WorkLogForm = () => {
 
       <form onSubmit={handleSubmit} className="mobile-form-section bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
 
+        {/* クイック記録で添付された写真 */}
+        {formData.photoUrls?.length > 0 && (
+          <div className="mb-6">
+            <p className="block text-gray-700 text-sm font-bold mb-2">添付写真</p>
+            <div className="flex flex-wrap gap-2">
+              {formData.photoUrls.map((url, index) => (
+                <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={url}
+                    alt={`添付写真${index + 1}`}
+                    className="w-24 h-24 object-cover rounded-lg border hover:opacity-80"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 基本情報セクション */}
         <BasicInfoSection
           formData={formData}

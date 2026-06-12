@@ -18,6 +18,7 @@ const PesticideForm = () => {
     concentration: '',
     formulation: '',
     registrationNumber: '',
+    preHarvestInterval: '',
     lotNumber: '',
     purchaseDate: new Date().toISOString().split('T')[0],
     expiryDate: '',
@@ -48,6 +49,7 @@ const PesticideForm = () => {
               concentration: data.concentration?.toString() || '',
               formulation: data.formulation || '',
               registrationNumber: data.registrationNumber || '',
+              preHarvestInterval: data.preHarvestInterval?.toString() || '',
               lotNumber: data.lotNumber || '',
               purchaseDate: data.purchaseDate?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
               expiryDate: data.expiryDate?.toDate().toISOString().split('T')[0] || '',
@@ -94,6 +96,7 @@ const PesticideForm = () => {
       const pesticideData = {
         ...formData,
         concentration: formData.concentration ? Number(formData.concentration) : null,
+        preHarvestInterval: formData.preHarvestInterval !== '' ? Number(formData.preHarvestInterval) : null,
         purchaseDate: new Date(formData.purchaseDate),
         expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : null,
         organizationId: currentOrganization.id,
@@ -119,6 +122,7 @@ const PesticideForm = () => {
           concentration: '',
           formulation: '',
           registrationNumber: '',
+          preHarvestInterval: '',
           lotNumber: '',
           purchaseDate: new Date().toISOString().split('T')[0],
           expiryDate: '',
@@ -296,7 +300,26 @@ const PesticideForm = () => {
             placeholder="例: 第21543号"
           />
         </div>
-        
+
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="preHarvestInterval">
+            収穫前日数（PHI）
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="preHarvestInterval"
+            type="number"
+            min="0"
+            name="preHarvestInterval"
+            value={formData.preHarvestInterval}
+            onChange={handleChange}
+            placeholder="例: 7（収穫7日前まで使用可能）"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            ラベルに記載されている「収穫◯日前まで」の日数。登録すると収穫記録時にPHI違反を自動チェックします。
+          </p>
+        </div>
+
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lotNumber">
             ロット番号

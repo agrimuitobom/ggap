@@ -23,5 +23,21 @@
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#22c55e",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "shortcuts": [
+    {
+      "name": "クイック記録",
+      "short_name": "クイック記録",
+      "description": "作業を最短3タップで記録",
+      "url": "/work-logs/quick",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "収穫記録",
+      "short_name": "収穫記録",
+      "description": "収穫を記録",
+      "url": "/harvests/new",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

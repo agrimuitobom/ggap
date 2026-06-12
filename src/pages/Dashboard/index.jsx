@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [recentShipments, setRecentShipments] = useState([]);
   const [recentTrainings, setRecentTrainings] = useState([]);
   const [recentVisitors, setRecentVisitors] = useState([]);
+  const [draftCount, setDraftCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -25,6 +26,16 @@ const Dashboard = () => {
       if (!currentOrganization) return;
 
       try {
+        // 要追記（クイック記録の下書き）の件数を取得
+        const draftsQuery = query(
+          collection(db, 'workLogs'),
+          where('organizationId', '==', currentOrganization.id),
+          where('isDraft', '==', true),
+          limit(100)
+        );
+        const draftsSnapshot = await getDocs(draftsQuery);
+        setDraftCount(draftsSnapshot.size);
+
         // 最近の作業日誌を取得
         const workLogsQuery = query(
           collection(db, 'workLogs'),
@@ -143,7 +154,20 @@ const Dashboard = () => {
           {error}
         </div>
       )}
-      
+
+      {draftCount > 0 && (
+        <Link
+          to="/work-logs"
+          className="flex items-center justify-between bg-amber-50 border-2 border-amber-300 text-amber-800 px-4 py-3 mb-6 rounded-lg hover:bg-amber-100 transition-colors"
+        >
+          <span>
+            ✏️ <span className="font-bold">要追記の作業記録が{draftCount}件</span>あります。
+            GGAPの記録として完成させるため、詳細を追記してください。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">一覧へ →</span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {/* クイックアクセスカード */}
         <div className="bg-white p-6 rounded-lg shadow-md">
