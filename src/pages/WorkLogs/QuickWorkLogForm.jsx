@@ -5,7 +5,7 @@
 // - オフラインでも即時保存（通信回復時に自動同期）
 // - 収穫選択時はPHI（収穫前日数）違反を自動チェック
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
@@ -44,6 +44,9 @@ const toDateString = (date) => {
 
 const QuickWorkLogForm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // カレンダーから「この日の記録を追加」で開いた場合の日付指定
+  const presetDate = searchParams.get('date');
   const { currentOrganization } = useOrganization();
   const { fields, users, loading: fetchLoading } = useWorkLogData();
 
@@ -51,8 +54,8 @@ const QuickWorkLogForm = () => {
   const [fieldId, setFieldId] = useState('');
   const [workHours, setWorkHours] = useState('');
   const [workers, setWorkers] = useState([]);
-  const [dateOption, setDateOption] = useState('today'); // today | yesterday | day2 | custom
-  const [customDate, setCustomDate] = useState(toDateString(new Date()));
+  const [dateOption, setDateOption] = useState(presetDate ? 'custom' : 'today'); // today | yesterday | day2 | custom
+  const [customDate, setCustomDate] = useState(presetDate || toDateString(new Date()));
   const [photos, setPhotos] = useState([]); // { file, previewUrl }
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);

@@ -19,6 +19,8 @@ const FertilizerForm = () => {
     potassiumContent: '',
     lotNumber: '',
     purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseAmount: '',
+    purchaseUnit: 'kg',
     supplier: '',
     notes: ''
   });
@@ -47,6 +49,8 @@ const FertilizerForm = () => {
               potassiumContent: data.potassiumContent?.toString() || '',
               lotNumber: data.lotNumber || '',
               purchaseDate: data.purchaseDate?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+              purchaseAmount: data.purchaseAmount?.toString() || '',
+              purchaseUnit: data.purchaseUnit || 'kg',
               supplier: data.supplier || '',
               notes: data.notes || ''
             });
@@ -92,6 +96,7 @@ const FertilizerForm = () => {
         nitrogenContent: formData.nitrogenContent ? Number(formData.nitrogenContent) : null,
         phosphorusContent: formData.phosphorusContent ? Number(formData.phosphorusContent) : null,
         potassiumContent: formData.potassiumContent ? Number(formData.potassiumContent) : null,
+        purchaseAmount: formData.purchaseAmount !== '' ? Number(formData.purchaseAmount) : null,
         purchaseDate: new Date(formData.purchaseDate),
         organizationId: currentOrganization.id,
         updatedAt: serverTimestamp()
@@ -117,6 +122,8 @@ const FertilizerForm = () => {
           potassiumContent: '',
           lotNumber: '',
           purchaseDate: new Date().toISOString().split('T')[0],
+          purchaseAmount: '',
+          purchaseUnit: 'kg',
           supplier: '',
           notes: ''
         });
@@ -309,6 +316,39 @@ const FertilizerForm = () => {
             onChange={handleChange}
             required
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="purchaseAmount">
+            購入量
+          </label>
+          <div className="flex items-center">
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="purchaseAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              name="purchaseAmount"
+              value={formData.purchaseAmount}
+              onChange={handleChange}
+              placeholder="例: 20"
+            />
+            <select
+              className="ml-2 shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              name="purchaseUnit"
+              value={formData.purchaseUnit}
+              onChange={handleChange}
+            >
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="L">L</option>
+              <option value="ml">ml</option>
+            </select>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            登録すると使用記録から残量を自動計算し、一覧に在庫として表示します。
+          </p>
         </div>
         
         <div className="mb-4">

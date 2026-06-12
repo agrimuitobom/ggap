@@ -86,6 +86,12 @@ const WorkLogsList = () => {
         <h1 className="text-2xl font-bold">作業日誌一覧</h1>
         <div className="flex gap-2">
           <Link
+            to="/work-logs/calendar"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+          >
+            📅 カレンダー
+          </Link>
+          <Link
             to="/work-logs/quick"
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
