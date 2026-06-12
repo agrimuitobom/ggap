@@ -154,6 +154,11 @@ const HarvestForm = () => {
     const selectedField = fields.find(field => field.id === selectedFieldId);
     if (selectedField) {
       setFieldName(selectedField.name);
+      // 圃場に栽培中の作物が登録されていれば作物名を自動入力
+      if (!cropName && selectedField.currentCrop) {
+        setCropName(selectedField.currentCrop);
+        toast.success(`作物名「${selectedField.currentCrop}」を自動入力しました`);
+      }
       // ロット番号を自動生成（まだ生成されていない場合）
       if (!lotNumber && harvestDate && cropName) {
         setLotNumber(generateLotNumber(selectedField.name, cropName, harvestDate));

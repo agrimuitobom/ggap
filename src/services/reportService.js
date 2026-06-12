@@ -527,6 +527,85 @@ export class ReportService {
     }
   }
 
+  // 監査用帳票パッケージ: 全記録簿を1つのExcelファイルにまとめて出力
+  async exportAuditPackage(startDate, endDate, organizationName = '') {
+    try {
+      // 全記録を並列取得
+      const [pesticides, fertilizers, trainings, visitors, traceability] = await Promise.all([
+        this.getPesticideUsageReport(startDate, endDate),
+        this.getFertilizerUsageReport(startDate, endDate),
+        this.getTrainingReport(startDate, endDate),
+        this.getVisitorReport(startDate, endDate),
+        this.getTraceabilityReport(startDate, endDate)
+      ]);
+
+      const workbook = new ExcelJS.Workbook();
+
+      // 表紙シート
+      const coverSheet = workbook.addWorksheet('表紙');
+      coverSheet.columns = [{ width: 25 }, { width: 40 }];
+      coverSheet.addRow(['GAP 記録簿一式']);
+      coverSheet.getRow(1).font = { bold: true, size: 16 };
+      coverSheet.addRow([]);
+      coverSheet.addRow(['組織名', organizationName]);
+      coverSheet.addRow(['対象期間', `${format(startDate, 'yyyy年MM月dd日')} 〜 ${format(endDate, 'yyyy年MM月dd日')}`]);
+      coverSheet.addRow(['出力日', format(new Date(), 'yyyy年MM月dd日')]);
+      coverSheet.addRow([]);
+      coverSheet.addRow(['収録内容', '件数']);
+      coverSheet.getRow(7).font = { bold: true };
+      coverSheet.addRow(['農薬使用記録簿', pesticides.length]);
+      coverSheet.addRow(['肥料使用記録簿', fertilizers.length]);
+      coverSheet.addRow(['教育・訓練記録簿', trainings.length]);
+      coverSheet.addRow(['訪問者記録簿', visitors.length]);
+      coverSheet.addRow(['収穫記録', traceability.harvests?.length || 0]);
+      coverSheet.addRow(['出荷記録', traceability.shipments?.length || 0]);
+
+      // 各記録簿シート
+      this.addPesticideDataToWorksheet(workbook.addWorksheet('農薬使用記録簿'), pesticides);
+      this.addFertilizerDataToWorksheet(workbook.addWorksheet('肥料使用記録簿'), fertilizers);
+      this.addTrainingDataToWorksheet(workbook.addWorksheet('教育・訓練記録簿'), trainings);
+      this.addVisitorDataToWorksheet(workbook.addWorksheet('訪問者記録簿'), visitors);
+      // トレーサビリティ（収穫記録＋出荷記録の2シート）
+      this.addTraceabilityDataToWorksheet(workbook.addWorksheet('収穫記録'), traceability);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = `GAP記録簿一式_${format(startDate, 'yyyyMMdd')}-${format(endDate, 'yyyyMMdd')}.xlsx`;
+      this.downloadFile(buffer, filename);
+
+      businessLogger.info('監査用帳票パッケージを出力しました', {
+        organizationId: this.organizationId,
+        filename
+      });
+      return filename;
+    } catch (error) {
+      businessLogger.error('監査用帳票パッケージの出力エラー', { organizationId: this.organizationId }, error);
+      throw error;
+    }
+  }
+
+  // 訪問者記録をワークシートに追加
+  addVisitorDataToWorksheet(worksheet, data) {
+    worksheet.columns = [
+      { header: '日付', key: 'date', width: 12 },
+      { header: '訪問者名', key: 'name', width: 18 },
+      { header: '所属', key: 'organization', width: 20 },
+      { header: '訪問目的', key: 'purpose', width: 25 },
+      { header: '備考', key: 'notes', width: 30 }
+    ];
+
+    data.forEach(row => {
+      worksheet.addRow({
+        date: format(row.date, 'yyyy-MM-dd'),
+        name: row.name,
+        organization: row.organization,
+        purpose: row.purpose,
+        notes: row.notes
+      });
+    });
+
+    this.styleWorksheet(worksheet);
+  }
+
   // 農薬使用記録をワークシートに追加
   addPesticideDataToWorksheet(worksheet, data) {
     worksheet.columns = [

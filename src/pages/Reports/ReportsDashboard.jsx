@@ -26,6 +26,13 @@ const ReportsDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('3months');
+  const [exporting, setExporting] = useState(false);
+  const [auditStartDate, setAuditStartDate] = useState(() =>
+    subMonths(new Date(), 12).toISOString().split('T')[0]
+  );
+  const [auditEndDate, setAuditEndDate] = useState(() =>
+    new Date().toISOString().split('T')[0]
+  );
 
   const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
@@ -75,6 +82,27 @@ const ReportsDashboard = () => {
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
+
+  // 監査用帳票パッケージのExcel一括出力
+  const handleAuditExport = async () => {
+    if (!auditStartDate || !auditEndDate) {
+      toast.error('対象期間を指定してください');
+      return;
+    }
+    setExporting(true);
+    try {
+      const filename = await reportService.exportAuditPackage(
+        new Date(`${auditStartDate}T00:00:00`),
+        new Date(`${auditEndDate}T00:00:00`),
+        currentOrganization?.name || ''
+      );
+      toast.success(`記録簿一式を出力しました（${filename}）`);
+    } catch (error) {
+      toast.error('帳票の出力中にエラーが発生しました');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // チャート用のカラーパレット
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -138,6 +166,41 @@ const ReportsDashboard = () => {
             <option value="6months">過去6ヶ月</option>
             <option value="1year">過去1年</option>
           </select>
+        </div>
+
+        {/* 監査準備: 記録簿一括出力 */}
+        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
+            <div className="flex-1">
+              <h3 className="font-semibold text-indigo-900 mb-1">📦 審査準備: 記録簿一式をExcelで一括出力</h3>
+              <p className="text-xs text-indigo-700 mb-3">
+                農薬・肥料・教育訓練・訪問者・収穫・出荷の全記録簿を1つのファイル（シート別）にまとめて出力します。印刷してそのまま審査資料にできます。
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={auditStartDate}
+                  onChange={(e) => setAuditStartDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+                <span className="text-gray-500">〜</span>
+                <input
+                  type="date"
+                  value={auditEndDate}
+                  onChange={(e) => setAuditEndDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleAuditExport}
+              disabled={exporting}
+              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+            >
+              {exporting ? '出力中...' : '記録簿一式を出力'}
+            </button>
+          </div>
         </div>
 
         {/* クイックレポートアクセス */}

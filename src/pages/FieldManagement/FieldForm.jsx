@@ -15,6 +15,7 @@ const FieldForm = () => {
     location: '',
     area: '',
     soilType: '',
+    currentCrop: '',
     description: ''
   });
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ const FieldForm = () => {
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
-            setFormData(docSnap.data());
+            setFormData({ currentCrop: '', ...docSnap.data() });
           } else {
             setError('指定された圃場データが見つかりません。');
             navigate('/fields');
@@ -92,6 +93,7 @@ const FieldForm = () => {
           location: '',
           area: '',
           soilType: '',
+          currentCrop: '',
           description: ''
         });
       }
@@ -208,7 +210,25 @@ const FieldForm = () => {
             <option value="その他">その他</option>
           </select>
         </div>
-        
+
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="currentCrop">
+            栽培中の作物
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="currentCrop"
+            type="text"
+            name="currentCrop"
+            value={formData.currentCrop}
+            onChange={handleChange}
+            placeholder="例: トマト"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            登録すると収穫記録でこの圃場を選んだとき、作物名が自動入力されます。作付けが変わったらここを更新してください。
+          </p>
+        </div>
+
         <div className="mb-6">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
             説明・特記事項
