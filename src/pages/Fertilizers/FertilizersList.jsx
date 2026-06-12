@@ -1,6 +1,6 @@
 // src/pages/Fertilizers/FertilizersList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -14,6 +14,7 @@ const STOCK_STYLES = {
 };
 
 const FertilizersList = () => {
+  const navigate = useNavigate();
   const [fertilizers, setFertilizers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -142,7 +143,10 @@ const FertilizersList = () => {
             </thead>
             <tbody>
               {fertilizers.map((fertilizer) => (
-                <tr key={fertilizer.id} className="border-t border-gray-200 hover:bg-gray-50">
+                <tr
+                  key={fertilizer.id}
+                  onClick={() => navigate(`/fertilizers/edit/${fertilizer.id}`)}
+                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4">{fertilizer.name || '-'}</td>
                   <td className="py-3 px-4">{fertilizer.manufacturer || '-'}</td>
                   <td className="py-3 px-4">{fertilizer.type || '-'}</td>
@@ -180,7 +184,7 @@ const FertilizersList = () => {
                       '-'
                     )}
                   </td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {deleteConfirm === fertilizer.id ? (
                       <div className="flex space-x-2">
                         <button 

@@ -1,12 +1,13 @@
 // src/pages/Seeds/SeedUsesList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
 
 const SeedUsesList = () => {
+  const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
   const [seedUses, setSeedUses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -115,10 +116,13 @@ const SeedUsesList = () => {
             </thead>
             <tbody>
               {seedUses.map((use) => (
-                <tr key={use.id} className="border-t border-gray-200 hover:bg-gray-50">
+                <tr
+                  key={use.id}
+                  onClick={() => navigate(`/seed-uses/edit/${use.id}`)}
+                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4 whitespace-nowrap">{use.date?.toLocaleDateString() || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.seedName || '-'}</td>
-                  <td className="py-3 px-4 whitespace-nowrap">{use.fieldName || '-'}</td>
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4 whitespace-nowrap">{use.fieldName || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.amount ? `${use.amount} g/本` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.method || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.plantedByName || '-'}</td>

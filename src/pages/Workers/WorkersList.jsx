@@ -1,6 +1,6 @@
 // src/pages/Workers/WorkersList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import CSVImporter from '../../components/Import/CSVImporter';
 
 const WorkersList = () => {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { currentOrganization } = useOrganization();
   const [workers, setWorkers] = useState([]);
@@ -307,7 +308,10 @@ const WorkersList = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredWorkers.map((worker) => (
-                  <tr key={worker.id} className="hover:bg-gray-50">
+                  <tr
+                  key={worker.id}
+                  onClick={() => navigate(`/workers/edit/${worker.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -349,7 +353,7 @@ const WorkersList = () => {
                         {worker.status || '在籍'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td onClick={(e) => e.stopPropagation()} className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
                         to={`/workers/edit/${worker.id}`}
                         className="text-blue-600 hover:text-blue-900 mr-4"

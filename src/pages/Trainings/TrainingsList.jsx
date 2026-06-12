@@ -1,6 +1,6 @@
 // src/pages/Trainings/TrainingsList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const TrainingsList = () => {
+  const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
   const [trainings, setTrainings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +139,10 @@ const TrainingsList = () => {
             </thead>
             <tbody>
               {trainings.map((training) => (
-                <tr key={training.id} className="border-t border-gray-200 hover:bg-gray-50">
+                <tr
+                  key={training.id}
+                  onClick={() => navigate(`/trainings/edit/${training.id}`)}
+                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4">
                     {training.trainingDate ? format(training.trainingDate, 'yyyy年MM月dd日') : '-'}
                   </td>
@@ -151,7 +155,7 @@ const TrainingsList = () => {
                   <td className="py-3 px-4">
                     {training.duration ? `${training.duration}時間` : '-'}
                   </td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {getStatusBadge(training.status)}
                   </td>
                   <td className="py-3 px-4">

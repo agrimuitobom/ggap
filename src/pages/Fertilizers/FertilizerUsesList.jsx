@@ -1,12 +1,13 @@
 // src/pages/Fertilizers/FertilizerUsesList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
 
 const FertilizerUsesList = () => {
+  const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
   const [fertilizerUses, setFertilizerUses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,10 +131,13 @@ const FertilizerUsesList = () => {
               </thead>
               <tbody>
                 {fertilizerUses.map((use) => (
-                  <tr key={use.id} className="border-t border-gray-200 hover:bg-gray-50">
+                  <tr
+                  key={use.id}
+                  onClick={() => navigate(`/fertilizer-uses/edit/${use.id}`)}
+                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.date?.toLocaleDateString() || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fertilizerName || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fieldName || '-'}</td>
+                    <td onClick={(e) => e.stopPropagation()} className="px-4 py-3 text-sm text-gray-900 border-b">{use.fieldName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.amount ? `${use.amount} ${use.unit}` : '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.method || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.appliedByName || '-'}</td>

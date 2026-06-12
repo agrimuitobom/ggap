@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
 
 const HarvestsList = () => {
+  const navigate = useNavigate();
   const [harvests, setHarvests] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentOrganization } = useOrganization();
@@ -173,7 +174,10 @@ const HarvestsList = () => {
               {harvests.map((harvest) => {
                 const disposalRate = harvest.disposalRate || 0;
                 return (
-                  <tr key={harvest.id} className="hover:bg-gray-50">
+                  <tr
+                  key={harvest.id}
+                  onClick={() => navigate(`/harvests/${harvest.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer">
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                       {harvest.harvestDate instanceof Date
                         ? format(harvest.harvestDate, 'yyyy/MM/dd')
@@ -223,7 +227,7 @@ const HarvestsList = () => {
                         {harvest.quality}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                    <td onClick={(e) => e.stopPropagation()} className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <Link
                           to={`/harvests/${harvest.id}`}
