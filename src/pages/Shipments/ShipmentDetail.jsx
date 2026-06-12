@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { firestoreLogger } from '../../utils/logger';
+import toast from 'react-hot-toast';
 
 const ShipmentDetail = () => {
   const { id } = useParams();
@@ -20,12 +22,12 @@ const ShipmentDetail = () => {
           ...shipmentDoc.data()
           });
           } else {
-          alert('出荷記録が見つかりませんでした');
+          toast.error('出荷記録が見つかりませんでした');
           navigate('/shipments');
           }
       } catch (error) {
-      console.error('Error fetching shipment:', error);
-      alert('出荷記録の取得中にエラーが発生しました');
+      firestoreLogger.error('出荷記録の取得エラー', { shipmentId: id }, error);
+      toast.error('出荷記録の取得中にエラーが発生しました');
       } finally {
         setLoading(false);
       }
@@ -38,11 +40,11 @@ const ShipmentDetail = () => {
     if (window.confirm('この出荷記録を削除してもよろしいですか？')) {
       try {
         await deleteDoc(doc(db, 'shipments', id));
-        alert('出荷記録を削除しました');
+        toast.success('出荷記録を削除しました');
         navigate('/shipments');
       } catch (error) {
-        console.error('Error deleting shipment:', error);
-        alert('出荷記録の削除中にエラーが発生しました');
+        firestoreLogger.error('出荷記録の削除エラー', { shipmentId: id }, error);
+        toast.error('出荷記録の削除中にエラーが発生しました');
       }
     }
   };

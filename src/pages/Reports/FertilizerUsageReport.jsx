@@ -1,12 +1,15 @@
 // src/pages/Reports/FertilizerUsageReport.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import ReportService from '../../services/reportService';
+import { firestoreLogger } from '../../utils/logger';
 import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const FertilizerUsageReport = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 12), 'yyyy-MM-dd'));
@@ -14,10 +17,10 @@ const FertilizerUsageReport = () => {
   const [debugInfo, setDebugInfo] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
 
-  const reportService = useMemo(() => new ReportService(currentUser?.uid), [currentUser?.uid]);
+  const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
   const fetchReport = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     setLoading(true);
     try {
@@ -33,7 +36,7 @@ const FertilizerUsageReport = () => {
         timestamp: new Date().toISOString()
       };
       
-      console.log('DEBUG: Fetching report with params:', debugData);
+      firestoreLogger.debug('肥料使用記録レポートの取得を開始します', { ...debugData });
       setDebugInfo(debugData);
 
       const data = await reportService.getFertilizerUsageReport(
@@ -41,7 +44,7 @@ const FertilizerUsageReport = () => {
         new Date(endDate)
       );
       
-      console.log('DEBUG: Report data received:', {
+      firestoreLogger.debug('肥料使用記録レポートのデータを取得しました', {
         dataLength: data.length,
         firstItem: data[0] || null,
         dateRange: data.map(d => d.date).sort()
@@ -55,7 +58,11 @@ const FertilizerUsageReport = () => {
       }));
       
     } catch (error) {
-      console.error('肥料使用記録レポートの取得エラー:', error);
+      firestoreLogger.error('肥料使用記録レポートの取得エラー', {
+        organizationId: currentOrganization?.id,
+        startDate,
+        endDate
+      }, error);
       setDebugInfo(prev => ({
         ...prev,
         error: error.message,
@@ -65,7 +72,7 @@ const FertilizerUsageReport = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, reportService, startDate, endDate]);
+  }, [currentUser, currentOrganization, reportService, startDate, endDate]);
 
   useEffect(() => {
     fetchReport();

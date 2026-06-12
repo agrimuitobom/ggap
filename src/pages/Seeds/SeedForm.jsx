@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { firestoreLogger } from '../../utils/logger';
 
 const SeedForm = () => {
   const { id } = useParams();
@@ -48,7 +49,7 @@ const SeedForm = () => {
             navigate('/seeds');
           }
         } catch (err) {
-          console.error('Error fetching seed data:', err);
+          firestoreLogger.error('種子・苗データの取得に失敗しました', { seedId: id }, err);
           setError('データの取得中にエラーが発生しました。');
         } finally {
           setFetchLoading(false);
@@ -114,7 +115,11 @@ const SeedForm = () => {
         navigate('/seeds');
       }, 2000);
     } catch (err) {
-      console.error('Error saving seed data:', err);
+      firestoreLogger.error('種子・苗データの保存に失敗しました', {
+        organizationId: currentOrganization.id,
+        seedId: id,
+        isEditMode
+      }, err);
       setError('種子・苗データの保存中にエラーが発生しました: ' + err.message);
     } finally {
       setLoading(false);

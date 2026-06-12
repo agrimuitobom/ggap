@@ -1,11 +1,14 @@
 // src/pages/Reports/TrainingReport.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { ReportService } from '../../services/reportService';
+import { firestoreLogger } from '../../utils/logger';
 import { format } from 'date-fns';
 
 const TrainingReport = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [report, setReport] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,10 +21,10 @@ const TrainingReport = () => {
     return new Date().toISOString().split('T')[0];
   });
 
-  const reportService = useMemo(() => new ReportService(currentUser?.uid), [currentUser?.uid]);
+  const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
   const fetchReport = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
     
     try {
       setLoading(true);
@@ -34,18 +37,22 @@ const TrainingReport = () => {
       
       setReport(data);
     } catch (err) {
-      console.error('Error fetching training report:', err);
+      firestoreLogger.error('教育・訓練レポートの取得に失敗しました', {
+        organizationId: currentOrganization?.id,
+        startDate,
+        endDate
+      }, err);
       setError('教育・訓練記録の取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
     }
-  }, [currentUser, reportService, startDate, endDate]);
+  }, [currentUser, currentOrganization, reportService, startDate, endDate]);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentOrganization) {
       fetchReport();
     }
-  }, [currentUser, fetchReport]);
+  }, [currentUser, currentOrganization, fetchReport]);
 
 
   const exportToCSV = () => {

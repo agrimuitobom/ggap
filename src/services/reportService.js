@@ -13,8 +13,8 @@ import ExcelJS from 'exceljs';
 import { businessLogger } from '../utils/logger';
 
 export class ReportService {
-  constructor(userId) {
-    this.userId = userId;
+  constructor(organizationId) {
+    this.organizationId = organizationId;
   }
 
   // 日付範囲でクエリを作成
@@ -22,10 +22,10 @@ export class ReportService {
     // 日付文字列をローカル時刻として処理
     const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0);
     const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59);
-    
+
     return query(
       collection(db, collectionName),
-      where('userId', '==', this.userId),
+      where('organizationId', '==', this.organizationId),
       where(dateField, '>=', Timestamp.fromDate(start)),
       where(dateField, '<=', Timestamp.fromDate(end)),
       orderBy(dateField, 'desc')
@@ -60,7 +60,7 @@ export class ReportService {
 
       return pesticideUsage.sort((a, b) => b.date - a.date);
     } catch (error) {
-      businessLogger.error('農薬使用記録の取得エラー', { operation: 'getPesticideUsageReport', userId: this.userId }, error);
+      businessLogger.error('農薬使用記録の取得エラー', { operation: 'getPesticideUsageReport', organizationId: this.organizationId }, error);
       throw error;
     }
   }
@@ -71,7 +71,7 @@ export class ReportService {
       businessLogger.debug('getFertilizerUsageReport called', {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        userId: this.userId
+        organizationId: this.organizationId
       });
 
       const fertilizerUsesQuery = this.createDateRangeQuery('fertilizerUses', 'date', startDate, endDate);
@@ -122,7 +122,7 @@ export class ReportService {
 
       return fertilizerUsage.sort((a, b) => b.date - a.date);
     } catch (error) {
-      businessLogger.error('肥料使用記録の取得エラー', { operation: 'getFertilizerUsageReport', userId: this.userId }, error);
+      businessLogger.error('肥料使用記録の取得エラー', { operation: 'getFertilizerUsageReport', organizationId: this.organizationId }, error);
       throw error;
     }
   }
@@ -152,7 +152,7 @@ export class ReportService {
 
       return trainings.sort((a, b) => b.date - a.date);
     } catch (error) {
-      businessLogger.error('教育記録の取得エラー', { operation: 'getTrainingReport', userId: this.userId }, error);
+      businessLogger.error('教育記録の取得エラー', { operation: 'getTrainingReport', organizationId: this.organizationId }, error);
       throw error;
     }
   }
@@ -179,7 +179,7 @@ export class ReportService {
 
       return visitors.sort((a, b) => b.date - a.date);
     } catch (error) {
-      businessLogger.error('訪問者記録の取得エラー', { operation: 'getVisitorReport', userId: this.userId }, error);
+      businessLogger.error('訪問者記録の取得エラー', { operation: 'getVisitorReport', organizationId: this.organizationId }, error);
       throw error;
     }
   }
@@ -286,7 +286,7 @@ export class ReportService {
 
       return { harvests, shipments, pesticideUses, fertilizerUses, workLogs };
     } catch (error) {
-      businessLogger.error('トレーサビリティレポートの取得エラー', { operation: 'getTraceabilityReport', userId: this.userId }, error);
+      businessLogger.error('トレーサビリティレポートの取得エラー', { operation: 'getTraceabilityReport', organizationId: this.organizationId }, error);
       throw error;
     }
   }
@@ -321,7 +321,7 @@ export class ReportService {
         }
       };
     } catch (error) {
-      businessLogger.error('経営分析データの取得エラー', { operation: 'getBusinessAnalytics', userId: this.userId }, error);
+      businessLogger.error('経営分析データの取得エラー', { operation: 'getBusinessAnalytics', organizationId: this.organizationId }, error);
       throw error;
     }
   }
@@ -520,9 +520,9 @@ export class ReportService {
       const buffer = await workbook.xlsx.writeBuffer();
       this.downloadFile(buffer, filename || `${reportType}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
       
-      businessLogger.info(`${reportType}をExcelエクスポートしました`, { userId: this.userId, filename });
+      businessLogger.info(`${reportType}をExcelエクスポートしました`, { organizationId: this.organizationId, filename });
     } catch (error) {
-      businessLogger.error('Excelエクスポートエラー', { reportType, userId: this.userId }, error);
+      businessLogger.error('Excelエクスポートエラー', { reportType, organizationId: this.organizationId }, error);
       throw error;
     }
   }

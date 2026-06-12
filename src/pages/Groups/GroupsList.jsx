@@ -4,26 +4,29 @@ import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
 const GroupsList = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchGroups();
-  }, [currentUser]);
+  }, [currentUser, currentOrganization]);
 
   const fetchGroups = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     try {
       setLoading(true);
       const groupsQuery = query(
         collection(db, 'groups'),
-        where('organizationId', '==', currentUser.uid)
+        where('organizationId', '==', currentOrganization.id)
       );
       const groupsSnapshot = await getDocs(groupsQuery);
       const groupsList = [];
@@ -38,7 +41,7 @@ const GroupsList = () => {
       groupsList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setGroups(groupsList);
     } catch (err) {
-      console.error('Error fetching groups:', err);
+      firestoreLogger.error('グループ一覧の取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('グループデータの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
@@ -55,7 +58,7 @@ const GroupsList = () => {
       setGroups(groups.filter(group => group.id !== groupId));
       toast.success('グループを削除しました');
     } catch (err) {
-      console.error('Error deleting group:', err);
+      firestoreLogger.error('グループの削除エラー', { groupId }, err);
       toast.error('グループの削除中にエラーが発生しました');
     }
   };

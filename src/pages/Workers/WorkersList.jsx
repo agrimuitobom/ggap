@@ -1,14 +1,18 @@
 // src/pages/Workers/WorkersList.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, getDocs, deleteDoc, doc, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { getWorkers } from '../../services/workerService';
+import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 import CSVImporter from '../../components/Import/CSVImporter';
 
 const WorkersList = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,31 +72,17 @@ const WorkersList = () => {
 
   useEffect(() => {
     fetchWorkers();
-  }, [currentUser]);
+  }, [currentUser, currentOrganization]);
 
   const fetchWorkers = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     try {
       setLoading(true);
-      const workersQuery = query(
-        collection(db, 'users'),
-        where('organizationId', '==', currentUser.uid)
-      );
-      const workersSnapshot = await getDocs(workersQuery);
-      const workersList = [];
-      workersSnapshot.forEach((doc) => {
-        workersList.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      // 名前でソート
-      workersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      const workersList = await getWorkers(currentOrganization.id, currentUser.uid);
       setWorkers(workersList);
     } catch (err) {
-      console.error('Error fetching workers:', err);
+      firestoreLogger.error('従業員一覧の取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('従業員データの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
@@ -105,11 +95,11 @@ const WorkersList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'users', workerId));
+      await deleteDoc(doc(db, 'workers', workerId));
       setWorkers(workers.filter(worker => worker.id !== workerId));
       toast.success('従業員を削除しました');
     } catch (err) {
-      console.error('Error deleting worker:', err);
+      firestoreLogger.error('従業員の削除エラー', { workerId }, err);
       toast.error('従業員の削除中にエラーが発生しました');
     }
   };
@@ -120,7 +110,7 @@ const WorkersList = () => {
 
     for (const row of data) {
       const workerData = {
-        organizationId: currentUser.uid,
+        organizationId: currentOrganization.id,
         name: row.name || '',
         role: row.role || '',
         email: row.email || '',
@@ -137,7 +127,7 @@ const WorkersList = () => {
         updatedAt: serverTimestamp()
       };
 
-      batch.push(addDoc(collection(db, 'users'), workerData));
+      batch.push(addDoc(collection(db, 'workers'), workerData));
     }
 
     await Promise.all(batch);

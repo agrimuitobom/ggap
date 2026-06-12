@@ -1,15 +1,19 @@
 // src/pages/Groups/GroupForm.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { collection, addDoc, updateDoc, doc, getDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { getWorkers } from '../../services/workerService';
+import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
 const GroupForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [workers, setWorkers] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -22,34 +26,22 @@ const GroupForm = () => {
   const isEditMode = !!id;
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentOrganization) {
       fetchWorkers();
       if (isEditMode) {
         fetchGroupData();
       }
     }
-  }, [id, isEditMode, currentUser]);
+  }, [id, isEditMode, currentUser, currentOrganization]);
 
   const fetchWorkers = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     try {
-      const workersQuery = query(
-        collection(db, 'users'),
-        where('organizationId', '==', currentUser.uid)
-      );
-      const workersSnapshot = await getDocs(workersQuery);
-      const workersList = [];
-      workersSnapshot.forEach((doc) => {
-        workersList.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      workersList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      const workersList = await getWorkers(currentOrganization.id, currentUser.uid);
       setWorkers(workersList);
     } catch (err) {
-      console.error('Error fetching workers:', err);
+      firestoreLogger.error('従業員一覧の取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('従業員データの取得中にエラーが発生しました');
     }
   };
@@ -72,7 +64,7 @@ const GroupForm = () => {
         navigate('/groups');
       }
     } catch (err) {
-      console.error('Error fetching group data:', err);
+      firestoreLogger.error('グループデータの取得エラー', { groupId: id }, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -116,8 +108,8 @@ const GroupForm = () => {
     setLoading(true);
     setError('');
 
-    if (!currentUser) {
-      setError('ユーザー認証が確認できません。');
+    if (!currentUser || !currentOrganization) {
+      setError('ユーザー認証または組織情報が確認できません。');
       setLoading(false);
       return;
     }
@@ -139,7 +131,7 @@ const GroupForm = () => {
         members: formData.members,
         memberNames: memberNames,
         memberCount: formData.members.length,
-        organizationId: currentUser.uid,
+        organizationId: currentOrganization.id,
         updatedAt: serverTimestamp()
       };
 
@@ -156,7 +148,7 @@ const GroupForm = () => {
         navigate('/groups');
       }, 1000);
     } catch (err) {
-      console.error('Error saving group:', err);
+      firestoreLogger.error('グループの保存エラー', { groupId: id, organizationId: currentOrganization?.id }, err);
       setError('グループの保存中にエラーが発生しました: ' + err.message);
       toast.error('グループの保存中にエラーが発生しました');
     } finally {

@@ -5,6 +5,7 @@ import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'fir
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import toast from 'react-hot-toast';
+import { firestoreLogger } from '../../utils/logger';
 
 const VisitorForm = () => {
   const { id } = useParams();
@@ -81,7 +82,7 @@ const VisitorForm = () => {
         navigate('/visitors');
       }
     } catch (err) {
-      console.error('Error fetching visitor data:', err);
+      firestoreLogger.error('訪問者記録の取得に失敗しました', { visitorId: id }, err);
       setError('データの取得中にエラーが発生しました。');
       toast.error('データの取得中にエラーが発生しました');
     } finally {
@@ -166,7 +167,7 @@ const VisitorForm = () => {
         navigate('/visitors');
       }, 1000);
     } catch (err) {
-      console.error('Error saving visitor:', err);
+      firestoreLogger.error('訪問者記録の保存に失敗しました', { organizationId: currentOrganization?.id, visitorId: id }, err);
       setError('訪問者記録の保存中にエラーが発生しました: ' + err.message);
       toast.error('訪問者記録の保存中にエラーが発生しました');
     } finally {

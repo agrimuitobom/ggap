@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { firestoreLogger } from '../../utils/logger';
 
 const SeedsList = () => {
   const { currentOrganization } = useOrganization();
@@ -38,7 +39,9 @@ const SeedsList = () => {
       });
       setSeeds(seedsList);
     } catch (err) {
-      console.error('Error fetching seeds:', err);
+      firestoreLogger.error('種子・苗データの取得に失敗しました', {
+        organizationId: currentOrganization.id
+      }, err);
       setError('種子・苗データの取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -56,7 +59,7 @@ const SeedsList = () => {
       setSeeds(seeds.filter(seed => seed.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting seed:', err);
+      firestoreLogger.error('種子・苗データの削除に失敗しました', { seedId: id }, err);
       setError('種子・苗データの削除中にエラーが発生しました。');
     }
   };

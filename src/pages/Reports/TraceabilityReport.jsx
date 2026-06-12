@@ -1,13 +1,16 @@
 // src/pages/Reports/TraceabilityReport.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { ReportService } from '../../services/reportService';
+import { firestoreLogger } from '../../utils/logger';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 
 const TraceabilityReport = () => {
   const { currentUser } = useAuth();
+  const { currentOrganization } = useOrganization();
   const [report, setReport] = useState({
     harvests: [],
     shipments: [],
@@ -29,10 +32,10 @@ const TraceabilityReport = () => {
   const [searchMode, setSearchMode] = useState('forward'); // forward: 生産→出荷, reverse: 出荷→生産
   const [reverseSearchDestination, setReverseSearchDestination] = useState('');
 
-  const reportService = useMemo(() => new ReportService(currentUser?.uid), [currentUser?.uid]);
+  const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
   const fetchReport = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentOrganization) return;
 
     try {
       setLoading(true);
@@ -45,18 +48,22 @@ const TraceabilityReport = () => {
 
       setReport(data);
     } catch (err) {
-      console.error('Error fetching traceability report:', err);
+      firestoreLogger.error('トレーサビリティレポートの取得に失敗しました', {
+        organizationId: currentOrganization?.id,
+        startDate,
+        endDate
+      }, err);
       setError('トレーサビリティレポートの取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
     }
-  }, [currentUser, reportService, startDate, endDate]);
+  }, [currentUser, currentOrganization, reportService, startDate, endDate]);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentOrganization) {
       fetchReport();
     }
-  }, [currentUser, fetchReport]);
+  }, [currentUser, currentOrganization, fetchReport]);
 
   // ロット番号別のトレーサビリティチェーン構築（拡張版）
   const buildTraceabilityChain = useCallback(() => {

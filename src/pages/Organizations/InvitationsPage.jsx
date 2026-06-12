@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { acceptInvitation } from '../../services/organizationService';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { firestoreLogger } from '../../utils/logger';
 
 const InvitationsPage = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const InvitationsPage = () => {
       await refreshOrganizations();
       navigate('/organizations/switch');
     } catch (error) {
-      console.error('Error accepting invitation:', error);
+      firestoreLogger.error('招待の承認に失敗しました', { invitationId, userId: currentUser.uid }, error);
       if (error.message === 'Invitation expired') {
         toast.error('この招待は期限切れです');
       } else {
