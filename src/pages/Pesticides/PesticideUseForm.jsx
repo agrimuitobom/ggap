@@ -4,7 +4,9 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
 import { firestoreLogger } from '../../utils/logger';
+import toast from 'react-hot-toast';
 
 const PesticideUseForm = () => {
   const { id } = useParams();
@@ -28,6 +30,35 @@ const PesticideUseForm = () => {
     notes: ''
   });
   const [loading, setLoading] = useState(false);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+
+  // 現在地と散布日から天候・気温・風速を自動入力
+  const handleAutoFillWeather = async () => {
+    setWeatherLoading(true);
+    try {
+      const { latitude, longitude } = await getCurrentPosition();
+      const weather = await fetchWeatherForDate(latitude, longitude, formData.date);
+      if (!weather) {
+        toast.error('この日付の天気データが見つかりませんでした');
+        return;
+      }
+      setFormData(prev => ({
+        ...prev,
+        weather: weather.weather,
+        temperature: weather.temperature,
+        windSpeed: weather.windSpeed
+      }));
+      toast.success(`天気を自動入力しました（${weather.weather} ${weather.temperature}℃）`);
+    } catch (err) {
+      if (err?.code === 1) {
+        toast.error('位置情報の利用が許可されていません。ブラウザの設定を確認してください');
+      } else {
+        toast.error('天気の取得に失敗しました。通信環境を確認してください');
+      }
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -386,9 +417,19 @@ const PesticideUseForm = () => {
         </div>
         
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="weather">
-            天候 *
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-gray-700 text-sm font-bold" htmlFor="weather">
+              天候 *
+            </label>
+            <button
+              type="button"
+              onClick={handleAutoFillWeather}
+              disabled={weatherLoading}
+              className="text-xs px-3 py-1.5 bg-sky-600 text-white rounded hover:bg-sky-700 disabled:opacity-50"
+            >
+              {weatherLoading ? '取得中...' : '📍 現在地から天気を自動入力'}
+            </button>
+          </div>
           <select
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             id="weather"
