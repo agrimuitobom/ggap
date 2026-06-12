@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { firestoreLogger } from '../../utils/logger';
 
 const PesticideUsesList = () => {
   const { currentOrganization } = useOrganization();
@@ -39,7 +40,7 @@ const PesticideUsesList = () => {
       });
       setPesticideUses(uses);
     } catch (err) {
-      console.error('Error fetching pesticide uses:', err);
+      firestoreLogger.error('農薬使用記録の取得に失敗しました', { organizationId: currentOrganization.id }, err);
       setError('農薬使用記録の取得中にエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -57,7 +58,7 @@ const PesticideUsesList = () => {
       setPesticideUses(pesticideUses.filter(use => use.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting pesticide use:', err);
+      firestoreLogger.error('農薬使用記録の削除に失敗しました', { pesticideUseId: id }, err);
       setError('農薬使用記録の削除中にエラーが発生しました。');
     }
   };

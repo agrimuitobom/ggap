@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { firestoreLogger } from '../../utils/logger';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 
 // カスタムフック
@@ -77,13 +78,12 @@ const WorkLogForm = () => {
       const selectedFertilizer = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
 
       // デバッグログ: 選択された肥料のNPK成分を確認
-      console.log('DEBUG: Selected fertilizer data:', {
-        id: selectedFertilizer?.id,
-        name: selectedFertilizer?.name,
+      firestoreLogger.debug('選択された肥料データを確認', {
+        fertilizerId: selectedFertilizer?.id,
+        fertilizerName: selectedFertilizer?.name,
         nitrogenContent: selectedFertilizer?.nitrogenContent,
         phosphorusContent: selectedFertilizer?.phosphorusContent,
-        potassiumContent: selectedFertilizer?.potassiumContent,
-        fullData: selectedFertilizer
+        potassiumContent: selectedFertilizer?.potassiumContent
       });
       const fertilizerUseData = {
         date: new Date(formData.date),
@@ -108,7 +108,7 @@ const WorkLogForm = () => {
       };
 
       // デバッグログ: fertilizerUsesコレクションに保存するデータを確認
-      console.log('DEBUG: fertilizerUseData to be saved:', {
+      firestoreLogger.debug('施肥記録の保存データを確認', {
         fertilizerId: fertilizerUseData.fertilizerId,
         fertilizerName: fertilizerUseData.fertilizerName,
         nitrogen: fertilizerUseData.nitrogen,
@@ -287,7 +287,11 @@ const WorkLogForm = () => {
         navigate('/work-logs');
       }, 2000);
     } catch (err) {
-      console.error('Error saving work log:', err);
+      firestoreLogger.error('作業日誌の保存に失敗しました', {
+        organizationId: currentOrganization?.id,
+        workLogId: id,
+        isEditMode
+      }, err);
       setFormErrors('作業日誌の保存中にエラーが発生しました: ' + err.message);
     } finally {
       setFormLoading(false);
