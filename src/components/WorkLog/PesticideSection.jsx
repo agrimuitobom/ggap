@@ -1,7 +1,7 @@
 // src/components/WorkLog/PesticideSection.jsx
 import React from 'react';
 
-const PesticideSection = ({ formData, handleChange, pesticides }) => {
+const PesticideSection = ({ formData, handleChange, pesticides, onAutoFillWeather, weatherLoading }) => {
   return (
     <>
       <div className="mobile-form-section mb-4 border-t pt-4">
@@ -122,9 +122,21 @@ const PesticideSection = ({ formData, handleChange, pesticides }) => {
 
       {/* 天候 */}
       <div className="mobile-form-field mb-4">
-        <label className="mobile-form-label block text-gray-700 text-sm font-bold mb-2" htmlFor="weather">
-          天候 *
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="mobile-form-label block text-gray-700 text-sm font-bold" htmlFor="weather">
+            天候 *
+          </label>
+          {onAutoFillWeather && (
+            <button
+              type="button"
+              onClick={onAutoFillWeather}
+              disabled={weatherLoading}
+              className="text-xs px-3 py-1.5 bg-sky-600 text-white rounded hover:bg-sky-700 disabled:opacity-50"
+            >
+              {weatherLoading ? '取得中...' : '📍 現在地から天気を自動入力'}
+            </button>
+          )}
+        </div>
         <select
           className="mobile-select shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           id="weather"

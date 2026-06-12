@@ -4,7 +4,14 @@ import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { calcFertilizerStock, formatStock } from '../../services/inventoryService';
 import { firestoreLogger } from '../../utils/logger';
+
+const STOCK_STYLES = {
+  ok: 'text-gray-900',
+  low: 'text-orange-600 font-bold',
+  empty: 'text-red-600 font-bold'
+};
 
 const FertilizersList = () => {
   const [fertilizers, setFertilizers] = useState([]);
@@ -18,17 +25,39 @@ const FertilizersList = () => {
 
     try {
       setLoading(true);
-      const q = query(
-        collection(db, 'fertilizers'),
-        where('organizationId', '==', currentOrganization.id)
-      );
-      const querySnapshot = await getDocs(q);
+      const [querySnapshot, usesSnapshot] = await Promise.all([
+        getDocs(query(
+          collection(db, 'fertilizers'),
+          where('organizationId', '==', currentOrganization.id)
+        )),
+        getDocs(query(
+          collection(db, 'fertilizerUses'),
+          where('organizationId', '==', currentOrganization.id)
+        ))
+      ]);
+
+      // 肥料ごとの使用記録をまとめる
+      const usesByFertilizer = {};
+      usesSnapshot.forEach((useDoc) => {
+        const use = useDoc.data();
+        if (!use.fertilizerId) return;
+        if (!usesByFertilizer[use.fertilizerId]) {
+          usesByFertilizer[use.fertilizerId] = [];
+        }
+        usesByFertilizer[use.fertilizerId].push(use);
+      });
+
       const fertilizersList = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
         fertilizersList.push({
           id: doc.id,
-          ...doc.data(),
-          purchaseDate: doc.data().purchaseDate?.toDate()
+          ...data,
+          purchaseDate: data.purchaseDate?.toDate(),
+          stock: formatStock(
+            calcFertilizerStock(data, usesByFertilizer[doc.id] || []),
+            data.purchaseUnit
+          )
         });
       });
       setFertilizers(fertilizersList);
@@ -104,6 +133,7 @@ const FertilizersList = () => {
                 <th className="py-3 px-4 text-left font-semibold">メーカー</th>
                 <th className="py-3 px-4 text-left font-semibold">肥料タイプ</th>
                 <th className="py-3 px-4 text-left font-semibold">N-P-K</th>
+                <th className="py-3 px-4 text-left font-semibold">在庫（推定）</th>
                 <th className="py-3 px-4 text-left font-semibold">ロット番号</th>
                 <th className="py-3 px-4 text-left font-semibold">購入日</th>
                 <th className="py-3 px-4 text-left font-semibold">備考</th>
@@ -120,6 +150,21 @@ const FertilizersList = () => {
                     {fertilizer.nitrogenContent ? fertilizer.nitrogenContent : '-'}-
                     {fertilizer.phosphorusContent ? fertilizer.phosphorusContent : '-'}-
                     {fertilizer.potassiumContent ? fertilizer.potassiumContent : '-'}
+                  </td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {fertilizer.stock ? (
+                      <span className={STOCK_STYLES[fertilizer.stock.level]}>
+                        {fertilizer.stock.level === 'empty' && '🚫 '}
+                        {fertilizer.stock.level === 'low' && '⚠️ '}
+                        {fertilizer.stock.display}
+                        {fertilizer.stock.level === 'low' && '（残りわずか）'}
+                        {fertilizer.stock.level === 'empty' && '（在庫切れ）'}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-sm" title="編集画面で購入量を登録すると在庫を自動計算します">
+                        未設定
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 px-4">{fertilizer.lotNumber || '-'}</td>
                   <td className="py-3 px-4">{fertilizer.purchaseDate?.toLocaleDateString() || '-'}</td>

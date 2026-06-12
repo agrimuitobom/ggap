@@ -7,6 +7,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
 import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
 import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from '../../services/templateService';
+import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 import toast from 'react-hot-toast';
 
@@ -28,6 +29,7 @@ const WorkLogForm = () => {
   const { currentOrganization } = useOrganization();
   const isEditMode = !!id;
   const [templates, setTemplates] = useState([]);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const defaultsAppliedRef = useRef(false);
 
   // カスタムフックの使用
@@ -148,6 +150,35 @@ const WorkLogForm = () => {
     } catch (err) {
       firestoreLogger.error('テンプレートの削除エラー', { templateId }, err);
       toast.error('テンプレートの削除中にエラーが発生しました');
+    }
+  };
+
+  // 現在地と作業日から天候・気温・風速を自動入力
+  const handleAutoFillWeather = async () => {
+    setWeatherLoading(true);
+    try {
+      const { latitude, longitude } = await getCurrentPosition();
+      const weather = await fetchWeatherForDate(latitude, longitude, formData.date);
+      if (!weather) {
+        toast.error('この日付の天気データが見つかりませんでした');
+        return;
+      }
+      setFormData(prev => ({
+        ...prev,
+        weather: weather.weather,
+        temperature: weather.temperature,
+        windSpeed: weather.windSpeed
+      }));
+      toast.success(`天気を自動入力しました（${weather.weather} ${weather.temperature}℃）`);
+    } catch (err) {
+      if (err?.code === 1) {
+        // GeolocationPositionError.PERMISSION_DENIED
+        toast.error('位置情報の利用が許可されていません。ブラウザの設定を確認してください');
+      } else {
+        toast.error('天気の取得に失敗しました。通信環境を確認してください');
+      }
+    } finally {
+      setWeatherLoading(false);
     }
   };
 
@@ -427,6 +458,24 @@ const WorkLogForm = () => {
 
       <form onSubmit={handleSubmit} className="mobile-form-section bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
 
+        {/* クイック記録で添付された写真 */}
+        {formData.photoUrls?.length > 0 && (
+          <div className="mb-6">
+            <p className="block text-gray-700 text-sm font-bold mb-2">添付写真</p>
+            <div className="flex flex-wrap gap-2">
+              {formData.photoUrls.map((url, index) => (
+                <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={url}
+                    alt={`添付写真${index + 1}`}
+                    className="w-24 h-24 object-cover rounded-lg border hover:opacity-80"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 基本情報セクション */}
         <BasicInfoSection
           formData={formData}
@@ -461,6 +510,8 @@ const WorkLogForm = () => {
             formData={formData}
             handleChange={handleChange}
             pesticides={pesticides}
+            onAutoFillWeather={handleAutoFillWeather}
+            weatherLoading={weatherLoading}
           />
         )}
 

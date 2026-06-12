@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, getDoc, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { checkPreHarvestInterval } from '../../services/phiService';
+import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
 import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
 
@@ -27,6 +29,30 @@ const HarvestForm = () => {
   const [disposalReason, setDisposalReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditing);
+  const [phiResult, setPhiResult] = useState(null);
+
+  // 圃場・収穫日が決まったらPHI（収穫前日数）違反を自動チェック
+  useEffect(() => {
+    let isCancelled = false;
+
+    const runPhiCheck = async () => {
+      if (!fieldId || !harvestDate || !currentOrganization) {
+        setPhiResult(null);
+        return;
+      }
+      const result = await checkPreHarvestInterval(
+        currentOrganization.id,
+        fieldId,
+        new Date(`${harvestDate}T00:00:00`)
+      );
+      if (!isCancelled) {
+        setPhiResult(result);
+      }
+    };
+
+    runPhiCheck();
+    return () => { isCancelled = true; };
+  }, [fieldId, harvestDate, currentOrganization]);
 
   // 廃棄率を自動計算
   const disposalRate = useMemo(() => {
@@ -128,6 +154,11 @@ const HarvestForm = () => {
     const selectedField = fields.find(field => field.id === selectedFieldId);
     if (selectedField) {
       setFieldName(selectedField.name);
+      // 圃場に栽培中の作物が登録されていれば作物名を自動入力
+      if (!cropName && selectedField.currentCrop) {
+        setCropName(selectedField.currentCrop);
+        toast.success(`作物名「${selectedField.currentCrop}」を自動入力しました`);
+      }
       // ロット番号を自動生成（まだ生成されていない場合）
       if (!lotNumber && harvestDate && cropName) {
         setLotNumber(generateLotNumber(selectedField.name, cropName, harvestDate));
@@ -217,6 +248,9 @@ const HarvestForm = () => {
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         {isEditing ? '収穫記録の編集' : '新規収穫記録'}
       </h1>
+
+      {/* PHI（収穫前日数）チェック結果 */}
+      <PhiWarningBanner phiResult={phiResult} />
 
       <div className="bg-white rounded-lg shadow p-6">
         <form onSubmit={handleSubmit}>

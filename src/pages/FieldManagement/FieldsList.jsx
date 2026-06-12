@@ -99,7 +99,14 @@ const FieldsList = () => {
           {fields.map(field => (
             <div key={field.id} className="bg-white rounded-lg shadow overflow-hidden">
               <div className="p-6">
-                <h2 className="text-xl font-semibold mb-2">{field.name}</h2>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xl font-semibold">{field.name}</h2>
+                  {field.currentCrop && (
+                    <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
+                      🌱 {field.currentCrop}
+                    </span>
+                  )}
+                </div>
                 <div className="text-gray-600 mb-4">
                   <p><span className="font-medium">面積:</span> {field.area} m²</p>
                   <p><span className="font-medium">場所:</span> {field.location}</p>

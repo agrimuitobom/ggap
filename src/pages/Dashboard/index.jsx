@@ -17,6 +17,9 @@ const Dashboard = () => {
   const [recentShipments, setRecentShipments] = useState([]);
   const [recentTrainings, setRecentTrainings] = useState([]);
   const [recentVisitors, setRecentVisitors] = useState([]);
+  const [draftCount, setDraftCount] = useState(0);
+  const [expiredPesticides, setExpiredPesticides] = useState([]);
+  const [expiringPesticides, setExpiringPesticides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -25,6 +28,40 @@ const Dashboard = () => {
       if (!currentOrganization) return;
 
       try {
+        // 要追記（クイック記録の下書き）の件数を取得
+        const draftsQuery = query(
+          collection(db, 'workLogs'),
+          where('organizationId', '==', currentOrganization.id),
+          where('isDraft', '==', true),
+          limit(100)
+        );
+        const draftsSnapshot = await getDocs(draftsQuery);
+        setDraftCount(draftsSnapshot.size);
+
+        // 農薬の有効期限をチェック（期限切れ・30日以内）
+        const pesticidesQuery = query(
+          collection(db, 'pesticides'),
+          where('organizationId', '==', currentOrganization.id)
+        );
+        const pesticidesSnapshot = await getDocs(pesticidesQuery);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const expired = [];
+        const expiring = [];
+        pesticidesSnapshot.forEach((d) => {
+          const data = d.data();
+          const expiry = data.expiryDate?.toDate ? data.expiryDate.toDate() : null;
+          if (!expiry) return;
+          if (expiry < today) {
+            expired.push({ id: d.id, name: data.name, expiryDate: expiry });
+          } else if (expiry <= in30Days) {
+            expiring.push({ id: d.id, name: data.name, expiryDate: expiry });
+          }
+        });
+        setExpiredPesticides(expired);
+        setExpiringPesticides(expiring);
+
         // 最近の作業日誌を取得
         const workLogsQuery = query(
           collection(db, 'workLogs'),
@@ -143,7 +180,47 @@ const Dashboard = () => {
           {error}
         </div>
       )}
-      
+
+      {expiredPesticides.length > 0 && (
+        <Link
+          to="/pesticides"
+          className="flex items-center justify-between bg-red-50 border-2 border-red-400 text-red-800 px-4 py-3 mb-4 rounded-lg hover:bg-red-100 transition-colors"
+        >
+          <span>
+            🚫 <span className="font-bold">有効期限切れの農薬が{expiredPesticides.length}件</span>あります
+            （{expiredPesticides.slice(0, 3).map(p => p.name).join('、')}{expiredPesticides.length > 3 ? ' ほか' : ''}）。
+            期限切れ農薬の使用は審査で不適合になります。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">確認する →</span>
+        </Link>
+      )}
+
+      {expiringPesticides.length > 0 && (
+        <Link
+          to="/pesticides"
+          className="flex items-center justify-between bg-orange-50 border-2 border-orange-300 text-orange-800 px-4 py-3 mb-4 rounded-lg hover:bg-orange-100 transition-colors"
+        >
+          <span>
+            ⏰ <span className="font-bold">30日以内に有効期限が切れる農薬が{expiringPesticides.length}件</span>あります
+            （{expiringPesticides.slice(0, 3).map(p => `${p.name}: ${p.expiryDate.toLocaleDateString('ja-JP')}`).join('、')}{expiringPesticides.length > 3 ? ' ほか' : ''}）
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">確認する →</span>
+        </Link>
+      )}
+
+      {draftCount > 0 && (
+        <Link
+          to="/work-logs"
+          className="flex items-center justify-between bg-amber-50 border-2 border-amber-300 text-amber-800 px-4 py-3 mb-6 rounded-lg hover:bg-amber-100 transition-colors"
+        >
+          <span>
+            ✏️ <span className="font-bold">要追記の作業記録が{draftCount}件</span>あります。
+            GGAPの記録として完成させるため、詳細を追記してください。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">一覧へ →</span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {/* クイックアクセスカード */}
         <div className="bg-white p-6 rounded-lg shadow-md">

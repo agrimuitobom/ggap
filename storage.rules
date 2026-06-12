@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // 作業日誌の添付写真（組織メンバーのみ読み書き可能）
+    match /workLogPhotos/{orgId}/{allPaths=**} {
+      allow read: if request.auth != null &&
+        firestore.exists(/databases/(default)/documents/organizationMembers/$(request.auth.uid + '_' + orgId));
+      allow write: if request.auth != null &&
+        firestore.exists(/databases/(default)/documents/organizationMembers/$(request.auth.uid + '_' + orgId)) &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // その他のパスは拒否
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

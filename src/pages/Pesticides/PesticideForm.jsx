@@ -18,8 +18,11 @@ const PesticideForm = () => {
     concentration: '',
     formulation: '',
     registrationNumber: '',
+    preHarvestInterval: '',
     lotNumber: '',
     purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseAmount: '',
+    purchaseUnit: 'L',
     expiryDate: '',
     supplier: '',
     notes: ''
@@ -48,8 +51,11 @@ const PesticideForm = () => {
               concentration: data.concentration?.toString() || '',
               formulation: data.formulation || '',
               registrationNumber: data.registrationNumber || '',
+              preHarvestInterval: data.preHarvestInterval?.toString() || '',
               lotNumber: data.lotNumber || '',
               purchaseDate: data.purchaseDate?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+              purchaseAmount: data.purchaseAmount?.toString() || '',
+              purchaseUnit: data.purchaseUnit || 'L',
               expiryDate: data.expiryDate?.toDate().toISOString().split('T')[0] || '',
               supplier: data.supplier || '',
               notes: data.notes || ''
@@ -94,6 +100,8 @@ const PesticideForm = () => {
       const pesticideData = {
         ...formData,
         concentration: formData.concentration ? Number(formData.concentration) : null,
+        preHarvestInterval: formData.preHarvestInterval !== '' ? Number(formData.preHarvestInterval) : null,
+        purchaseAmount: formData.purchaseAmount !== '' ? Number(formData.purchaseAmount) : null,
         purchaseDate: new Date(formData.purchaseDate),
         expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : null,
         organizationId: currentOrganization.id,
@@ -119,8 +127,11 @@ const PesticideForm = () => {
           concentration: '',
           formulation: '',
           registrationNumber: '',
+          preHarvestInterval: '',
           lotNumber: '',
           purchaseDate: new Date().toISOString().split('T')[0],
+          purchaseAmount: '',
+          purchaseUnit: 'L',
           expiryDate: '',
           supplier: '',
           notes: ''
@@ -296,7 +307,26 @@ const PesticideForm = () => {
             placeholder="例: 第21543号"
           />
         </div>
-        
+
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="preHarvestInterval">
+            収穫前日数（PHI）
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="preHarvestInterval"
+            type="number"
+            min="0"
+            name="preHarvestInterval"
+            value={formData.preHarvestInterval}
+            onChange={handleChange}
+            placeholder="例: 7（収穫7日前まで使用可能）"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            ラベルに記載されている「収穫◯日前まで」の日数。登録すると収穫記録時にPHI違反を自動チェックします。
+          </p>
+        </div>
+
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lotNumber">
             ロット番号
@@ -325,6 +355,39 @@ const PesticideForm = () => {
             onChange={handleChange}
             required
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="purchaseAmount">
+            購入量（原液）
+          </label>
+          <div className="flex items-center">
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="purchaseAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              name="purchaseAmount"
+              value={formData.purchaseAmount}
+              onChange={handleChange}
+              placeholder="例: 500"
+            />
+            <select
+              className="ml-2 shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              name="purchaseUnit"
+              value={formData.purchaseUnit}
+              onChange={handleChange}
+            >
+              <option value="L">L</option>
+              <option value="ml">ml</option>
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+            </select>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            登録すると使用記録（希釈倍率から原液換算）で残量を推定し、一覧に在庫として表示します。
+          </p>
         </div>
         
         <div className="mb-4">

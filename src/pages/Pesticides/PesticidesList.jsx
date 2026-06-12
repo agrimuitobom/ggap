@@ -4,7 +4,14 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { calcPesticideStock, formatStock } from '../../services/inventoryService';
 import { firestoreLogger } from '../../utils/logger';
+
+const STOCK_STYLES = {
+  ok: 'text-gray-900',
+  low: 'text-orange-600 font-bold',
+  empty: 'text-red-600 font-bold'
+};
 
 const PesticidesList = () => {
   const { currentOrganization } = useOrganization();
@@ -24,19 +31,41 @@ const PesticidesList = () => {
 
     try {
       setLoading(true);
-      const q = query(
-        collection(db, 'pesticides'),
-        where('organizationId', '==', currentOrganization.id),
-        orderBy('name', 'asc')
-      );
-      const querySnapshot = await getDocs(q);
+      const [querySnapshot, usesSnapshot] = await Promise.all([
+        getDocs(query(
+          collection(db, 'pesticides'),
+          where('organizationId', '==', currentOrganization.id),
+          orderBy('name', 'asc')
+        )),
+        getDocs(query(
+          collection(db, 'pesticideUses'),
+          where('organizationId', '==', currentOrganization.id)
+        ))
+      ]);
+
+      // 農薬ごとの使用記録をまとめる
+      const usesByPesticide = {};
+      usesSnapshot.forEach((useDoc) => {
+        const use = useDoc.data();
+        if (!use.pesticideId) return;
+        if (!usesByPesticide[use.pesticideId]) {
+          usesByPesticide[use.pesticideId] = [];
+        }
+        usesByPesticide[use.pesticideId].push(use);
+      });
+
       const pesticidesList = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
         pesticidesList.push({
           id: doc.id,
-          ...doc.data(),
-          purchaseDate: doc.data().purchaseDate?.toDate(),
-          expiryDate: doc.data().expiryDate?.toDate()
+          ...data,
+          purchaseDate: data.purchaseDate?.toDate(),
+          expiryDate: data.expiryDate?.toDate(),
+          stock: formatStock(
+            calcPesticideStock(data, usesByPesticide[doc.id] || []),
+            data.purchaseUnit
+          )
         });
       });
       setPesticides(pesticidesList);
@@ -127,6 +156,7 @@ const PesticidesList = () => {
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">登録番号</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">メーカー</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">有効期限</th>
+                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">在庫（原液推定）</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">操作</th>
               </tr>
             </thead>
@@ -163,6 +193,21 @@ const PesticidesList = () => {
                       </span>
                     ) : (
                       '-'
+                    )}
+                  </td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {pesticide.stock ? (
+                      <span className={STOCK_STYLES[pesticide.stock.level]}>
+                        {pesticide.stock.level === 'empty' && '🚫 '}
+                        {pesticide.stock.level === 'low' && '⚠️ '}
+                        約{pesticide.stock.display}
+                        {pesticide.stock.level === 'low' && '（残りわずか）'}
+                        {pesticide.stock.level === 'empty' && '（在庫切れ）'}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-sm" title="編集画面で購入量を登録すると在庫を推定します">
+                        未設定
+                      </span>
                     )}
                   </td>
                   <td className="py-3 px-4">

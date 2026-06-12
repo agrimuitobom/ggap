@@ -1,6 +1,10 @@
 // src/services/firebase.js
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -19,9 +23,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Firestore初期化と設定（QUIC protocol error対策）
+// persistentLocalCache: オフライン永続化。圏外の圃場でも記録でき、
+// 通信回復時に自動で同期される（複数タブ対応）
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true, // Force long polling to avoid QUIC errors
   ignoreUndefinedProperties: true,
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
 });
 
 export const auth = getAuth(app);
