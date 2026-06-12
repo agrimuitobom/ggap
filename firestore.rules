@@ -251,6 +251,13 @@ service cloud.firestore {
                                 ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
+    // 作業日誌のマイテンプレート
+    match /workLogTemplates/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 管理者機能（admin roleを持つユーザーのみアクセス可能）
     match /admin/{document=**} {
       allow read, write: if request.auth != null &&

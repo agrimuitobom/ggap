@@ -1,11 +1,14 @@
 // src/pages/WorkLogs/WorkLogForm.jsx
-import React, { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
+import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from '../../services/templateService';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
+import toast from 'react-hot-toast';
 
 // カスタムフック
 import { useWorkLogForm } from '../../hooks/useWorkLogForm';
@@ -20,8 +23,12 @@ import PesticideSection from '../../components/WorkLog/PesticideSection';
 const WorkLogForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const copyFromId = searchParams.get('copyFrom');
   const { currentOrganization } = useOrganization();
   const isEditMode = !!id;
+  const [templates, setTemplates] = useState([]);
+  const defaultsAppliedRef = useRef(false);
 
   // カスタムフックの使用
   const { fields, users, fertilizers, seeds, pesticides, loading: fetchLoading, error: dataError, fetchExistingData } = useWorkLogData();
@@ -42,7 +49,7 @@ const WorkLogForm = () => {
   } = useWorkLogForm();
 
 
-  // 編集モードの場合、既存データを取得
+  // 編集モードの場合は既存データを、複製時はコピー元データ（日付は今日に変更）を取得
   useEffect(() => {
     let isCancelled = false;
 
@@ -59,6 +66,21 @@ const WorkLogForm = () => {
             navigate('/work-logs');
           }
         }
+      } else if (copyFromId) {
+        try {
+          const sourceData = await fetchExistingData(copyFromId);
+          if (!isCancelled) {
+            setFormData({
+              ...sourceData,
+              date: new Date().toISOString().split('T')[0]
+            });
+            setFormMessage('前回の記録を複製しました。内容を確認して登録してください。');
+          }
+        } catch (err) {
+          if (!isCancelled) {
+            setFormErrors('複製元の作業日誌データが見つかりません。');
+          }
+        }
       }
     };
 
@@ -67,7 +89,67 @@ const WorkLogForm = () => {
     return () => {
       isCancelled = true;
     };
-  }, [id, isEditMode]); // 最小限の依存関係のみ
+  }, [id, isEditMode, copyFromId]); // 最小限の依存関係のみ
+
+  // 新規入力時、前回使用した圃場・担当者を初期値として反映
+  useEffect(() => {
+    if (isEditMode || copyFromId || fetchLoading || defaultsAppliedRef.current) return;
+    if (!currentOrganization) return;
+
+    const defaults = loadWorkLogDefaults(currentOrganization.id);
+    if (defaults) {
+      setFormData(prev => {
+        // ユーザーが既に入力を始めていたら上書きしない
+        if (prev.fieldId || prev.workers.length > 0) return prev;
+        const validFieldId = defaults.fieldId && fields.some(f => f.id === defaults.fieldId)
+          ? defaults.fieldId : '';
+        const validWorkers = Array.isArray(defaults.workers)
+          ? defaults.workers.filter(workerId => users.some(u => u.id === workerId))
+          : [];
+        return { ...prev, fieldId: validFieldId, workers: validWorkers };
+      });
+    }
+    defaultsAppliedRef.current = true;
+  }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData]);
+
+  // マイテンプレートを読み込み
+  useEffect(() => {
+    const loadTemplates = async () => {
+      if (!currentOrganization) return;
+      try {
+        const list = await getWorkLogTemplates(currentOrganization.id);
+        setTemplates(list);
+      } catch (err) {
+        firestoreLogger.error('テンプレートの取得エラー', { organizationId: currentOrganization?.id }, err);
+      }
+    };
+    loadTemplates();
+  }, [currentOrganization]);
+
+  // 現在の入力内容をマイテンプレートとして保存
+  const handleSaveTemplate = async (name) => {
+    if (!currentOrganization) return;
+    try {
+      const saved = await saveWorkLogTemplate(currentOrganization.id, name, formData);
+      setTemplates(prev => [...prev, saved].sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+      toast.success(`テンプレート「${name}」を保存しました`);
+    } catch (err) {
+      firestoreLogger.error('テンプレートの保存エラー', { organizationId: currentOrganization?.id }, err);
+      toast.error('テンプレートの保存中にエラーが発生しました');
+    }
+  };
+
+  // マイテンプレートを削除
+  const handleDeleteTemplate = async (templateId) => {
+    try {
+      await deleteWorkLogTemplate(templateId);
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast.success('テンプレートを削除しました');
+    } catch (err) {
+      firestoreLogger.error('テンプレートの削除エラー', { templateId }, err);
+      toast.error('テンプレートの削除中にエラーが発生しました');
+    }
+  };
 
   // 関連資材レコードを作成する関数
   const createRelatedRecords = async (workLogRef, selectedField) => {
@@ -260,6 +342,8 @@ const WorkLogForm = () => {
         weather: formData.workType === '防除' ? formData.weather : null,
         temperature: formData.workType === '防除' && formData.temperature ? Number(formData.temperature) : null,
         windSpeed: formData.workType === '防除' && formData.windSpeed ? Number(formData.windSpeed) : null,
+        // 通常フォームのバリデーションを通過した記録は完成扱い（クイック記録の「要追記」を解除）
+        isDraft: false,
         updatedAt: serverTimestamp()
       };
 
@@ -281,6 +365,12 @@ const WorkLogForm = () => {
         setFormMessage('作業日誌が正常に登録されました');
         resetForm();
       }
+
+      // 次回入力用に圃場・担当者を記憶
+      saveWorkLogDefaults(currentOrganization.id, {
+        fieldId: formData.fieldId,
+        workers: formData.workers
+      });
 
       // 成功メッセージを表示後、一覧画面に戻る
       setTimeout(() => {
@@ -327,8 +417,13 @@ const WorkLogForm = () => {
         </div>
       )}
 
-      {/* クイックテンプレートバー */}
-      <QuickTemplateBar onTemplateSelect={handleTemplateSelect} />
+      {/* クイックテンプレートバー（マイテンプレート対応） */}
+      <QuickTemplateBar
+        onTemplateSelect={handleTemplateSelect}
+        templates={templates}
+        onSaveCurrent={handleSaveTemplate}
+        onDelete={handleDeleteTemplate}
+      />
 
       <form onSubmit={handleSubmit} className="mobile-form-section bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
 
