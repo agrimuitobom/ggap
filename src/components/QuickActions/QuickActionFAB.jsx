@@ -15,6 +15,12 @@ const QuickActionFAB = () => {
 
   const quickActions = useMemo(() => [
     {
+      label: 'クイック記録',
+      icon: '⚡',
+      link: '/work-logs/quick',
+      color: 'bg-green-600 hover:bg-green-700'
+    },
+    {
       label: '作業記録',
       icon: '📝',
       link: '/work-logs/new',

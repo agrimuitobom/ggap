@@ -82,14 +82,22 @@ const WorkLogsList = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-3">
         <h1 className="text-2xl font-bold">作業日誌一覧</h1>
-        <Link 
-          to="/work-logs/new" 
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          新規作業日誌登録
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to="/work-logs/quick"
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            ⚡ クイック記録
+          </Link>
+          <Link
+            to="/work-logs/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            新規作業日誌登録
+          </Link>
+        </div>
       </div>
       
       {error && (
@@ -118,7 +126,14 @@ const WorkLogsList = () => {
                 <tr key={log.id} className="border-t border-gray-200 hover:bg-gray-50">
                   <td className="py-3 px-4 whitespace-nowrap">{log.date?.toLocaleDateString() || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.fieldName || '-'}</td>
-                  <td className="py-3 px-4 whitespace-nowrap">{log.workType || '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {log.workType || '-'}
+                    {log.isDraft && (
+                      <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 rounded-full">
+                        要追記
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.workerNames?.join(', ') || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.workHours ? `${log.workHours}時間` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.harvestAmount ? `${log.harvestAmount} kg` : '-'}</td>
@@ -141,14 +156,21 @@ const WorkLogsList = () => {
                       </div>
                     ) : (
                       <div className="flex space-x-2">
-                        <Link 
-                          to={`/work-logs/edit/${log.id}`} 
+                        <Link
+                          to={`/work-logs/new?copyFrom=${log.id}`}
+                          className="text-green-600 hover:text-green-800"
+                          title="この記録を複製して今日の日付で新規作成"
+                        >
+                          複製
+                        </Link>
+                        <Link
+                          to={`/work-logs/edit/${log.id}`}
                           className="text-blue-600 hover:text-blue-800"
                         >
-                          編集
+                          {log.isDraft ? '追記' : '編集'}
                         </Link>
-                        <button 
-                          onClick={() => handleDelete(log.id)} 
+                        <button
+                          onClick={() => handleDelete(log.id)}
                           className="text-red-600 hover:text-red-800"
                         >
                           削除

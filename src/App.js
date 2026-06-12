@@ -14,6 +14,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import WorkLogsList from './pages/WorkLogs/WorkLogsList';
 import WorkLogForm from './pages/WorkLogs/WorkLogForm';
+import QuickWorkLogForm from './pages/WorkLogs/QuickWorkLogForm';
 import FieldsList from './pages/FieldManagement/FieldsList';
 import FieldForm from './pages/FieldManagement/FieldForm';
 import FieldInspectionForm from './pages/FieldManagement/FieldInspectionForm';
@@ -113,6 +114,7 @@ function App() {
             {/* 作業日誌 */}
             <Route path="work-logs" element={<WorkLogsList />} />
             <Route path="work-logs/new" element={<WorkLogForm />} />
+            <Route path="work-logs/quick" element={<QuickWorkLogForm />} />
             <Route path="work-logs/edit/:id" element={<WorkLogForm />} />
             
             {/* 圃場管理 */}
