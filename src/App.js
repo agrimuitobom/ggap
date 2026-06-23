@@ -16,6 +16,8 @@ import WorkLogsList from './pages/WorkLogs/WorkLogsList';
 import WorkLogForm from './pages/WorkLogs/WorkLogForm';
 import QuickWorkLogForm from './pages/WorkLogs/QuickWorkLogForm';
 import WorkLogCalendar from './pages/WorkLogs/WorkLogCalendar';
+import CleaningCheck from './pages/Cleaning/CleaningCheck';
+import CleaningItemsManager from './pages/Cleaning/CleaningItemsManager';
 import FieldsList from './pages/FieldManagement/FieldsList';
 import FieldForm from './pages/FieldManagement/FieldForm';
 import FieldInspectionForm from './pages/FieldManagement/FieldInspectionForm';
@@ -118,7 +120,11 @@ function App() {
             <Route path="work-logs/quick" element={<QuickWorkLogForm />} />
             <Route path="work-logs/calendar" element={<WorkLogCalendar />} />
             <Route path="work-logs/edit/:id" element={<WorkLogForm />} />
-            
+
+            {/* 清掃チェック */}
+            <Route path="cleaning" element={<CleaningCheck />} />
+            <Route path="cleaning/items" element={<CleaningItemsManager />} />
+
             {/* 圃場管理 */}
             <Route path="fields" element={<FieldsList />} />
             <Route path="fields/new" element={<FieldForm />} />

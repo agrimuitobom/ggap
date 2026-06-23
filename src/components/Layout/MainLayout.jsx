@@ -73,7 +73,11 @@ const MainLayout = () => {
           <Link to="/" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700 text-white">
             ダッシュボード
           </Link>
-          
+
+          <Link to="/cleaning" className="block py-2.5 px-4 mt-2 rounded transition duration-200 hover:bg-blue-700 text-white">
+            🧹 清掃チェック
+          </Link>
+
           {/* 作業管理 */}
           <div className="mt-4">
             <button

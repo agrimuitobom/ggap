@@ -251,6 +251,21 @@ service cloud.firestore {
                                 ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
+    // 清掃項目マスタ
+    match /cleaningItems/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 清掃チェック記録（ドキュメントID: organizationId_YYYY-MM-DD）
+    match /cleaningChecks/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 作業日誌のマイテンプレート
     match /workLogTemplates/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

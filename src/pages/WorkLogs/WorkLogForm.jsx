@@ -290,25 +290,41 @@ const WorkLogForm = () => {
   };
 
   // 関連資材レコードを削除する関数
+  // セキュリティルールがドキュメントの組織所属を要求するため、
+  // クエリにも organizationId 条件を含める（workLogId 単独だと権限エラーになる）
   const deleteRelatedRecords = async (workLogId) => {
+    if (!currentOrganization) return;
+    const orgId = currentOrganization.id;
     const promises = [];
 
     // 肥料使用記録の削除
-    const fertilizerQuery = query(collection(db, 'fertilizerUses'), where('workLogId', '==', workLogId));
+    const fertilizerQuery = query(
+      collection(db, 'fertilizerUses'),
+      where('organizationId', '==', orgId),
+      where('workLogId', '==', workLogId)
+    );
     const fertilizerSnapshot = await getDocs(fertilizerQuery);
     fertilizerSnapshot.forEach(doc => {
       promises.push(deleteDoc(doc.ref));
     });
 
     // 播種記録の削除
-    const seedQuery = query(collection(db, 'seedUses'), where('workLogId', '==', workLogId));
+    const seedQuery = query(
+      collection(db, 'seedUses'),
+      where('organizationId', '==', orgId),
+      where('workLogId', '==', workLogId)
+    );
     const seedSnapshot = await getDocs(seedQuery);
     seedSnapshot.forEach(doc => {
       promises.push(deleteDoc(doc.ref));
     });
 
     // 防除記録の削除
-    const pesticideQuery = query(collection(db, 'pesticideUses'), where('workLogId', '==', workLogId));
+    const pesticideQuery = query(
+      collection(db, 'pesticideUses'),
+      where('organizationId', '==', orgId),
+      where('workLogId', '==', workLogId)
+    );
     const pesticideSnapshot = await getDocs(pesticideQuery);
     pesticideSnapshot.forEach(doc => {
       promises.push(deleteDoc(doc.ref));
