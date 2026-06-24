@@ -17,7 +17,6 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  orderBy,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -127,20 +126,21 @@ export const setDayCheck = async (organizationId, dateKey, checkedItems, checked
   });
 };
 
-/** 月間のチェック記録を取得 → { dateKey: [itemId, ...] } */
+/** 月間のチェック記録を取得 → { dateKey: [itemId, ...] }
+ * 清掃チェックは1日1件と少量のため、組織IDのみで取得して
+ * 日付範囲はクライアント側で絞り込む（複合インデックス不要）。 */
 export const getMonthChecks = async (organizationId, startKey, endKey) => {
   const checksQuery = query(
     collection(db, 'cleaningChecks'),
-    where('organizationId', '==', organizationId),
-    where('date', '>=', startKey),
-    where('date', '<=', endKey),
-    orderBy('date', 'asc')
+    where('organizationId', '==', organizationId)
   );
   const snapshot = await getDocs(checksQuery);
   const map = {};
   snapshot.forEach((d) => {
     const data = d.data();
-    map[data.date] = data.checkedItems || [];
+    if (data.date && data.date >= startKey && data.date <= endKey) {
+      map[data.date] = data.checkedItems || [];
+    }
   });
   return map;
 };
