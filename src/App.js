@@ -1,82 +1,65 @@
 // src/App.js
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
 import { Toaster } from 'react-hot-toast';
 
-// レイアウトコンポーネント
+// レイアウト・認証画面・保護用コンポーネントは初回表示に必要なため即時読み込み
 import MainLayout from './components/Layout/MainLayout';
-
-// ページコンポーネント
-import Dashboard from './pages/Dashboard';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
-import WorkLogsList from './pages/WorkLogs/WorkLogsList';
-import WorkLogForm from './pages/WorkLogs/WorkLogForm';
-import QuickWorkLogForm from './pages/WorkLogs/QuickWorkLogForm';
-import WorkLogCalendar from './pages/WorkLogs/WorkLogCalendar';
-import CleaningCheck from './pages/Cleaning/CleaningCheck';
-import CleaningItemsManager from './pages/Cleaning/CleaningItemsManager';
-import FieldsList from './pages/FieldManagement/FieldsList';
-import FieldForm from './pages/FieldManagement/FieldForm';
-import FieldInspectionForm from './pages/FieldManagement/FieldInspectionForm';
-import SeedsList from './pages/Seeds/SeedsList';
-import SeedForm from './pages/Seeds/SeedForm';
-import SeedUseForm from './pages/Seeds/SeedUseForm';
-import SeedUsesList from './pages/Seeds/SeedUsesList';
-import FertilizersList from './pages/Fertilizers/FertilizersList';
-import FertilizerForm from './pages/Fertilizers/FertilizerForm';
-import FertilizerUseForm from './pages/Fertilizers/FertilizerUseForm';
-import FertilizerUsesList from './pages/Fertilizers/FertilizerUsesList';
-import PesticidesList from './pages/Pesticides/PesticidesList';
-import PesticideForm from './pages/Pesticides/PesticideForm';
-import PesticideUseForm from './pages/Pesticides/PesticideUseForm';
-import PesticideUsesList from './pages/Pesticides/PesticideUsesList';
-
-// 収穫管理
-import HarvestsList from './pages/Harvests/HarvestsList';
-import HarvestForm from './pages/Harvests/HarvestForm';
-import HarvestDetail from './pages/Harvests/HarvestDetail';
-
-// 出荷管理
-import ShipmentsList from './pages/Shipments/ShipmentsList';
-import ShipmentForm from './pages/Shipments/ShipmentForm';
-import ShipmentDetail from './pages/Shipments/ShipmentDetail';
-
-// 訪問者管理
-import VisitorsList from './pages/Visitors/VisitorsList';
-import VisitorForm from './pages/Visitors/VisitorForm';
-
-// 教育・訓練記録
-import TrainingsList from './pages/Trainings/TrainingsList';
-import TrainingForm from './pages/Trainings/TrainingForm';
-
-// 従業員管理
-import WorkersList from './pages/Workers/WorkersList';
-import WorkerForm from './pages/Workers/WorkerForm';
-
-// グループ管理
-import GroupsList from './pages/Groups/GroupsList';
-import GroupForm from './pages/Groups/GroupForm';
-
-// レポート・分析
-import ReportsDashboard from './pages/Reports/ReportsDashboard';
-import PesticideUsageReport from './pages/Reports/PesticideUsageReport';
-import FertilizerUsageReport from './pages/Reports/FertilizerUsageReport';
-import BusinessAnalytics from './pages/Reports/BusinessAnalytics';
-import TrainingReport from './pages/Reports/TrainingReport';
-import TraceabilityReport from './pages/Reports/TraceabilityReport';
-
-// 組織管理
-import OrganizationSettings from './pages/Organizations/OrganizationSettings';
-import OrganizationSwitcher from './pages/Organizations/OrganizationSwitcher';
-import InvitationsPage from './pages/Organizations/InvitationsPage';
-
-// ルート保護用コンポーネント
 import PrivateRoute from './components/Auth/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import InstallPrompt from './components/PWA/InstallPrompt';
+
+// その他のページは遅延読み込み（起動時のJSを小さくする）
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const WorkLogsList = lazy(() => import('./pages/WorkLogs/WorkLogsList'));
+const WorkLogForm = lazy(() => import('./pages/WorkLogs/WorkLogForm'));
+const QuickWorkLogForm = lazy(() => import('./pages/WorkLogs/QuickWorkLogForm'));
+const WorkLogCalendar = lazy(() => import('./pages/WorkLogs/WorkLogCalendar'));
+const CleaningCheck = lazy(() => import('./pages/Cleaning/CleaningCheck'));
+const CleaningItemsManager = lazy(() => import('./pages/Cleaning/CleaningItemsManager'));
+const FieldsList = lazy(() => import('./pages/FieldManagement/FieldsList'));
+const FieldForm = lazy(() => import('./pages/FieldManagement/FieldForm'));
+const FieldInspectionForm = lazy(() => import('./pages/FieldManagement/FieldInspectionForm'));
+const SeedsList = lazy(() => import('./pages/Seeds/SeedsList'));
+const SeedForm = lazy(() => import('./pages/Seeds/SeedForm'));
+const SeedUseForm = lazy(() => import('./pages/Seeds/SeedUseForm'));
+const SeedUsesList = lazy(() => import('./pages/Seeds/SeedUsesList'));
+const FertilizersList = lazy(() => import('./pages/Fertilizers/FertilizersList'));
+const FertilizerForm = lazy(() => import('./pages/Fertilizers/FertilizerForm'));
+const FertilizerUseForm = lazy(() => import('./pages/Fertilizers/FertilizerUseForm'));
+const FertilizerUsesList = lazy(() => import('./pages/Fertilizers/FertilizerUsesList'));
+const PesticidesList = lazy(() => import('./pages/Pesticides/PesticidesList'));
+const PesticideForm = lazy(() => import('./pages/Pesticides/PesticideForm'));
+const PesticideUseForm = lazy(() => import('./pages/Pesticides/PesticideUseForm'));
+const PesticideUsesList = lazy(() => import('./pages/Pesticides/PesticideUsesList'));
+const HarvestsList = lazy(() => import('./pages/Harvests/HarvestsList'));
+const HarvestForm = lazy(() => import('./pages/Harvests/HarvestForm'));
+const HarvestDetail = lazy(() => import('./pages/Harvests/HarvestDetail'));
+const ShipmentsList = lazy(() => import('./pages/Shipments/ShipmentsList'));
+const ShipmentForm = lazy(() => import('./pages/Shipments/ShipmentForm'));
+const ShipmentDetail = lazy(() => import('./pages/Shipments/ShipmentDetail'));
+const VisitorsList = lazy(() => import('./pages/Visitors/VisitorsList'));
+const VisitorForm = lazy(() => import('./pages/Visitors/VisitorForm'));
+const TrainingsList = lazy(() => import('./pages/Trainings/TrainingsList'));
+const TrainingForm = lazy(() => import('./pages/Trainings/TrainingForm'));
+const WorkersList = lazy(() => import('./pages/Workers/WorkersList'));
+const WorkerForm = lazy(() => import('./pages/Workers/WorkerForm'));
+const GroupsList = lazy(() => import('./pages/Groups/GroupsList'));
+const GroupForm = lazy(() => import('./pages/Groups/GroupForm'));
+// レポート・分析（exceljs / jspdf / recharts を含むため特に分割効果が大きい）
+const ReportsDashboard = lazy(() => import('./pages/Reports/ReportsDashboard'));
+const PesticideUsageReport = lazy(() => import('./pages/Reports/PesticideUsageReport'));
+const FertilizerUsageReport = lazy(() => import('./pages/Reports/FertilizerUsageReport'));
+const BusinessAnalytics = lazy(() => import('./pages/Reports/BusinessAnalytics'));
+const TrainingReport = lazy(() => import('./pages/Reports/TrainingReport'));
+const TraceabilityReport = lazy(() => import('./pages/Reports/TraceabilityReport'));
+const OrganizationSettings = lazy(() => import('./pages/Organizations/OrganizationSettings'));
+const OrganizationSwitcher = lazy(() => import('./pages/Organizations/OrganizationSwitcher'));
+const InvitationsPage = lazy(() => import('./pages/Organizations/InvitationsPage'));
 
 function App() {
   return (
@@ -105,6 +88,11 @@ function App() {
             duration: 4000,
           },
         }} />
+        <Suspense fallback={
+          <div className="flex justify-center items-center h-screen bg-gray-100">
+            <span className="text-gray-500">読み込み中...</span>
+          </div>
+        }>
         <Routes>
           {/* 認証ページ */}
           <Route path="/login" element={<Login />} />
@@ -202,6 +190,7 @@ function App() {
             <Route path="organizations/invitations" element={<InvitationsPage />} />
           </Route>
         </Routes>
+        </Suspense>
           </OrganizationProvider>
         </AuthProvider>
       </Router>
