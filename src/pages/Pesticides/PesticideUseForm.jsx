@@ -5,6 +5,7 @@ import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serv
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
+import { getLastPesticideUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -155,6 +156,25 @@ const PesticideUseForm = () => {
       ...formData,
       [name]: value
     });
+
+    // 農薬を選んだら前回使用時の値を空欄に自動補完（新規登録時のみ）
+    if (name === 'pesticideId' && value && !isEditMode) {
+      autoFillFromLastUse(value);
+    }
+  };
+
+  const autoFillFromLastUse = async (pesticideId) => {
+    const last = await getLastPesticideUse(currentOrganization.id, pesticideId);
+    if (!last) return;
+    setFormData((prev) => ({
+      ...prev,
+      targetPest: prev.targetPest || last.targetPest,
+      dilutionRate: prev.dilutionRate || last.dilutionRate,
+      amount: prev.amount || last.amount,
+      unit: prev.unit && prev.unit !== 'L' ? prev.unit : last.unit || 'L',
+      method: prev.method || last.method
+    }));
+    toast.success('前回の使用内容を自動入力しました');
   };
 
   const handleSubmit = async (e) => {

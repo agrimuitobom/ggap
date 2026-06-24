@@ -1,5 +1,6 @@
 // src/components/WorkLog/BasicInfoSection.jsx
 import React, { memo } from 'react';
+import VoiceInput from '../common/VoiceInput';
 
 const BasicInfoSection = ({
   formData,
@@ -110,14 +111,20 @@ const BasicInfoSection = ({
         <label className="mobile-form-label block text-gray-700 text-sm font-bold mb-2" htmlFor="details">
           詳細内容
         </label>
-        <textarea
-          className="mobile-textarea shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          id="details"
-          name="details"
-          value={formData.details}
-          onChange={handleChange}
-          rows="3"
-        />
+        <div className="flex gap-2 items-start">
+          <textarea
+            className="mobile-textarea shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="details"
+            name="details"
+            value={formData.details}
+            onChange={handleChange}
+            rows="3"
+          />
+          <VoiceInput
+            value={formData.details}
+            onChange={(text) => handleChange({ target: { name: 'details', value: text } })}
+          />
+        </div>
       </div>
       
       {/* 作業時間 */}

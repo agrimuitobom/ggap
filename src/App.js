@@ -38,6 +38,7 @@ const PesticideUseForm = lazy(() => import('./pages/Pesticides/PesticideUseForm'
 const PesticideUsesList = lazy(() => import('./pages/Pesticides/PesticideUsesList'));
 const HarvestsList = lazy(() => import('./pages/Harvests/HarvestsList'));
 const HarvestForm = lazy(() => import('./pages/Harvests/HarvestForm'));
+const QuickHarvestForm = lazy(() => import('./pages/Harvests/QuickHarvestForm'));
 const HarvestDetail = lazy(() => import('./pages/Harvests/HarvestDetail'));
 const ShipmentsList = lazy(() => import('./pages/Shipments/ShipmentsList'));
 const ShipmentForm = lazy(() => import('./pages/Shipments/ShipmentForm'));
@@ -147,6 +148,7 @@ function App() {
             {/* 収穫管理 */}
             <Route path="harvests" element={<HarvestsList />} />
             <Route path="harvests/new" element={<HarvestForm />} />
+            <Route path="harvests/quick" element={<QuickHarvestForm />} />
             <Route path="harvests/:id" element={<HarvestDetail />} />
             <Route path="harvests/edit/:id" element={<HarvestForm />} />
             

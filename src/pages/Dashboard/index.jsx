@@ -232,8 +232,8 @@ const Dashboard = () => {
             <Link to="/cleaning" className="block px-4 py-2 bg-teal-100 text-teal-700 rounded hover:bg-teal-200">
               🧹 清掃チェック
             </Link>
-            <Link to="/harvests/new" className="block px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
-              収穫記録登録
+            <Link to="/harvests/quick" className="block px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
+              ⚡ 収穫クイック記録
             </Link>
             <Link to="/fertilizer-uses/new" className="block px-4 py-2 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200">
               肥料使用記録

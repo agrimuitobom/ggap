@@ -4,7 +4,9 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { getLastFertilizerUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
+import toast from 'react-hot-toast';
 
 const FertilizerUseForm = () => {
   const { id } = useParams();
@@ -118,6 +120,23 @@ const FertilizerUseForm = () => {
       ...formData,
       [name]: value
     });
+
+    // 肥料を選んだら前回使用時の値を空欄に自動補完（新規登録時のみ）
+    if (name === 'fertilizerId' && value && !isEditMode) {
+      autoFillFromLastUse(value);
+    }
+  };
+
+  const autoFillFromLastUse = async (fertilizerId) => {
+    const last = await getLastFertilizerUse(currentOrganization.id, fertilizerId);
+    if (!last) return;
+    setFormData((prev) => ({
+      ...prev,
+      amount: prev.amount || last.amount,
+      unit: prev.unit && prev.unit !== 'kg' ? prev.unit : last.unit || 'kg',
+      method: prev.method || last.method
+    }));
+    toast.success('前回の使用内容を自動入力しました');
   };
 
   const handleSubmit = async (e) => {
