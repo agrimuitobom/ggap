@@ -9,6 +9,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { checkPreHarvestInterval } from '../../services/phiService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
 import VoiceInput from '../../components/common/VoiceInput';
@@ -38,6 +39,7 @@ const generateLotNumber = (fieldName, cropName, dateStr) => {
 const QuickHarvestForm = () => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  const { currentUser, userProfile } = useAuth();
 
   const [fields, setFields] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -138,6 +140,8 @@ const QuickHarvestForm = () => {
         disposalRate: 0,
         totalAmount: Number(quantity),
         notes,
+        createdByUid: currentUser?.uid || null,
+        createdByName: userProfile?.name || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });

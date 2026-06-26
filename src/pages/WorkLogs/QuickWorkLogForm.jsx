@@ -10,6 +10,7 @@ import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useWorkLogData } from '../../hooks/useWorkLogData';
 import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
 import { checkPreHarvestInterval } from '../../services/phiService';
@@ -48,6 +49,7 @@ const QuickWorkLogForm = () => {
   // カレンダーから「この日の記録を追加」で開いた場合の日付指定
   const presetDate = searchParams.get('date');
   const { currentOrganization } = useOrganization();
+  const { currentUser, userProfile } = useAuth();
   const { fields, users, loading: fetchLoading } = useWorkLogData();
 
   const [workType, setWorkType] = useState('');
@@ -201,6 +203,8 @@ const QuickWorkLogForm = () => {
           wasteAmount: null,
           photoUrls: index === 0 ? photoUrls : [],
           isDraft: willBeDraft,
+          createdByUid: currentUser?.uid || null,
+          createdByName: userProfile?.name || '',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };

@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { firestoreLogger } from '../../utils/logger';
 import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
 import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from '../../services/templateService';
@@ -27,6 +28,7 @@ const WorkLogForm = () => {
   const [searchParams] = useSearchParams();
   const copyFromId = searchParams.get('copyFrom');
   const { currentOrganization } = useOrganization();
+  const { currentUser, userProfile } = useAuth();
   const isEditMode = !!id;
   const [templates, setTemplates] = useState([]);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -403,6 +405,8 @@ const WorkLogForm = () => {
 
         setFormMessage('作業日誌が正常に更新されました');
       } else {
+        workLogData.createdByUid = currentUser?.uid || null;
+        workLogData.createdByName = userProfile?.name || '';
         workLogData.createdAt = serverTimestamp();
         const workLogRef = await addDoc(collection(db, 'workLogs'), workLogData);
 
