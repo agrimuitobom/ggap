@@ -48,7 +48,7 @@ const QuickWorkLogForm = () => {
   const [searchParams] = useSearchParams();
   // カレンダーから「この日の記録を追加」で開いた場合の日付指定
   const presetDate = searchParams.get('date');
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, selfWorkerId } = useOrganization();
   const { currentUser, userProfile } = useAuth();
   const { fields, users, loading: fetchLoading } = useWorkLogData();
 
@@ -83,13 +83,15 @@ const QuickWorkLogForm = () => {
       if (defaults.fieldId && fields.some(f => f.id === defaults.fieldId)) {
         setSelectedFieldIds([defaults.fieldId]);
       }
-      if (Array.isArray(defaults.workers)) {
-        const validWorkers = defaults.workers.filter(id => users.some(u => u.id === id));
-        setWorkers(validWorkers);
-      }
+    }
+    // 担当者は「自分（ログインアカウント）」を自動選択。なければ前回の担当者
+    if (selfWorkerId && users.some(u => u.id === selfWorkerId)) {
+      setWorkers([selfWorkerId]);
+    } else if (defaults && Array.isArray(defaults.workers)) {
+      setWorkers(defaults.workers.filter(id => users.some(u => u.id === id)));
     }
     setDefaultsApplied(true);
-  }, [fetchLoading, defaultsApplied, currentOrganization, fields, users]);
+  }, [fetchLoading, defaultsApplied, currentOrganization, fields, users, selfWorkerId]);
 
   // 収穫選択時、PHI（収穫前日数）違反を自動チェック
   useEffect(() => {

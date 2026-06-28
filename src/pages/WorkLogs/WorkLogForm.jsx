@@ -27,7 +27,7 @@ const WorkLogForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const copyFromId = searchParams.get('copyFrom');
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, selfWorkerId } = useOrganization();
   const { currentUser, userProfile } = useAuth();
   const isEditMode = !!id;
   const [templates, setTemplates] = useState([]);
@@ -101,20 +101,22 @@ const WorkLogForm = () => {
     if (!currentOrganization) return;
 
     const defaults = loadWorkLogDefaults(currentOrganization.id);
-    if (defaults) {
-      setFormData(prev => {
-        // ユーザーが既に入力を始めていたら上書きしない
-        if (prev.fieldId || prev.workers.length > 0) return prev;
-        const validFieldId = defaults.fieldId && fields.some(f => f.id === defaults.fieldId)
-          ? defaults.fieldId : '';
-        const validWorkers = Array.isArray(defaults.workers)
-          ? defaults.workers.filter(workerId => users.some(u => u.id === workerId))
-          : [];
-        return { ...prev, fieldId: validFieldId, workers: validWorkers };
-      });
-    }
+    setFormData(prev => {
+      // ユーザーが既に入力を始めていたら上書きしない
+      if (prev.fieldId || prev.workers.length > 0) return prev;
+      const validFieldId = defaults?.fieldId && fields.some(f => f.id === defaults.fieldId)
+        ? defaults.fieldId : '';
+      // 担当者は「自分（ログインアカウント）」を自動選択。なければ前回の担当者
+      let workers = [];
+      if (selfWorkerId && users.some(u => u.id === selfWorkerId)) {
+        workers = [selfWorkerId];
+      } else if (Array.isArray(defaults?.workers)) {
+        workers = defaults.workers.filter(workerId => users.some(u => u.id === workerId));
+      }
+      return { ...prev, fieldId: validFieldId, workers };
+    });
     defaultsAppliedRef.current = true;
-  }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData]);
+  }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData, selfWorkerId]);
 
   // マイテンプレートを読み込み
   useEffect(() => {

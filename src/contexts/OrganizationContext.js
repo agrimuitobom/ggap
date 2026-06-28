@@ -10,6 +10,7 @@ import {
   getUserInvitations,
   migrateUserDataToOrganization
 } from '../services/organizationService';
+import { ensureSelfWorker } from '../services/selfWorkerService';
 import { firestoreLogger } from '../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -20,10 +21,11 @@ export function useOrganization() {
 }
 
 export function OrganizationProvider({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [currentOrganization, setCurrentOrganization] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [selfWorkerId, setSelfWorkerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [invitations, setInvitations] = useState([]);
 
@@ -105,6 +107,18 @@ export function OrganizationProvider({ children }) {
       setCurrentOrganization(org);
       setUserRole(role);
 
+      // ログインアカウントに対応する従業員を用意し「自分」を担当者に使えるようにする
+      // （書き込み権限のあるadmin/memberのみ。閲覧者はnull）
+      let swId = null;
+      if (role === 'admin' || role === 'member') {
+        swId = await ensureSelfWorker(
+          organizationId,
+          currentUser.uid,
+          userProfile?.name || currentUser.displayName || currentUser.email
+        );
+      }
+      setSelfWorkerId(swId);
+
       // 選択した組織をローカルストレージに保存
       localStorage.setItem('currentOrganizationId', organizationId);
     } catch (error) {
@@ -150,6 +164,7 @@ export function OrganizationProvider({ children }) {
       setOrganizations([]);
       setCurrentOrganization(null);
       setUserRole(null);
+      setSelfWorkerId(null);
       setInvitations([]);
       setLoading(false);
     }
@@ -159,6 +174,7 @@ export function OrganizationProvider({ children }) {
     organizations,
     currentOrganization,
     userRole,
+    selfWorkerId,
     invitations,
     loading,
     switchOrganization,
