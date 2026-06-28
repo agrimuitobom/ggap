@@ -137,12 +137,12 @@ const FertilizerUsesList = () => {
                   className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.date?.toLocaleDateString() || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fertilizerName || '-'}</td>
-                    <td onClick={(e) => e.stopPropagation()} className="px-4 py-3 text-sm text-gray-900 border-b">{use.fieldName || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fieldName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.amount ? `${use.amount} ${use.unit}` : '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.method || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.appliedByName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b max-w-xs truncate" title={use.notes}>{use.notes || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                    <td onClick={(e) => e.stopPropagation()} className="px-4 py-3 text-sm text-gray-900 border-b">
                       {deleteConfirm === use.id ? (
                         <div className="flex space-x-2">
                           <button 

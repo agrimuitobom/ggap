@@ -106,6 +106,7 @@ export const useWorkLogData = (editId = null) => {
           // 播種関連
           seedId: data.seedId || '',
           seedAmount: data.seedAmount?.toString() || '',
+          seedUnit: data.seedUnit || '粒',
           seedMethod: data.seedMethod || '',
           // 防除関連
           pesticideId: data.pesticideId || '',

@@ -18,6 +18,7 @@ const initialFormData = {
   // 播種関連
   seedId: '',
   seedAmount: '',
+  seedUnit: '粒',
   seedMethod: '',
   // 防除関連
   pesticideId: '',

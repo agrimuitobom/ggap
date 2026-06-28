@@ -251,6 +251,7 @@ const WorkLogForm = () => {
         plantedByName: currentOrganization.name || '',
         organizationId: currentOrganization.id,
         amount: formData.seedAmount ? Number(formData.seedAmount) : null,
+        unit: formData.seedUnit || '粒',
         method: formData.seedMethod,
         notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
         workLogId: workLogRef.id,
@@ -382,6 +383,7 @@ const WorkLogForm = () => {
         // 播種関連
         seedId: formData.workType === '播種' ? formData.seedId : null,
         seedAmount: formData.workType === '播種' && formData.seedAmount ? Number(formData.seedAmount) : null,
+        seedUnit: formData.workType === '播種' ? (formData.seedUnit || '粒') : null,
         seedMethod: formData.workType === '播種' ? formData.seedMethod : null,
         // 防除関連
         pesticideId: formData.workType === '防除' ? formData.pesticideId : null,
@@ -523,6 +525,7 @@ const WorkLogForm = () => {
             formData={formData}
             handleChange={handleChange}
             seeds={seeds}
+            setFormData={setFormData}
           />
         )}
 
