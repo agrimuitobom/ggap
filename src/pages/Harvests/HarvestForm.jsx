@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, getDoc, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { checkPreHarvestInterval } from '../../services/phiService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
 import toast from 'react-hot-toast';
@@ -13,6 +14,7 @@ const HarvestForm = () => {
   const isEditing = Boolean(id);
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  const { currentUser, userProfile } = useAuth();
 
   // フォームフィールド
   const [fields, setFields] = useState([]);
@@ -221,6 +223,8 @@ const HarvestForm = () => {
         toast.success('収穫記録を更新しました');
       } else {
         // 新規記録を作成
+        harvestData.createdByUid = currentUser?.uid || null;
+        harvestData.createdByName = userProfile?.name || '';
         harvestData.createdAt = new Date();
         await addDoc(collection(db, 'harvests'), harvestData);
         toast.success('収穫記録を作成しました');

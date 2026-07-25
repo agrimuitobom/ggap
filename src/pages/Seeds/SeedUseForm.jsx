@@ -18,6 +18,7 @@ const SeedUseForm = () => {
     seedId: '',
     fieldId: '',
     amount: '',
+    unit: '粒',
     method: '',
     notes: ''
   });
@@ -87,6 +88,7 @@ const SeedUseForm = () => {
               seedId: data.seedId || '',
               fieldId: data.fieldId || '',
               amount: data.amount?.toString() || '',
+              unit: data.unit || '粒',
               method: data.method || '',
               notes: data.notes || ''
             });
@@ -139,6 +141,7 @@ const SeedUseForm = () => {
         fieldName: selectedField?.name || '',
         organizationId: currentOrganization.id,
         amount: formData.amount ? Number(formData.amount) : null,
+        unit: formData.unit || '粒',
         method: formData.method,
         notes: formData.notes,
         updatedAt: serverTimestamp()
@@ -262,6 +265,23 @@ const SeedUseForm = () => {
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="amount">
             使用量
           </label>
+          {/* よく使う粒数のプリセット（プラグトレイの穴数など） */}
+          <div className="flex flex-wrap gap-2 mb-2">
+            {['128', '200', '288'].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, amount: preset, unit: '粒' }))}
+                className={`px-3 py-1.5 rounded-full border text-sm ${
+                  formData.amount === preset && formData.unit === '粒'
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {preset}粒
+              </button>
+            ))}
+          </div>
           <div className="flex items-center">
             <input
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -274,9 +294,22 @@ const SeedUseForm = () => {
               min="0"
               placeholder="数量を入力"
             />
-            <span className="ml-2 text-gray-600">g/本</span>
+            <select
+              className="ml-2 shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              name="unit"
+              value={formData.unit}
+              onChange={handleChange}
+            >
+              <option value="粒">粒</option>
+              <option value="g">g</option>
+              <option value="本">本</option>
+              <option value="袋">袋</option>
+              <option value="mL">mL</option>
+            </select>
           </div>
-          <p className="text-xs text-gray-500 mt-1">※種子の場合はg、苗の場合は本数</p>
+          <p className="text-xs text-gray-500 mt-1">
+            例: 200穴トレイに200粒なら「200」＋「粒」。種子の重さで管理する場合は「g」も選べます。
+          </p>
         </div>
         
         <div className="mb-4">

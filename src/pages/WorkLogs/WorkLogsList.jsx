@@ -145,7 +145,12 @@ const WorkLogsList = () => {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap">{log.workerNames?.join(', ') || '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {log.workerNames?.join(', ') || '-'}
+                    {log.createdByName && (
+                      <span className="block text-xs text-gray-400">記録: {log.createdByName}</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.workHours ? `${log.workHours}時間` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.harvestAmount ? `${log.harvestAmount} kg` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{log.wasteAmount ? `${log.wasteAmount} kg` : '-'}</td>

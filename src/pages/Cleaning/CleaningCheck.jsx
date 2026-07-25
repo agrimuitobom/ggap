@@ -189,6 +189,28 @@ const CleaningCheck = () => {
     }
   };
 
+  // 指定日の対象項目をまとめてチェック／解除（列見出しのボタン用）
+  const checkAllForDay = async (day) => {
+    if (!isMember || isAfter(day, today)) return;
+    const dateKey = toDateKey(day);
+    const applicableIds = items.filter((i) => isItemApplicable(i, day)).map((i) => i.id);
+    if (applicableIds.length === 0) return;
+    const current = monthChecks[dateKey] || [];
+    const allDone = applicableIds.every((id) => current.includes(id));
+    const next = allDone
+      ? current.filter((id) => !applicableIds.includes(id)) // 全部済みなら解除
+      : [...new Set([...current, ...applicableIds])]; // それ以外は全部チェック
+    setMonthChecks((prev) => ({ ...prev, [dateKey]: next }));
+    try {
+      await setDayCheck(currentOrganization.id, dateKey, next, checkedByName);
+      toast.success(allDone ? `${format(day, 'M月d日')}のチェックを解除しました` : `${format(day, 'M月d日')}を全てチェックしました`);
+    } catch (err) {
+      firestoreLogger.error('月間一括チェックの保存エラー', { organizationId: currentOrganization?.id, dateKey }, err);
+      toast.error('保存中にエラーが発生しました');
+      loadMonth();
+    }
+  };
+
   if (loadingItems) {
     return (
       <div className="container mx-auto p-4">
@@ -396,15 +418,26 @@ const CleaningCheck = () => {
                     </th>
                     {monthDays.map((day) => {
                       const wd = day.getDay();
+                      const canCheck = isMember && !isAfter(day, today);
                       return (
                         <th
                           key={day.toISOString()}
-                          className={`border px-1 py-2 text-center w-8 ${
+                          className={`border px-1 py-2 text-center w-9 ${
                             wd === 0 ? 'text-red-500' : wd === 6 ? 'text-blue-500' : 'text-gray-600'
                           } ${isSameDay(day, today) ? 'bg-green-50' : 'bg-gray-50'}`}
                         >
                           <div>{format(day, 'd')}</div>
                           <div className="text-[10px]">{WEEKDAY_LABELS[wd]}</div>
+                          {canCheck && (
+                            <button
+                              type="button"
+                              onClick={() => checkAllForDay(day)}
+                              title="この日を全てチェック／解除"
+                              className="mt-1 w-full text-[11px] leading-none py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                            >
+                              ✓全
+                            </button>
+                          )}
                         </th>
                       );
                     })}
@@ -428,7 +461,7 @@ const CleaningCheck = () => {
                           <td
                             key={day.toISOString()}
                             onClick={() => toggleMonthCell(item, day)}
-                            className={`border text-center h-9 w-8 ${
+                            className={`border text-center h-9 w-9 ${
                               !applicable ? 'bg-gray-100' : ''
                             } ${isMember && !future ? 'cursor-pointer hover:bg-green-50' : ''}`}
                           >
@@ -447,7 +480,8 @@ const CleaningCheck = () => {
             </div>
           )}
           <p className="text-xs text-gray-500 mt-3">
-            ○ = 実施済み。グレーのマスはその曜日に対象外の項目です。マスをタップして修正できます。
+            ○ = 実施済み。グレーのマスはその曜日に対象外の項目です。各マスをタップして個別に修正できます。
+            日付の下の「✓全」ボタンを押すと、その日の対象項目をまとめてチェック（もう一度押すと解除）できます。
           </p>
         </>
       )}

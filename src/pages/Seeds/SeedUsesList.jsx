@@ -122,12 +122,12 @@ const SeedUsesList = () => {
                   className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4 whitespace-nowrap">{use.date?.toLocaleDateString() || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.seedName || '-'}</td>
-                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4 whitespace-nowrap">{use.fieldName || '-'}</td>
-                  <td className="py-3 px-4 whitespace-nowrap">{use.amount ? `${use.amount} g/本` : '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{use.fieldName || '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{use.amount ? `${use.amount} ${use.unit || '粒'}` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.method || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.plantedByName || '-'}</td>
                   <td className="py-3 px-4 max-w-xs truncate" title={use.notes}>{use.notes || '-'}</td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {deleteConfirm === use.id ? (
                       <div className="flex space-x-2">
                         <button 

@@ -4,6 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import {
+  CULTIVATION_TYPES,
+  SUBSTRATES,
+  isSoillessType,
+  needsSoilTypeInput
+} from '../../constants/cultivation';
 import { firestoreLogger } from '../../utils/logger';
 
 const FieldForm = () => {
@@ -14,7 +20,10 @@ const FieldForm = () => {
     name: '',
     location: '',
     area: '',
+    // 栽培方式。水耕では土壌タイプではなく培地を管理する
+    cultivationType: '水耕',
     soilType: '',
+    substrate: '',
     currentCrop: '',
     description: ''
   });
@@ -23,6 +32,9 @@ const FieldForm = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const isEditMode = !!id;
+
+  const isSoilless = isSoillessType(formData.cultivationType);
+  const needsSoilType = needsSoilTypeInput(formData.cultivationType);
 
   useEffect(() => {
     // 編集モードの場合、既存データを取得
@@ -33,7 +45,13 @@ const FieldForm = () => {
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
-            setFormData({ currentCrop: '', ...docSnap.data() });
+            // 栽培方式が未設定の既存データは、選び直してもらうため空にする
+            setFormData({
+              currentCrop: '',
+              cultivationType: '',
+              substrate: '',
+              ...docSnap.data()
+            });
           } else {
             setError('指定された圃場データが見つかりません。');
             navigate('/fields');
@@ -70,6 +88,11 @@ const FieldForm = () => {
         return;
       }
 
+      if (!formData.cultivationType) {
+        setError('栽培方式を選択してください。');
+        return;
+      }
+
       const fieldData = {
         ...formData,
         organizationId: currentOrganization.id,
@@ -92,7 +115,9 @@ const FieldForm = () => {
           name: '',
           location: '',
           area: '',
+          cultivationType: '水耕',
           soilType: '',
+          substrate: '',
           currentCrop: '',
           description: ''
         });
@@ -188,28 +213,76 @@ const FieldForm = () => {
           />
         </div>
         
+        {/* 栽培方式: これに応じて以下の入力項目が切り替わる */}
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="soilType">
-            土壌タイプ *
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            栽培方式 <span className="text-red-500">*</span>
           </label>
-          <select
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="soilType"
-            name="soilType"
-            value={formData.soilType}
-            onChange={handleChange}
-            required
-          >
-            <option value="">土壌タイプを選択してください</option>
-            <option value="砂質土">砂質土</option>
-            <option value="粘土質">粘土質</option>
-            <option value="シルト質">シルト質</option>
-            <option value="壌土">壌土</option>
-            <option value="黒ボク土">黒ボク土</option>
-            <option value="赤土">赤土</option>
-            <option value="その他">その他</option>
-          </select>
+          <div className="flex flex-wrap gap-2">
+            {CULTIVATION_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, cultivationType: t }))}
+                className={`px-4 py-2 rounded-full border text-sm ${
+                  formData.cultivationType === t
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            水耕では養液管理（EC・pH）で、土耕では施肥記録で養分を管理します。
+          </p>
         </div>
+
+        {/* 水耕系: 培地を管理 */}
+        {isSoilless && (
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="substrate">
+              培地
+            </label>
+            <select
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="substrate"
+              name="substrate"
+              value={formData.substrate || ''}
+              onChange={handleChange}
+            >
+              <option value="">培地を選択してください</option>
+              {SUBSTRATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* 土耕系: 土壌タイプを管理 */}
+        {needsSoilType && (
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="soilType">
+              土壌タイプ <span className="text-red-500">*</span>
+            </label>
+            <select
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="soilType"
+              name="soilType"
+              value={formData.soilType}
+              onChange={handleChange}
+              required
+            >
+              <option value="">土壌タイプを選択してください</option>
+              <option value="砂質土">砂質土</option>
+              <option value="粘土質">粘土質</option>
+              <option value="シルト質">シルト質</option>
+              <option value="壌土">壌土</option>
+              <option value="黒ボク土">黒ボク土</option>
+              <option value="赤土">赤土</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+        )}
 
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="currentCrop">

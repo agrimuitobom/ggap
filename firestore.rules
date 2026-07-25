@@ -251,6 +251,86 @@ service cloud.firestore {
                                 ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
+    // 作付（栽培サイクル・処理区）
+    match /plantings/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 養液管理記録（EC・pH・水温など）
+    match /nutrientLogs/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 水源・水質検査記録
+    match /waterSources/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /waterTests/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 資材の保管場所・廃棄記録
+    match /storageLocations/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /materialDisposals/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 苦情処理・模擬回収テスト記録
+    match /complaints/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /recallTests/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 機器と校正・点検記録
+    match /equipments/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /equipmentChecks/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 事故・ヒヤリハット記録
+    match /incidents/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 自己点検（内部監査）記録
+    match /selfAssessments/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 清掃項目マスタ
     match /cleaningItems/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

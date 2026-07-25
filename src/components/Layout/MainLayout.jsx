@@ -78,6 +78,26 @@ const MainLayout = () => {
             🧹 清掃チェック
           </Link>
 
+          <Link to="/plantings" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            🌱 作付・処理区
+          </Link>
+
+          <Link to="/nutrient-logs" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            💧 養液管理記録
+          </Link>
+
+          <Link to="/water" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            🚰 水源・水質管理
+          </Link>
+
+          <Link to="/material-disposals" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            📦 保管・廃棄記録
+          </Link>
+
+          <Link to="/self-assessments" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            ✅ 自己点検
+          </Link>
+
           {/* 作業管理 */}
           <div className="mt-4">
             <button
@@ -274,6 +294,15 @@ const MainLayout = () => {
                 <Link to="/trainings" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   教育・訓練記録
                 </Link>
+                <Link to="/incidents" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  事故・ヒヤリハット
+                </Link>
+                <Link to="/equipment" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  機器の校正・点検
+                </Link>
+                <Link to="/complaints" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  苦情・回収テスト
+                </Link>
               </div>
             )}
           </div>
@@ -299,6 +328,9 @@ const MainLayout = () => {
                 </Link>
                 <Link to="/reports/fertilizer-usage" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   肥料使用記録簿
+                </Link>
+                <Link to="/reports/mass-balance" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  マスバランス照合
                 </Link>
                 <Link to="/reports/business-analytics" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   経営分析

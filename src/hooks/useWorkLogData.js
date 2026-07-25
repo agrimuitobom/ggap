@@ -106,6 +106,7 @@ export const useWorkLogData = (editId = null) => {
           // 播種関連
           seedId: data.seedId || '',
           seedAmount: data.seedAmount?.toString() || '',
+          seedUnit: data.seedUnit || '粒',
           seedMethod: data.seedMethod || '',
           // 防除関連
           pesticideId: data.pesticideId || '',
@@ -113,6 +114,7 @@ export const useWorkLogData = (editId = null) => {
           dilutionRate: data.dilutionRate?.toString() || '',
           pesticideAmount: data.pesticideAmount?.toString() || '',
           pesticideUnit: data.pesticideUnit || 'L',
+          treatedArea: data.treatedArea?.toString() || '',
           pesticideMethod: data.pesticideMethod || '',
           weather: data.weather || '',
           temperature: data.temperature?.toString() || '',

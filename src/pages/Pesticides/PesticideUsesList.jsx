@@ -139,9 +139,9 @@ const PesticideUsesList = () => {
                       )}
                     </div>
                   </td>
-                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4 whitespace-nowrap">{use.appliedByName || '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{use.appliedByName || '-'}</td>
                   <td className="py-3 px-4 max-w-xs truncate" title={use.notes}>{use.notes || '-'}</td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {deleteConfirm === use.id ? (
                       <div className="flex space-x-2">
                         <button 

@@ -130,12 +130,12 @@ const SeedsList = () => {
                   onClick={() => navigate(`/seeds/edit/${seed.id}`)}
                   className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4">{seed.name || '-'}</td>
-                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">{seed.variety || '-'}</td>
+                  <td className="py-3 px-4">{seed.variety || '-'}</td>
                   <td className="py-3 px-4">{seed.supplier || '-'}</td>
                   <td className="py-3 px-4">{seed.lotNumber || '-'}</td>
                   <td className="py-3 px-4">{seed.purchaseDate?.toLocaleDateString() || '-'}</td>
                   <td className="py-3 px-4">{seed.disinfectionMethod || '-'}</td>
-                  <td className="py-3 px-4">
+                  <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
                     {deleteConfirm === seed.id ? (
                       <div className="flex space-x-2">
                         <button 

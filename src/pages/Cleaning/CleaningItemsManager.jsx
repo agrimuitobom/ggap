@@ -1,6 +1,6 @@
 // src/pages/Cleaning/CleaningItemsManager.jsx
 // 清掃項目（項目名・頻度・実施曜日）の管理画面。
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import {
@@ -21,6 +21,7 @@ const CleaningItemsManager = () => {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const formRef = useRef(null);
 
   const loadItems = useCallback(async () => {
     if (!currentOrganization) return;
@@ -51,7 +52,8 @@ const CleaningItemsManager = () => {
       frequencyLabel: item.frequencyLabel || '',
       weekdays: item.weekdays || []
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // メイン領域がスクロールコンテナのため scrollIntoView でフォームへ移動
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const toggleWeekday = (wd) => {
@@ -118,7 +120,7 @@ const CleaningItemsManager = () => {
       </div>
 
       {/* 入力フォーム */}
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-4 mb-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-4 mb-6">
         <h2 className="font-bold mb-3">{editingId ? '項目を編集' : '項目を追加'}</h2>
 
         <div className="mb-3">

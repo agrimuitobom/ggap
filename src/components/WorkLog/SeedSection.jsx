@@ -1,7 +1,7 @@
 // src/components/WorkLog/SeedSection.jsx
 import React from 'react';
 
-const SeedSection = ({ formData, handleChange, seeds }) => {
+const SeedSection = ({ formData, handleChange, seeds, setFormData }) => {
   return (
     <>
       <div className="mobile-form-section mb-4 border-t pt-4">
@@ -33,18 +33,53 @@ const SeedSection = ({ formData, handleChange, seeds }) => {
         <label className="mobile-form-label block text-gray-700 text-sm font-bold mb-2" htmlFor="seedAmount">
           使用量
         </label>
-        <input
-          className="mobile-input shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          id="seedAmount"
-          type="number"
-          name="seedAmount"
-          value={formData.seedAmount}
-          onChange={handleChange}
-          step="0.1"
-          min="0"
-          placeholder="数量を入力"
-        />
-        <p className="text-xs text-gray-500 mt-1">※種子の場合はg、苗の場合は本数</p>
+        {/* よく使う粒数のプリセット（プラグトレイの穴数など） */}
+        {setFormData && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {['128', '200', '288'].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, seedAmount: preset, seedUnit: '粒' }))}
+                className={`px-3 py-1.5 rounded-full border text-sm ${
+                  formData.seedAmount === preset && formData.seedUnit === '粒'
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {preset}粒
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center">
+          <input
+            className="mobile-input shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="seedAmount"
+            type="number"
+            name="seedAmount"
+            value={formData.seedAmount}
+            onChange={handleChange}
+            step="0.1"
+            min="0"
+            placeholder="数量を入力"
+          />
+          <select
+            className="mobile-select ml-2 shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            name="seedUnit"
+            value={formData.seedUnit || '粒'}
+            onChange={handleChange}
+          >
+            <option value="粒">粒</option>
+            <option value="g">g</option>
+            <option value="本">本</option>
+            <option value="袋">袋</option>
+            <option value="mL">mL</option>
+          </select>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          例: 200穴トレイに200粒なら「200」＋「粒」。
+        </p>
       </div>
 
       {/* 播種方法 */}

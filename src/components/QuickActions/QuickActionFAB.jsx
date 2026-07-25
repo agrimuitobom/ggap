@@ -29,7 +29,7 @@ const QuickActionFAB = () => {
     {
       label: '収穫記録',
       icon: '🌾',
-      link: '/harvests/new',
+      link: '/harvests/quick',
       color: 'bg-green-600 hover:bg-green-700'
     },
     {

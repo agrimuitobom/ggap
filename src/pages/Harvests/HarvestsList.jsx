@@ -83,15 +83,23 @@ const HarvestsList = () => {
     <div className="container mx-auto px-4 py-8 pb-20 md:pb-8">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-800">収穫記録</h1>
-        <Link
-          to="/harvests/new"
-          className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 flex items-center justify-center"
-        >
-          <span className="mr-2">新規記録</span>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to="/harvests/quick"
+            className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 flex items-center justify-center"
+          >
+            ⚡ クイック記録
+          </Link>
+          <Link
+            to="/harvests/new"
+            className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded transition duration-300 flex items-center justify-center"
+          >
+            <span className="mr-1">新規記録</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+          </Link>
+        </div>
       </div>
 
       {/* 統計サマリー */}

@@ -8,10 +8,11 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { uiLogger } from '../../utils/logger';
+import EmployeeHome from './EmployeeHome';
 
 const Dashboard = () => {
   const { userProfile, currentUser } = useAuth();
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, isAdmin } = useOrganization();
   const [recentWorkLogs, setRecentWorkLogs] = useState([]);
   const [recentHarvests, setRecentHarvests] = useState([]);
   const [recentShipments, setRecentShipments] = useState([]);
@@ -25,7 +26,8 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchRecentData = async () => {
-      if (!currentOrganization) return;
+      // 管理者以外は簡易ホーム（EmployeeHome）を表示するため、ここでの取得は不要
+      if (!currentOrganization || !isAdmin) return;
 
       try {
         // 要追記（クイック記録の下書き）の件数を取得
@@ -161,7 +163,12 @@ const Dashboard = () => {
     };
 
     fetchRecentData();
-  }, [currentOrganization]);
+  }, [currentOrganization, isAdmin]);
+
+  // 管理者以外（従業員）はシンプルなホームを表示
+  if (!isAdmin) {
+    return <EmployeeHome />;
+  }
 
   if (loading) {
     return (
@@ -232,8 +239,8 @@ const Dashboard = () => {
             <Link to="/cleaning" className="block px-4 py-2 bg-teal-100 text-teal-700 rounded hover:bg-teal-200">
               🧹 清掃チェック
             </Link>
-            <Link to="/harvests/new" className="block px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
-              収穫記録登録
+            <Link to="/harvests/quick" className="block px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
+              ⚡ 収穫クイック記録
             </Link>
             <Link to="/fertilizer-uses/new" className="block px-4 py-2 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200">
               肥料使用記録

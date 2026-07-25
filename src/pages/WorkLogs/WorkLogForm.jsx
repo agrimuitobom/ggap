@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { firestoreLogger } from '../../utils/logger';
 import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
 import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from '../../services/templateService';
@@ -26,7 +27,8 @@ const WorkLogForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const copyFromId = searchParams.get('copyFrom');
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, selfWorkerId } = useOrganization();
+  const { currentUser, userProfile } = useAuth();
   const isEditMode = !!id;
   const [templates, setTemplates] = useState([]);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -99,20 +101,22 @@ const WorkLogForm = () => {
     if (!currentOrganization) return;
 
     const defaults = loadWorkLogDefaults(currentOrganization.id);
-    if (defaults) {
-      setFormData(prev => {
-        // ユーザーが既に入力を始めていたら上書きしない
-        if (prev.fieldId || prev.workers.length > 0) return prev;
-        const validFieldId = defaults.fieldId && fields.some(f => f.id === defaults.fieldId)
-          ? defaults.fieldId : '';
-        const validWorkers = Array.isArray(defaults.workers)
-          ? defaults.workers.filter(workerId => users.some(u => u.id === workerId))
-          : [];
-        return { ...prev, fieldId: validFieldId, workers: validWorkers };
-      });
-    }
+    setFormData(prev => {
+      // ユーザーが既に入力を始めていたら上書きしない
+      if (prev.fieldId || prev.workers.length > 0) return prev;
+      const validFieldId = defaults?.fieldId && fields.some(f => f.id === defaults.fieldId)
+        ? defaults.fieldId : '';
+      // 担当者は「自分（ログインアカウント）」を自動選択。なければ前回の担当者
+      let workers = [];
+      if (selfWorkerId && users.some(u => u.id === selfWorkerId)) {
+        workers = [selfWorkerId];
+      } else if (Array.isArray(defaults?.workers)) {
+        workers = defaults.workers.filter(workerId => users.some(u => u.id === workerId));
+      }
+      return { ...prev, fieldId: validFieldId, workers };
+    });
     defaultsAppliedRef.current = true;
-  }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData]);
+  }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData, selfWorkerId]);
 
   // マイテンプレートを読み込み
   useEffect(() => {
@@ -247,6 +251,7 @@ const WorkLogForm = () => {
         plantedByName: currentOrganization.name || '',
         organizationId: currentOrganization.id,
         amount: formData.seedAmount ? Number(formData.seedAmount) : null,
+        unit: formData.seedUnit || '粒',
         method: formData.seedMethod,
         notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
         workLogId: workLogRef.id,
@@ -272,6 +277,7 @@ const WorkLogForm = () => {
         dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
         amount: formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
         unit: formData.pesticideUnit,
+        treatedArea: formData.treatedArea ? Number(formData.treatedArea) : null,
         method: formData.pesticideMethod,
         weather: formData.weather,
         temperature: formData.temperature ? Number(formData.temperature) : null,
@@ -378,6 +384,7 @@ const WorkLogForm = () => {
         // 播種関連
         seedId: formData.workType === '播種' ? formData.seedId : null,
         seedAmount: formData.workType === '播種' && formData.seedAmount ? Number(formData.seedAmount) : null,
+        seedUnit: formData.workType === '播種' ? (formData.seedUnit || '粒') : null,
         seedMethod: formData.workType === '播種' ? formData.seedMethod : null,
         // 防除関連
         pesticideId: formData.workType === '防除' ? formData.pesticideId : null,
@@ -385,6 +392,7 @@ const WorkLogForm = () => {
         dilutionRate: formData.workType === '防除' && formData.dilutionRate ? Number(formData.dilutionRate) : null,
         pesticideAmount: formData.workType === '防除' && formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
         pesticideUnit: formData.workType === '防除' ? formData.pesticideUnit : null,
+        treatedArea: formData.workType === '防除' && formData.treatedArea ? Number(formData.treatedArea) : null,
         pesticideMethod: formData.workType === '防除' ? formData.pesticideMethod : null,
         weather: formData.workType === '防除' ? formData.weather : null,
         temperature: formData.workType === '防除' && formData.temperature ? Number(formData.temperature) : null,
@@ -403,6 +411,8 @@ const WorkLogForm = () => {
 
         setFormMessage('作業日誌が正常に更新されました');
       } else {
+        workLogData.createdByUid = currentUser?.uid || null;
+        workLogData.createdByName = userProfile?.name || '';
         workLogData.createdAt = serverTimestamp();
         const workLogRef = await addDoc(collection(db, 'workLogs'), workLogData);
 
@@ -517,6 +527,7 @@ const WorkLogForm = () => {
             formData={formData}
             handleChange={handleChange}
             seeds={seeds}
+            setFormData={setFormData}
           />
         )}
 
@@ -526,6 +537,7 @@ const WorkLogForm = () => {
             formData={formData}
             handleChange={handleChange}
             pesticides={pesticides}
+            fields={fields}
             onAutoFillWeather={handleAutoFillWeather}
             weatherLoading={weatherLoading}
           />

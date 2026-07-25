@@ -5,6 +5,7 @@ import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serv
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
+import { getLastPesticideUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -23,6 +24,8 @@ const PesticideUseForm = () => {
     dilutionRate: '',
     amount: '',
     unit: 'L',
+    treatedArea: '',
+    ppeUsed: false,
     method: '',
     weather: '',
     temperature: '',
@@ -31,6 +34,20 @@ const PesticideUseForm = () => {
   });
   const [loading, setLoading] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
+
+  // 選択中の圃場の面積（処理面積の入力補助に使う）
+  const selectedFieldArea = Number(
+    fields.find((f) => f.id === formData.fieldId)?.area || 0
+  );
+
+  // 単位面積あたりの使用量（ラベル記載量との整合確認用）
+  const areaRate = (() => {
+    const amount = Number(formData.amount);
+    const area = Number(formData.treatedArea);
+    if (!amount || !area) return '';
+    const per10a = (amount / area) * 1000; // 10a = 1000m²
+    return `${(amount / area).toFixed(3)} ${formData.unit}/m²（約 ${per10a.toFixed(1)} ${formData.unit}/10a）`;
+  })();
 
   // 現在地と散布日から天候・気温・風速を自動入力
   const handleAutoFillWeather = async () => {
@@ -127,6 +144,8 @@ const PesticideUseForm = () => {
               dilutionRate: data.dilutionRate?.toString() || '',
               amount: data.amount?.toString() || '',
               unit: data.unit || 'L',
+              treatedArea: data.treatedArea?.toString() || '',
+              ppeUsed: data.ppeUsed || false,
               method: data.method || '',
               weather: data.weather || '',
               temperature: data.temperature?.toString() || '',
@@ -150,11 +169,30 @@ const PesticideUseForm = () => {
   }, [id, isEditMode, navigate, currentOrganization]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     });
+
+    // 農薬を選んだら前回使用時の値を空欄に自動補完（新規登録時のみ）
+    if (name === 'pesticideId' && value && !isEditMode) {
+      autoFillFromLastUse(value);
+    }
+  };
+
+  const autoFillFromLastUse = async (pesticideId) => {
+    const last = await getLastPesticideUse(currentOrganization.id, pesticideId);
+    if (!last) return;
+    setFormData((prev) => ({
+      ...prev,
+      targetPest: prev.targetPest || last.targetPest,
+      dilutionRate: prev.dilutionRate || last.dilutionRate,
+      amount: prev.amount || last.amount,
+      unit: prev.unit && prev.unit !== 'L' ? prev.unit : last.unit || 'L',
+      method: prev.method || last.method
+    }));
+    toast.success('前回の使用内容を自動入力しました');
   };
 
   const handleSubmit = async (e) => {
@@ -185,6 +223,8 @@ const PesticideUseForm = () => {
         dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,
+        treatedArea: formData.treatedArea ? Number(formData.treatedArea) : null,
+        ppeUsed: !!formData.ppeUsed,
         method: formData.method,
         weather: formData.weather,
         temperature: formData.temperature ? Number(formData.temperature) : null,
@@ -392,7 +432,55 @@ const PesticideUseForm = () => {
             </select>
           </div>
         </div>
-        
+
+        {/* 処理面積: GGAPでは単位面積あたりの使用量がラベル記載量と整合するか確認される */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="treatedArea">
+            処理面積 (m²) *
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="treatedArea"
+              type="number"
+              name="treatedArea"
+              value={formData.treatedArea}
+              onChange={handleChange}
+              step="0.1"
+              min="0"
+              placeholder="散布した面積"
+            />
+            {selectedFieldArea > 0 && (
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, treatedArea: String(selectedFieldArea) }))}
+                className="shrink-0 px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                圃場全体（{selectedFieldArea}m²）
+              </button>
+            )}
+          </div>
+          {areaRate && (
+            <p className="text-xs text-gray-600 mt-1">
+              単位面積あたり: <span className="font-semibold">{areaRate}</span>
+            </p>
+          )}
+        </div>
+
+        {/* 保護具（PPE）の着用確認: 労働安全衛生の記録として審査で確認される */}
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded p-3">
+          <label className="flex items-center gap-2 text-sm font-bold text-amber-900">
+            <input
+              type="checkbox"
+              name="ppeUsed"
+              checked={!!formData.ppeUsed}
+              onChange={handleChange}
+              className="h-5 w-5"
+            />
+            保護具（マスク・手袋・保護メガネ等）を着用して作業した
+          </label>
+        </div>
+
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="method">
             散布方法 *

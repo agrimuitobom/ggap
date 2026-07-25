@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { isSoillessType } from '../../constants/cultivation';
 import { firestoreLogger } from '../../utils/logger';
 
 const FieldsList = () => {
@@ -93,7 +94,15 @@ const FieldsList = () => {
           {error}
         </div>
       )}
-      
+
+      {/* 栽培方式が未設定の圃場を促す（養液管理などの対象判定に使うため） */}
+      {fields.some((f) => !f.cultivationType) && (
+        <div className="bg-amber-50 border-2 border-amber-300 text-amber-800 px-4 py-3 mb-4 rounded-lg text-sm">
+          ⚠️ 栽培方式が未設定の圃場があります。各圃場の「編集」から水耕・土耕などを設定してください。
+          設定すると、養液管理や施肥の記録が正しく切り替わります。
+        </div>
+      )}
+
       {fields.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {fields.map(field => (
@@ -107,10 +116,29 @@ const FieldsList = () => {
                     </span>
                   )}
                 </div>
+                <div className="mb-2">
+                  {field.cultivationType ? (
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      isSoillessType(field.cultivationType)
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {isSoillessType(field.cultivationType) ? '💧' : '🌾'} {field.cultivationType}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 text-xs font-semibold bg-gray-200 text-gray-600 rounded-full">
+                      栽培方式が未設定
+                    </span>
+                  )}
+                </div>
                 <div className="text-gray-600 mb-4">
                   <p><span className="font-medium">面積:</span> {field.area} m²</p>
                   <p><span className="font-medium">場所:</span> {field.location}</p>
-                  <p><span className="font-medium">土壌タイプ:</span> {field.soilType}</p>
+                  {isSoillessType(field.cultivationType) ? (
+                    <p><span className="font-medium">培地:</span> {field.substrate || '-'}</p>
+                  ) : (
+                    <p><span className="font-medium">土壌タイプ:</span> {field.soilType || '-'}</p>
+                  )}
                   <p><span className="font-medium">説明:</span> {field.description || '-'}</p>
                 </div>
                 <div className="flex items-center justify-between mt-4">
