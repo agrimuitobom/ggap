@@ -78,6 +78,14 @@ const MainLayout = () => {
             🧹 清掃チェック
           </Link>
 
+          <Link to="/nutrient-logs" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            💧 養液管理記録
+          </Link>
+
+          <Link to="/self-assessments" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            ✅ 自己点検
+          </Link>
+
           {/* 作業管理 */}
           <div className="mt-4">
             <button

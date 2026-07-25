@@ -277,6 +277,7 @@ const WorkLogForm = () => {
         dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
         amount: formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
         unit: formData.pesticideUnit,
+        treatedArea: formData.treatedArea ? Number(formData.treatedArea) : null,
         method: formData.pesticideMethod,
         weather: formData.weather,
         temperature: formData.temperature ? Number(formData.temperature) : null,
@@ -391,6 +392,7 @@ const WorkLogForm = () => {
         dilutionRate: formData.workType === '防除' && formData.dilutionRate ? Number(formData.dilutionRate) : null,
         pesticideAmount: formData.workType === '防除' && formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
         pesticideUnit: formData.workType === '防除' ? formData.pesticideUnit : null,
+        treatedArea: formData.workType === '防除' && formData.treatedArea ? Number(formData.treatedArea) : null,
         pesticideMethod: formData.workType === '防除' ? formData.pesticideMethod : null,
         weather: formData.workType === '防除' ? formData.weather : null,
         temperature: formData.workType === '防除' && formData.temperature ? Number(formData.temperature) : null,
@@ -535,6 +537,7 @@ const WorkLogForm = () => {
             formData={formData}
             handleChange={handleChange}
             pesticides={pesticides}
+            fields={fields}
             onAutoFillWeather={handleAutoFillWeather}
             weatherLoading={weatherLoading}
           />

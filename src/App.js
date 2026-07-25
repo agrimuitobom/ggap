@@ -21,6 +21,9 @@ const QuickWorkLogForm = lazy(() => import('./pages/WorkLogs/QuickWorkLogForm'))
 const WorkLogCalendar = lazy(() => import('./pages/WorkLogs/WorkLogCalendar'));
 const CleaningCheck = lazy(() => import('./pages/Cleaning/CleaningCheck'));
 const CleaningItemsManager = lazy(() => import('./pages/Cleaning/CleaningItemsManager'));
+const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
+const SelfAssessmentList = lazy(() => import('./pages/SelfAssessment/SelfAssessmentList'));
+const SelfAssessmentDetail = lazy(() => import('./pages/SelfAssessment/SelfAssessmentDetail'));
 const FieldsList = lazy(() => import('./pages/FieldManagement/FieldsList'));
 const FieldForm = lazy(() => import('./pages/FieldManagement/FieldForm'));
 const FieldInspectionForm = lazy(() => import('./pages/FieldManagement/FieldInspectionForm'));
@@ -113,6 +116,13 @@ function App() {
             {/* 清掃チェック */}
             <Route path="cleaning" element={<CleaningCheck />} />
             <Route path="cleaning/items" element={<CleaningItemsManager />} />
+
+            {/* 養液管理 */}
+            <Route path="nutrient-logs" element={<NutrientLogs />} />
+
+            {/* 自己点検（内部監査） */}
+            <Route path="self-assessments" element={<SelfAssessmentList />} />
+            <Route path="self-assessments/:id" element={<SelfAssessmentDetail />} />
 
             {/* 圃場管理 */}
             <Route path="fields" element={<FieldsList />} />

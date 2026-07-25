@@ -114,6 +114,7 @@ export const useWorkLogData = (editId = null) => {
           dilutionRate: data.dilutionRate?.toString() || '',
           pesticideAmount: data.pesticideAmount?.toString() || '',
           pesticideUnit: data.pesticideUnit || 'L',
+          treatedArea: data.treatedArea?.toString() || '',
           pesticideMethod: data.pesticideMethod || '',
           weather: data.weather || '',
           temperature: data.temperature?.toString() || '',

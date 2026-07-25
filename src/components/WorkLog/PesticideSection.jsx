@@ -1,7 +1,19 @@
 // src/components/WorkLog/PesticideSection.jsx
 import React from 'react';
 
-const PesticideSection = ({ formData, handleChange, pesticides, onAutoFillWeather, weatherLoading }) => {
+const PesticideSection = ({ formData, handleChange, pesticides, fields = [], onAutoFillWeather, weatherLoading }) => {
+  // 選択中の圃場の面積（処理面積の入力補助）
+  const fieldArea = Number(fields.find((f) => f.id === formData.fieldId)?.area || 0);
+
+  // 単位面積あたりの使用量（ラベル記載量との整合確認用）
+  const areaRate = (() => {
+    const amount = Number(formData.pesticideAmount);
+    const area = Number(formData.treatedArea);
+    if (!amount || !area) return '';
+    const per10a = (amount / area) * 1000; // 10a = 1000m²
+    return `${(amount / area).toFixed(3)} ${formData.pesticideUnit}/m²（約 ${per10a.toFixed(1)} ${formData.pesticideUnit}/10a）`;
+  })();
+
   return (
     <>
       <div className="mobile-form-section mb-4 border-t pt-4">
@@ -94,6 +106,38 @@ const PesticideSection = ({ formData, handleChange, pesticides, onAutoFillWeathe
             <option value="g">g</option>
           </select>
         </div>
+      </div>
+
+      {/* 処理面積: 単位面積あたりの使用量がラベル記載量と整合するか審査で確認される */}
+      <div className="mobile-form-field mb-4">
+        <label className="mobile-form-label block text-gray-700 text-sm font-bold mb-2" htmlFor="treatedArea">
+          処理面積 (m²)
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            className="mobile-input shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="treatedArea"
+            type="number"
+            name="treatedArea"
+            value={formData.treatedArea || ''}
+            onChange={handleChange}
+            step="0.1"
+            min="0"
+            placeholder="散布した面積"
+          />
+          {fieldArea > 0 && (
+            <button
+              type="button"
+              onClick={() => handleChange({ target: { name: 'treatedArea', value: String(fieldArea) } })}
+              className="shrink-0 px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            >
+              圃場全体
+            </button>
+          )}
+        </div>
+        {areaRate && (
+          <p className="text-xs text-gray-600 mt-1">単位面積あたり: <span className="font-semibold">{areaRate}</span></p>
+        )}
       </div>
 
       {/* 散布方法 */}

@@ -26,6 +26,7 @@ const initialFormData = {
   dilutionRate: '',
   pesticideAmount: '',
   pesticideUnit: 'L',
+  treatedArea: '',
   pesticideMethod: '',
   weather: '',
   temperature: '',

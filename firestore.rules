@@ -251,6 +251,20 @@ service cloud.firestore {
                                 ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
+    // 養液管理記録（EC・pH・水温など）
+    match /nutrientLogs/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 自己点検（内部監査）記録
+    match /selfAssessments/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 清掃項目マスタ
     match /cleaningItems/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
