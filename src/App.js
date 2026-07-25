@@ -24,6 +24,7 @@ const CleaningItemsManager = lazy(() => import('./pages/Cleaning/CleaningItemsMa
 const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
 const PlantingsList = lazy(() => import('./pages/Plantings/PlantingsList'));
 const PlantingForm = lazy(() => import('./pages/Plantings/PlantingForm'));
+const ResearchAnalysis = lazy(() => import('./pages/Research/ResearchAnalysis'));
 const WaterManagement = lazy(() => import('./pages/Water/WaterManagement'));
 const MaterialDisposals = lazy(() => import('./pages/Materials/MaterialDisposals'));
 const MassBalanceReport = lazy(() => import('./pages/Reports/MassBalanceReport'));
@@ -129,6 +130,9 @@ function App() {
             <Route path="plantings" element={<PlantingsList />} />
             <Route path="plantings/new" element={<PlantingForm />} />
             <Route path="plantings/edit/:id" element={<PlantingForm />} />
+
+            {/* 研究データ分析 */}
+            <Route path="research" element={<ResearchAnalysis />} />
 
             {/* 養液管理 */}
             <Route path="nutrient-logs" element={<NutrientLogs />} />
