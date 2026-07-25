@@ -9,6 +9,7 @@ import { firestoreLogger } from '../../utils/logger';
 import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
 import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from '../../services/templateService';
 import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
+import { getPlantings, plantingLabel } from '../../services/plantingService';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 import toast from 'react-hot-toast';
 
@@ -32,6 +33,8 @@ const WorkLogForm = () => {
   const isEditMode = !!id;
   const [templates, setTemplates] = useState([]);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [plantings, setPlantings] = useState([]);
+  const [plantingId, setPlantingId] = useState('');
   const defaultsAppliedRef = useRef(false);
 
   // カスタムフックの使用
@@ -63,6 +66,7 @@ const WorkLogForm = () => {
           const existingData = await fetchExistingData(id);
           if (!isCancelled) {
             setFormData(existingData);
+            setPlantingId(existingData.plantingId || '');
           }
         } catch (err) {
           if (!isCancelled) {
@@ -117,6 +121,24 @@ const WorkLogForm = () => {
     });
     defaultsAppliedRef.current = true;
   }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData, selfWorkerId]);
+
+  // 栽培中の作付を読み込む
+  useEffect(() => {
+    const loadPlantings = async () => {
+      if (!currentOrganization) return;
+      try {
+        const list = await getPlantings(currentOrganization.id);
+        setPlantings(list.filter((p) => p.status === '栽培中'));
+      } catch (err) {
+        firestoreLogger.error('作付の取得エラー', { organizationId: currentOrganization?.id }, err);
+      }
+    };
+    loadPlantings();
+  }, [currentOrganization]);
+
+  // 選択中の圃場に属する作付（処理区）
+  const plantingsForField = plantings.filter((p) => p.fieldId === formData.fieldId);
+  const selectedPlanting = plantingsForField.find((p) => p.id === plantingId) || null;
 
   // マイテンプレートを読み込み
   useEffect(() => {
@@ -374,6 +396,14 @@ const WorkLogForm = () => {
         workerNames: selectedWorkers.map(worker => worker.name),
         details: formData.details,
         workHours: formData.workHours ? Number(formData.workHours) : null,
+        // 労働時間の比較には延べ人時（作業時間 × 人数）を使う
+        workerCount: formData.workers.length || null,
+        laborHours: formData.workHours && formData.workers.length
+          ? Number(formData.workHours) * formData.workers.length
+          : null,
+        // 作付（処理区）への紐づけ
+        plantingId: selectedPlanting ? selectedPlanting.id : null,
+        plantingLabel: selectedPlanting ? plantingLabel(selectedPlanting) : '',
         harvestAmount: formData.harvestAmount ? Number(formData.harvestAmount) : null,
         wasteAmount: formData.wasteAmount ? Number(formData.wasteAmount) : null,
         // 施肥関連
@@ -499,6 +529,28 @@ const WorkLogForm = () => {
                 </a>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 作付（処理区）への紐づけ */}
+        {plantingsForField.length > 0 && (
+          <div className="mobile-form-field mb-4">
+            <label className="mobile-form-label block text-gray-700 text-sm font-bold mb-2">
+              作付（処理区）
+            </label>
+            <select
+              className="mobile-select shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              value={plantingId}
+              onChange={(e) => setPlantingId(e.target.value)}
+            >
+              <option value="">紐づけない</option>
+              {plantingsForField.map((p) => (
+                <option key={p.id} value={p.id}>{plantingLabel(p)}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              紐づけると、処理区ごとの作業時間を集計できます。
+            </p>
           </div>
         )}
 

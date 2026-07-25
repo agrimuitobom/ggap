@@ -5,7 +5,14 @@ import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { checkPreHarvestInterval } from '../../services/phiService';
+import { getPlantings, plantingLabel } from '../../services/plantingService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
+import DiscardReasonCounter from '../../components/Harvest/DiscardReasonCounter';
+import {
+  emptyDiscardCounts,
+  normalizeDiscardCounts,
+  sumDiscardCounts
+} from '../../constants/discardReasons';
 import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
 
@@ -28,6 +35,11 @@ const HarvestForm = () => {
   const [notes, setNotes] = useState('');
   const [lotNumber, setLotNumber] = useState('');
   const [disposalAmount, setDisposalAmount] = useState('');
+  // 研究用: 作付（処理区）への紐づけと株数ベースの記録
+  const [plantings, setPlantings] = useState([]);
+  const [plantingId, setPlantingId] = useState('');
+  const [totalPlants, setTotalPlants] = useState('');
+  const [discardCounts, setDiscardCounts] = useState(emptyDiscardCounts());
   const [disposalReason, setDisposalReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditing);
@@ -77,6 +89,11 @@ const HarvestForm = () => {
     return `${dateStr}-${fieldCode}-${cropCode}-${random}`;
   };
 
+  // 株数ベースの集計（廃棄株数は理由別カウントの合計、可販株数は差で求める）
+  const discardedPlants = sumDiscardCounts(discardCounts);
+  const marketablePlants = totalPlants !== '' ? Number(totalPlants) - discardedPlants : null;
+  const plantCountInvalid = marketablePlants != null && marketablePlants < 0;
+
   // 圃場データの読み込み
   useEffect(() => {
     const fetchFields = async () => {
@@ -95,6 +112,10 @@ const HarvestForm = () => {
         }));
 
         setFields(fieldsList);
+
+        // 作付（処理区）も読み込み、収穫記録を紐づけられるようにする
+        const plantingList = await getPlantings(currentOrganization.id);
+        setPlantings(plantingList);
       } catch (error) {
         firestoreLogger.error('圃場データの取得に失敗しました', { organizationId: currentOrganization.id }, error);
         toast.error('圃場データの取得中にエラーが発生しました');
@@ -131,6 +152,9 @@ const HarvestForm = () => {
             setLotNumber(data.lotNumber || '');
             setDisposalAmount(data.disposalAmount?.toString() || '');
             setDisposalReason(data.disposalReason || '');
+            setPlantingId(data.plantingId || '');
+            setTotalPlants(data.totalPlants?.toString() || '');
+            setDiscardCounts(normalizeDiscardCounts(data.discardReasons || {}));
 
             setInitialLoading(false);
           } else {
@@ -186,6 +210,11 @@ const HarvestForm = () => {
       return;
     }
 
+    if (plantCountInvalid) {
+      toast.error('廃棄株数が総株数を超えています');
+      return;
+    }
+
     setLoading(true);
 
     // ロット番号がない場合は自動生成
@@ -198,11 +227,23 @@ const HarvestForm = () => {
     const calculatedDisposalRate = totalAmount > 0 ? ((disposalQty / totalAmount) * 100) : 0;
 
     // 保存するデータの作成
+    const selectedPlanting = plantings.find((p) => p.id === plantingId);
+
     const harvestData = {
       cropName,
       harvestDate: new Date(harvestDate),
       fieldId,
       fieldName,
+      // 作付（処理区）への紐づけ
+      plantingId: plantingId || null,
+      plantingLabel: selectedPlanting ? plantingLabel(selectedPlanting) : '',
+      treatment: selectedPlanting?.treatment || '',
+      replicate: selectedPlanting?.replicate ?? null,
+      // 株数ベースの記録
+      totalPlants: totalPlants !== '' ? Number(totalPlants) : null,
+      marketablePlants: marketablePlants,
+      discardedPlants: totalPlants !== '' || discardedPlants > 0 ? discardedPlants : null,
+      discardReasons: discardedPlants > 0 ? discardCounts : null,
       quantity: Number(quantity),
       unit,
       quality,
@@ -469,6 +510,54 @@ const HarvestForm = () => {
                 トレーサビリティ用の識別番号（空欄時は自動生成）
               </p>
             </div>
+          </div>
+
+          {/* 作付（処理区）への紐づけ */}
+          {plantings.length > 0 && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">作付（処理区）</label>
+              <select
+                value={plantingId}
+                onChange={(e) => {
+                  setPlantingId(e.target.value);
+                  const p = plantings.find((x) => x.id === e.target.value);
+                  if (p?.plantCount && !totalPlants) setTotalPlants(String(p.plantCount));
+                }}
+                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+              >
+                <option value="">紐づけない</option>
+                {plantings.map((p) => (
+                  <option key={p.id} value={p.id}>{plantingLabel(p)}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                作付に紐づけると、処理区どうしの比較や作次別の集計ができます。
+              </p>
+            </div>
+          )}
+
+          {/* 株数・廃棄理由（研究用の記録） */}
+          <div className="mt-6 border-t pt-6">
+            <h3 className="text-sm font-bold text-gray-700 mb-1">株数・廃棄理由</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              株数ベースで記録すると、廃棄率を理由別に分解して比較できます。
+            </p>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">総株数（収穫対象）</label>
+              <input
+                type="number"
+                min="0"
+                value={totalPlants}
+                onChange={(e) => setTotalPlants(e.target.value)}
+                className="w-40 py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder="例: 200"
+              />
+            </div>
+            <DiscardReasonCounter
+              counts={discardCounts}
+              onChange={setDiscardCounts}
+              totalPlants={totalPlants}
+            />
           </div>
 
           {/* 備考 */}

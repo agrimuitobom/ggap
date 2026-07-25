@@ -13,6 +13,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { checkPreHarvestInterval } from '../../services/phiService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
 import VoiceInput from '../../components/common/VoiceInput';
+import DiscardReasonCounter from '../../components/Harvest/DiscardReasonCounter';
+import { emptyDiscardCounts, sumDiscardCounts } from '../../constants/discardReasons';
+import { getPlantings, plantingLabel } from '../../services/plantingService';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -42,8 +45,14 @@ const QuickHarvestForm = () => {
   const { currentUser, userProfile } = useAuth();
 
   const [fields, setFields] = useState([]);
+  const [plantings, setPlantings] = useState([]);
+  const [plantingId, setPlantingId] = useState('');
   const [fetchLoading, setFetchLoading] = useState(true);
   const [fieldId, setFieldId] = useState('');
+  // 株数ベースの記録（研究用）。廃棄理由は入力があるときだけ保存する
+  const [totalPlants, setTotalPlants] = useState('');
+  const [discardCounts, setDiscardCounts] = useState(emptyDiscardCounts());
+  const [showPlantCounts, setShowPlantCounts] = useState(false);
   const [cropName, setCropName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -68,11 +77,15 @@ const QuickHarvestForm = () => {
       if (!currentOrganization) return;
       try {
         setFetchLoading(true);
-        const snapshot = await getDocs(query(
-          collection(db, 'fields'),
-          where('organizationId', '==', currentOrganization.id)
-        ));
+        const [snapshot, plantingList] = await Promise.all([
+          getDocs(query(
+            collection(db, 'fields'),
+            where('organizationId', '==', currentOrganization.id)
+          )),
+          getPlantings(currentOrganization.id)
+        ]);
         setFields(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setPlantings(plantingList.filter((p) => p.status === '栽培中'));
         const savedUnit = localStorage.getItem(unitStorageKey(currentOrganization.id));
         if (savedUnit) setUnit(savedUnit);
       } catch (err) {
@@ -108,12 +121,32 @@ const QuickHarvestForm = () => {
     }
   };
 
-  const canSave = fieldId && cropName && quantity && !saving;
-
   const resetForNext = () => {
     setQuantity('');
     setNotes('');
     setQuality('良');
+    setTotalPlants('');
+    setDiscardCounts(emptyDiscardCounts());
+  };
+
+  const selectedPlanting = plantings.find((p) => p.id === plantingId);
+  const discardedPlants = sumDiscardCounts(discardCounts);
+  const marketablePlants = totalPlants !== '' ? Number(totalPlants) - discardedPlants : null;
+  // 廃棄株数が総株数を超えている状態では保存させない
+  const plantCountInvalid = marketablePlants != null && marketablePlants < 0;
+
+  const canSave = fieldId && cropName && quantity && !plantCountInvalid && !saving;
+
+  const selectPlanting = (p) => {
+    const next = plantingId === p.id ? '' : p.id;
+    setPlantingId(next);
+    if (next) {
+      // 作付を選んだら圃場・作物・株数を引き継ぐ
+      setFieldId(p.fieldId);
+      if (p.cropName) setCropName(p.cropName);
+      if (p.plantCount && !totalPlants) setTotalPlants(String(p.plantCount));
+      setShowPlantCounts(true);
+    }
   };
 
   const handleSave = async (continueAfter) => {
@@ -131,6 +164,16 @@ const QuickHarvestForm = () => {
         harvestDate: selectedDate,
         fieldId,
         fieldName,
+        // 作付（処理区）への紐づけ。処理区どうしの比較に使う
+        plantingId: plantingId || null,
+        plantingLabel: selectedPlanting ? plantingLabel(selectedPlanting) : '',
+        treatment: selectedPlanting?.treatment || '',
+        replicate: selectedPlanting?.replicate ?? null,
+        // 株数ベースの記録（廃棄率の算出に使う。未入力ならnull）
+        totalPlants: totalPlants !== '' ? Number(totalPlants) : null,
+        marketablePlants: marketablePlants,
+        discardedPlants: totalPlants !== '' || discardedPlants > 0 ? discardedPlants : null,
+        discardReasons: discardedPlants > 0 ? discardCounts : null,
         quantity: Number(quantity),
         unit,
         quality,
@@ -235,6 +278,32 @@ const QuickHarvestForm = () => {
         )}
       </div>
 
+      {/* 作付（処理区）: 登録されていれば、まずここから選ぶ */}
+      {plantings.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-4 mb-4">
+          <h2 className="text-sm font-bold text-gray-700 mb-1">作付（処理区）</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            選ぶと圃場・作物・株数が自動で入り、処理区どうしの比較ができるようになります。
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {plantings.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => selectPlanting(p)}
+                className={`px-3 py-2 rounded-full border text-sm ${
+                  plantingId === p.id
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {plantingLabel(p)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 圃場 */}
       <div className="bg-white shadow rounded-lg p-4 mb-4">
         <h2 className="text-sm font-bold text-gray-700 mb-3">どの圃場？ <span className="text-red-500">*</span></h2>
@@ -308,6 +377,52 @@ const QuickHarvestForm = () => {
             {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
+      </div>
+
+      {/* 株数・廃棄理由（研究用の記録） */}
+      <div className="bg-white shadow rounded-lg p-4 mb-4">
+        <button
+          type="button"
+          onClick={() => setShowPlantCounts(!showPlantCounts)}
+          className="w-full flex items-center justify-between text-sm font-bold text-gray-700"
+        >
+          <span>
+            株数・廃棄理由を記録する
+            {discardedPlants > 0 && (
+              <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded-full">
+                廃棄 {discardedPlants}株
+              </span>
+            )}
+          </span>
+          <span className="text-gray-400">{showPlantCounts ? '▲' : '▼'}</span>
+        </button>
+
+        {showPlantCounts && (
+          <div className="mt-3">
+            <div className="mb-3">
+              <label className="block text-sm font-bold text-gray-700 mb-1">総株数（収穫対象）</label>
+              <input
+                type="number"
+                min="0"
+                value={totalPlants}
+                onChange={(e) => setTotalPlants(e.target.value)}
+                className="w-40 border rounded px-3 py-2"
+                placeholder="例: 200"
+              />
+              {selectedPlanting?.plantCount && (
+                <p className="text-xs text-gray-500 mt-1">
+                  この作付の定植株数: {selectedPlanting.plantCount}株
+                </p>
+              )}
+            </div>
+            <p className="text-sm font-bold text-gray-700 mb-2">廃棄した株を理由別に数える</p>
+            <DiscardReasonCounter
+              counts={discardCounts}
+              onChange={setDiscardCounts}
+              totalPlants={totalPlants}
+            />
+          </div>
+        )}
       </div>
 
       {/* 品質 */}

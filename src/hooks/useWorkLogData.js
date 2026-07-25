@@ -119,7 +119,8 @@ export const useWorkLogData = (editId = null) => {
           weather: data.weather || '',
           temperature: data.temperature?.toString() || '',
           windSpeed: data.windSpeed?.toString() || '',
-          photoUrls: data.photoUrls || []
+          photoUrls: data.photoUrls || [],
+          plantingId: data.plantingId || ''
         };
       } else {
         throw new Error('指定された作業日誌データが見つかりません。');

@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useWorkLogData } from '../../hooks/useWorkLogData';
 import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDefaults';
 import { checkPreHarvestInterval } from '../../services/phiService';
+import { getPlantings, plantingLabel } from '../../services/plantingService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
@@ -64,6 +65,18 @@ const QuickWorkLogForm = () => {
   const [lastSaved, setLastSaved] = useState(null); // { workType, fieldName }
   const [phiResult, setPhiResult] = useState(null);
   const [defaultsApplied, setDefaultsApplied] = useState(false);
+  const [plantings, setPlantings] = useState([]);
+  const [plantingId, setPlantingId] = useState('');
+
+  // 栽培中の作付を読み込む（作業を処理区に紐づけて労働時間を比較できるように）
+  useEffect(() => {
+    const loadPlantings = async () => {
+      if (!currentOrganization) return;
+      const list = await getPlantings(currentOrganization.id);
+      setPlantings(list.filter((p) => p.status === '栽培中'));
+    };
+    loadPlantings();
+  }, [currentOrganization]);
 
   const dateChips = [
     { key: 'today', label: '今日', date: new Date() },
@@ -118,6 +131,9 @@ const QuickWorkLogForm = () => {
     return () => { isCancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workType, selectedFieldIds, dateOption, customDate, currentOrganization]);
+
+  // 選択中の圃場に属する作付（処理区）
+  const plantingsForField = plantings.filter((p) => selectedFieldIds.includes(p.fieldId));
 
   const toggleField = (id) => {
     setSelectedFieldIds((prev) =>
@@ -191,6 +207,10 @@ const QuickWorkLogForm = () => {
       selectedFields.forEach((selectedField, index) => {
         const workLogRef = doc(collection(db, 'workLogs'));
         if (index === 0) firstRef = workLogRef;
+        // 選択中の作付がこの圃場のものであれば紐づける
+        const fieldPlanting = plantings.find(
+          (p) => p.id === plantingId && p.fieldId === selectedField.id
+        );
         const workLogData = {
           organizationId: currentOrganization.id,
           date: selectedDate,
@@ -201,6 +221,12 @@ const QuickWorkLogForm = () => {
           workerNames: selectedWorkers.map(w => w.name),
           details: '',
           workHours: workHours ? Number(workHours) : null,
+          // 労働時間の比較には延べ人時（作業時間 × 人数）を使う
+          workerCount: workers.length || null,
+          laborHours: workHours && workers.length ? Number(workHours) * workers.length : null,
+          // 作付（処理区）への紐づけ。その圃場の作付として選ばれている場合のみ
+          plantingId: fieldPlanting ? fieldPlanting.id : null,
+          plantingLabel: fieldPlanting ? plantingLabel(fieldPlanting) : '',
           harvestAmount: null,
           wasteAmount: null,
           photoUrls: index === 0 ? photoUrls : [],
@@ -413,6 +439,32 @@ const QuickWorkLogForm = () => {
           </button>
         )}
       </div>
+
+      {/* 作付（処理区）: 選択中の圃場に作付があれば紐づけられる */}
+      {plantingsForField.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-4 mb-4">
+          <h2 className="text-sm font-bold text-gray-700 mb-1">作付（処理区）</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            紐づけると、処理区ごとの作業時間を集計できます。
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {plantingsForField.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPlantingId(plantingId === p.id ? '' : p.id)}
+                className={`px-3 py-2 rounded-full border text-sm ${
+                  plantingId === p.id
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {plantingLabel(p)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* PHI（収穫前日数）チェック結果 */}
       <PhiWarningBanner phiResult={phiResult} />
