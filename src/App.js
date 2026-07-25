@@ -25,6 +25,9 @@ const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
 const WaterManagement = lazy(() => import('./pages/Water/WaterManagement'));
 const MaterialDisposals = lazy(() => import('./pages/Materials/MaterialDisposals'));
 const MassBalanceReport = lazy(() => import('./pages/Reports/MassBalanceReport'));
+const Complaints = lazy(() => import('./pages/Compliance/Complaints'));
+const Equipment = lazy(() => import('./pages/Compliance/Equipment'));
+const Incidents = lazy(() => import('./pages/Compliance/Incidents'));
 const SelfAssessmentList = lazy(() => import('./pages/SelfAssessment/SelfAssessmentList'));
 const SelfAssessmentDetail = lazy(() => import('./pages/SelfAssessment/SelfAssessmentDetail'));
 const FieldsList = lazy(() => import('./pages/FieldManagement/FieldsList'));
@@ -128,6 +131,11 @@ function App() {
 
             {/* 資材の保管・廃棄 */}
             <Route path="material-disposals" element={<MaterialDisposals />} />
+
+            {/* コンプライアンス記録 */}
+            <Route path="complaints" element={<Complaints />} />
+            <Route path="equipment" element={<Equipment />} />
+            <Route path="incidents" element={<Incidents />} />
 
             {/* 自己点検（内部監査） */}
             <Route path="self-assessments" element={<SelfAssessmentList />} />

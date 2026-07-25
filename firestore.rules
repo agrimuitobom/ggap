@@ -284,6 +284,39 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // 苦情処理・模擬回収テスト記録
+    match /complaints/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /recallTests/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 機器と校正・点検記録
+    match /equipments/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /equipmentChecks/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 事故・ヒヤリハット記録
+    match /incidents/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 自己点検（内部監査）記録
     match /selfAssessments/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

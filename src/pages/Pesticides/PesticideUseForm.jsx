@@ -25,6 +25,7 @@ const PesticideUseForm = () => {
     amount: '',
     unit: 'L',
     treatedArea: '',
+    ppeUsed: false,
     method: '',
     weather: '',
     temperature: '',
@@ -144,6 +145,7 @@ const PesticideUseForm = () => {
               amount: data.amount?.toString() || '',
               unit: data.unit || 'L',
               treatedArea: data.treatedArea?.toString() || '',
+              ppeUsed: data.ppeUsed || false,
               method: data.method || '',
               weather: data.weather || '',
               temperature: data.temperature?.toString() || '',
@@ -167,10 +169,10 @@ const PesticideUseForm = () => {
   }, [id, isEditMode, navigate, currentOrganization]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     });
 
     // 農薬を選んだら前回使用時の値を空欄に自動補完（新規登録時のみ）
@@ -222,6 +224,7 @@ const PesticideUseForm = () => {
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,
         treatedArea: formData.treatedArea ? Number(formData.treatedArea) : null,
+        ppeUsed: !!formData.ppeUsed,
         method: formData.method,
         weather: formData.weather,
         temperature: formData.temperature ? Number(formData.temperature) : null,
@@ -462,6 +465,20 @@ const PesticideUseForm = () => {
               単位面積あたり: <span className="font-semibold">{areaRate}</span>
             </p>
           )}
+        </div>
+
+        {/* 保護具（PPE）の着用確認: 労働安全衛生の記録として審査で確認される */}
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded p-3">
+          <label className="flex items-center gap-2 text-sm font-bold text-amber-900">
+            <input
+              type="checkbox"
+              name="ppeUsed"
+              checked={!!formData.ppeUsed}
+              onChange={handleChange}
+              className="h-5 w-5"
+            />
+            保護具（マスク・手袋・保護メガネ等）を着用して作業した
+          </label>
         </div>
 
         <div className="mb-4">
