@@ -258,6 +258,32 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // 水源・水質検査記録
+    match /waterSources/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /waterTests/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 資材の保管場所・廃棄記録
+    match /storageLocations/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    match /materialDisposals/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 自己点検（内部監査）記録
     match /selfAssessments/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

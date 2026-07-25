@@ -22,6 +22,9 @@ const WorkLogCalendar = lazy(() => import('./pages/WorkLogs/WorkLogCalendar'));
 const CleaningCheck = lazy(() => import('./pages/Cleaning/CleaningCheck'));
 const CleaningItemsManager = lazy(() => import('./pages/Cleaning/CleaningItemsManager'));
 const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
+const WaterManagement = lazy(() => import('./pages/Water/WaterManagement'));
+const MaterialDisposals = lazy(() => import('./pages/Materials/MaterialDisposals'));
+const MassBalanceReport = lazy(() => import('./pages/Reports/MassBalanceReport'));
 const SelfAssessmentList = lazy(() => import('./pages/SelfAssessment/SelfAssessmentList'));
 const SelfAssessmentDetail = lazy(() => import('./pages/SelfAssessment/SelfAssessmentDetail'));
 const FieldsList = lazy(() => import('./pages/FieldManagement/FieldsList'));
@@ -120,6 +123,12 @@ function App() {
             {/* 養液管理 */}
             <Route path="nutrient-logs" element={<NutrientLogs />} />
 
+            {/* 水源・水質管理 */}
+            <Route path="water" element={<WaterManagement />} />
+
+            {/* 資材の保管・廃棄 */}
+            <Route path="material-disposals" element={<MaterialDisposals />} />
+
             {/* 自己点検（内部監査） */}
             <Route path="self-assessments" element={<SelfAssessmentList />} />
             <Route path="self-assessments/:id" element={<SelfAssessmentDetail />} />
@@ -195,6 +204,7 @@ function App() {
             <Route path="reports/business-analytics" element={<BusinessAnalytics />} />
             <Route path="reports/training" element={<TrainingReport />} />
             <Route path="reports/traceability" element={<TraceabilityReport />} />
+            <Route path="reports/mass-balance" element={<MassBalanceReport />} />
 
             {/* 組織管理 */}
             <Route path="organizations/settings" element={<OrganizationSettings />} />
