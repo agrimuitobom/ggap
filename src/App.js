@@ -22,6 +22,8 @@ const WorkLogCalendar = lazy(() => import('./pages/WorkLogs/WorkLogCalendar'));
 const CleaningCheck = lazy(() => import('./pages/Cleaning/CleaningCheck'));
 const CleaningItemsManager = lazy(() => import('./pages/Cleaning/CleaningItemsManager'));
 const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
+const PlantingsList = lazy(() => import('./pages/Plantings/PlantingsList'));
+const PlantingForm = lazy(() => import('./pages/Plantings/PlantingForm'));
 const WaterManagement = lazy(() => import('./pages/Water/WaterManagement'));
 const MaterialDisposals = lazy(() => import('./pages/Materials/MaterialDisposals'));
 const MassBalanceReport = lazy(() => import('./pages/Reports/MassBalanceReport'));
@@ -122,6 +124,11 @@ function App() {
             {/* 清掃チェック */}
             <Route path="cleaning" element={<CleaningCheck />} />
             <Route path="cleaning/items" element={<CleaningItemsManager />} />
+
+            {/* 作付・処理区 */}
+            <Route path="plantings" element={<PlantingsList />} />
+            <Route path="plantings/new" element={<PlantingForm />} />
+            <Route path="plantings/edit/:id" element={<PlantingForm />} />
 
             {/* 養液管理 */}
             <Route path="nutrient-logs" element={<NutrientLogs />} />

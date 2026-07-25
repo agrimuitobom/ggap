@@ -78,6 +78,10 @@ const MainLayout = () => {
             🧹 清掃チェック
           </Link>
 
+          <Link to="/plantings" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
+            🌱 作付・処理区
+          </Link>
+
           <Link to="/nutrient-logs" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
             💧 養液管理記録
           </Link>

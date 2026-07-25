@@ -251,6 +251,13 @@ service cloud.firestore {
                                 ('userId' in resource.data && resource.data.userId == request.auth.uid));
     }
 
+    // 作付（栽培サイクル・処理区）
+    match /plantings/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 養液管理記録（EC・pH・水温など）
     match /nutrientLogs/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

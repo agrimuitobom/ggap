@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import VoiceInput from '../../components/common/VoiceInput';
 import { usesNutrientSolution } from '../../constants/cultivation';
+import { getPlantings, plantingLabel } from '../../services/plantingService';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -41,12 +42,14 @@ const NutrientLogs = () => {
   const { currentOrganization, isMember } = useOrganization();
 
   const [fields, setFields] = useState([]);
+  const [plantings, setPlantings] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [dateStr, setDateStr] = useState(toDateString(new Date()));
   const [fieldId, setFieldId] = useState('');
+  const [plantingId, setPlantingId] = useState('');
   const [ec, setEc] = useState('');
   const [ph, setPh] = useState('');
   const [waterTemp, setWaterTemp] = useState('');
@@ -58,15 +61,19 @@ const NutrientLogs = () => {
     if (!currentOrganization) return;
     try {
       setLoading(true);
-      const [fieldsSnap, logsSnap] = await Promise.all([
+      const [fieldsSnap, logsSnap, plantingList] = await Promise.all([
         getDocs(query(collection(db, 'fields'), where('organizationId', '==', currentOrganization.id))),
         getDocs(query(
           collection(db, 'nutrientLogs'),
           where('organizationId', '==', currentOrganization.id),
           orderBy('date', 'desc'),
           limit(50)
-        ))
+        )),
+        getPlantings(currentOrganization.id)
       ]);
+
+      // 処理区ごとに養液の目標ECが異なるため、栽培中の作付を選べるようにする
+      setPlantings(plantingList.filter((p) => p.status === '栽培中'));
       // 養液管理の対象は水耕・養液土耕のみ。
       // 栽培方式が未設定の圃場は、設定前でも記録できるよう含める。
       setFields(
@@ -89,10 +96,17 @@ const NutrientLogs = () => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const selectedPlanting = plantings.find((p) => p.id === plantingId);
+  // 目標ECが設定されていれば、その値からの乖離で判定する（許容幅 ±0.3 mS/cm）
+  const targetEc = selectedPlanting?.targetEc ?? null;
+  const ecDeviation = (targetEc != null && ec !== '') ? Number(ec) - targetEc : null;
+  const offTarget = ecDeviation != null && Math.abs(ecDeviation) > 0.3;
+
   const ecStatus = judge('ec', ec);
   const phStatus = judge('ph', ph);
   const tempStatus = judge('waterTemp', waterTemp);
-  const hasWarning = [ecStatus, phStatus, tempStatus].some((s) => s === 'low' || s === 'high');
+  const hasWarning =
+    [ecStatus, phStatus, tempStatus].some((s) => s === 'low' || s === 'high') || offTarget;
 
   const canSave = fieldId && (ec !== '' || ph !== '' || waterTemp !== '') && !saving;
 
@@ -106,6 +120,11 @@ const NutrientLogs = () => {
         date: new Date(`${dateStr}T00:00:00`),
         fieldId,
         fieldName: selectedField?.name || '',
+        // 作付（処理区）に紐づけると、処理区ごとのEC推移が比較できる
+        plantingId: plantingId || null,
+        plantingLabel: selectedPlanting ? plantingLabel(selectedPlanting) : '',
+        treatment: selectedPlanting?.treatment || '',
+        targetEc: targetEc,
         ec: ec !== '' ? Number(ec) : null,
         ph: ph !== '' ? Number(ph) : null,
         waterTemp: waterTemp !== '' ? Number(waterTemp) : null,
@@ -121,6 +140,7 @@ const NutrientLogs = () => {
       });
       toast.success('養液管理記録を保存しました');
       setEc(''); setPh(''); setWaterTemp(''); setReplenishAmount(''); setAdjustment(''); setNotes('');
+      // 圃場・作付の選択は残し、連続して記録できるようにする
       await loadData();
     } catch (err) {
       firestoreLogger.error('養液管理記録の保存エラー', { organizationId: currentOrganization?.id }, err);
@@ -235,12 +255,50 @@ const NutrientLogs = () => {
             )}
           </div>
 
+          {/* 作付（処理区）: 同じ圃場に処理区が複数ある場合、どの区の養液かを記録する */}
+          {fieldId && plantings.filter((p) => p.fieldId === fieldId).length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-gray-700 mb-1">作付（処理区）</label>
+              <div className="flex flex-wrap gap-2">
+                {plantings.filter((p) => p.fieldId === fieldId).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPlantingId(plantingId === p.id ? '' : p.id)}
+                    className={`px-3 py-2 rounded-full border text-sm ${
+                      plantingId === p.id
+                        ? 'border-green-600 bg-green-600 text-white'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {plantingLabel(p)}
+                    {p.targetEc != null && (
+                      <span className={plantingId === p.id ? 'text-green-100' : 'text-gray-500'}>
+                        {' '}(目標EC {p.targetEc})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 測定値 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             {renderMeasureInput('ec', ec, setEc, '0.1')}
             {renderMeasureInput('ph', ph, setPh, '0.1')}
             {renderMeasureInput('waterTemp', waterTemp, setWaterTemp, '0.1')}
           </div>
+
+          {/* 目標ECとの差 */}
+          {targetEc != null && ec !== '' && (
+            <div className={`rounded p-3 mb-4 text-sm border ${
+              offTarget ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-green-50 border-green-300 text-green-800'
+            }`}>
+              目標EC {targetEc} に対して実測 {ec}（差 {ecDeviation > 0 ? '+' : ''}{ecDeviation.toFixed(1)}）
+              {offTarget && ' — 目標から離れています。調整内容を記入しておきましょう。'}
+            </div>
+          )}
 
           {/* 補給量・調整内容 */}
           <div className="mb-4">
@@ -329,7 +387,12 @@ const NutrientLogs = () => {
               {logs.map((log) => (
                 <tr key={log.id} className={`border-t ${log.outOfRange ? 'bg-red-50' : ''}`}>
                   <td className="py-2 px-3 whitespace-nowrap">{log.date?.toLocaleDateString('ja-JP') || '-'}</td>
-                  <td className="py-2 px-3 whitespace-nowrap">{log.fieldName || '-'}</td>
+                  <td className="py-2 px-3 whitespace-nowrap">
+                    {log.fieldName || '-'}
+                    {log.plantingLabel && (
+                      <span className="block text-xs text-gray-500">{log.plantingLabel}</span>
+                    )}
+                  </td>
                   <td className={`py-2 px-3 whitespace-nowrap ${judge('ec', log.ec) === 'ok' ? '' : 'text-red-600 font-bold'}`}>
                     {log.ec ?? '-'}
                   </td>
