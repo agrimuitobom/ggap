@@ -9,6 +9,7 @@ import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import VoiceInput from '../../components/common/VoiceInput';
+import { usesNutrientSolution } from '../../constants/cultivation';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -66,7 +67,13 @@ const NutrientLogs = () => {
           limit(50)
         ))
       ]);
-      setFields(fieldsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      // 養液管理の対象は水耕・養液土耕のみ。
+      // 栽培方式が未設定の圃場は、設定前でも記録できるよう含める。
+      setFields(
+        fieldsSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((f) => !f.cultivationType || usesNutrientSolution(f.cultivationType))
+      );
       setLogs(logsSnap.docs.map((d) => ({
         id: d.id,
         ...d.data(),
@@ -205,7 +212,9 @@ const NutrientLogs = () => {
               対象の圃場・ベッド <span className="text-red-500">*</span>
             </label>
             {fields.length === 0 ? (
-              <p className="text-sm text-gray-500">圃場が登録されていません。</p>
+              <p className="text-sm text-gray-500">
+                養液管理の対象となる圃場がありません。圃場管理で栽培方式を「水耕」または「養液土耕」に設定してください。
+              </p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {fields.map((f) => (
