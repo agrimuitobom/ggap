@@ -317,6 +317,13 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // 生物多様性モニタリング（定期観察）
+    match /biodiversitySurveys/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 事故・ヒヤリハット記録
     match /incidents/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

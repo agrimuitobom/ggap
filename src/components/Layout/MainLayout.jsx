@@ -307,6 +307,9 @@ const MainLayout = () => {
                 <Link to="/complaints" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   苦情・回収テスト
                 </Link>
+                <Link to="/biodiversity" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  生物多様性モニタリング
+                </Link>
               </div>
             )}
           </div>

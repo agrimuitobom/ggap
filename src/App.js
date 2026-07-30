@@ -25,6 +25,8 @@ const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
 const PlantingsList = lazy(() => import('./pages/Plantings/PlantingsList'));
 const PlantingForm = lazy(() => import('./pages/Plantings/PlantingForm'));
 const ResearchAnalysis = lazy(() => import('./pages/Research/ResearchAnalysis'));
+const BiodiversityList = lazy(() => import('./pages/Biodiversity/BiodiversityList'));
+const BiodiversitySurveyForm = lazy(() => import('./pages/Biodiversity/BiodiversitySurveyForm'));
 const WaterManagement = lazy(() => import('./pages/Water/WaterManagement'));
 const MaterialDisposals = lazy(() => import('./pages/Materials/MaterialDisposals'));
 const MassBalanceReport = lazy(() => import('./pages/Reports/MassBalanceReport'));
@@ -133,6 +135,11 @@ function App() {
 
             {/* 研究データ分析 */}
             <Route path="research" element={<ResearchAnalysis />} />
+
+            {/* 生物多様性モニタリング */}
+            <Route path="biodiversity" element={<BiodiversityList />} />
+            <Route path="biodiversity/new" element={<BiodiversitySurveyForm />} />
+            <Route path="biodiversity/edit/:id" element={<BiodiversitySurveyForm />} />
 
             {/* 養液管理 */}
             <Route path="nutrient-logs" element={<NutrientLogs />} />
