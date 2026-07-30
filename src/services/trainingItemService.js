@@ -1,0 +1,138 @@
+// src/services/trainingItemService.js
+// 教育訓練の項目マスタ（年間計画）。
+//
+// 「何を教えるか」を年度ごとに定義しておき、日々の実施記録はここから選ぶだけにする。
+// 計画（マスタ）と実施記録（ログ）を分けることで、
+// 「計画どおり実施できているか」を審査で示せるようにする。
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  where,
+  serverTimestamp
+} from 'firebase/firestore';
+import { db } from './firebase';
+import { firestoreLogger } from '../utils/logger';
+
+// 実施頻度の目安
+export const TRAINING_FREQUENCIES = ['実習の都度', '毎月', '学期ごと', '年度当初', '年1回', '随時'];
+
+// 受講者の区分（学年単位で記録するのが実際の運用に合う）
+export const DEFAULT_AUDIENCES = [
+  '教職員',
+  '1年生',
+  '2年生',
+  '3年生',
+  '1・2・3年生',
+  '1・2年生'
+];
+
+// 教育訓練計画の項目①〜⑩
+export const DEFAULT_TRAINING_ITEMS = [
+  { code: '①', title: '農場全体の衛生管理', frequency: '年度当初' },
+  { code: '②', title: '基本の身だしなみ・体調チェック', frequency: '実習の都度' },
+  { code: '③', title: '機械操作時の身だしなみ・応急処置方法', frequency: '実習の都度' },
+  { code: '④', title: '農薬散布時の服装・熱中症対策', frequency: '随時' },
+  { code: '⑤', title: '農薬事故への対応手順', frequency: '年1回' },
+  { code: '⑥', title: '収穫・選果・保管の衛生・収穫容器の取扱', frequency: '学期ごと' },
+  { code: '⑦', title: '苦情処理等の手順', frequency: '年1回' },
+  { code: '⑧', title: '生徒の健康管理及び衛生面について', frequency: '実習の都度' },
+  { code: '⑨', title: '獣害モニタリング', frequency: '随時' },
+  { code: '⑩', title: '1年間の反省と次年度の課題', frequency: '年1回' }
+];
+
+/** 年度（4月始まり）を求める */
+export const fiscalYearOf = (date) => {
+  const d = new Date(date);
+  return d.getMonth() + 1 >= 4 ? d.getFullYear() : d.getFullYear() - 1;
+};
+
+/** 訓練項目の一覧を取得（順番どおり） */
+export const getTrainingItems = async (organizationId) => {
+  const snapshot = await getDocs(query(
+    collection(db, 'trainingItems'),
+    where('organizationId', '==', organizationId)
+  ));
+  const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return items;
+};
+
+/** 標準の訓練項目をまとめて登録 */
+export const seedDefaultTrainingItems = async (organizationId) => {
+  const created = [];
+  for (let i = 0; i < DEFAULT_TRAINING_ITEMS.length; i++) {
+    const item = DEFAULT_TRAINING_ITEMS[i];
+    const data = {
+      organizationId,
+      code: item.code || '',
+      title: item.title,
+      frequency: item.frequency,
+      description: '',
+      order: i,
+      active: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    const ref = await addDoc(collection(db, 'trainingItems'), data);
+    created.push({ id: ref.id, ...data });
+  }
+  firestoreLogger.info('標準の教育訓練項目を登録しました', { organizationId, count: created.length });
+  return created;
+};
+
+/** 訓練項目を保存（新規 or 更新） */
+export const saveTrainingItem = async (organizationId, itemId, form) => {
+  const data = {
+    organizationId,
+    code: form.code || '',
+    title: form.title.trim(),
+    frequency: form.frequency || '',
+    description: form.description || '',
+    order: form.order ?? 0,
+    active: form.active !== false,
+    updatedAt: serverTimestamp()
+  };
+  if (itemId) {
+    await updateDoc(doc(db, 'trainingItems', itemId), data);
+    return itemId;
+  }
+  const ref = await addDoc(collection(db, 'trainingItems'), { ...data, createdAt: serverTimestamp() });
+  return ref.id;
+};
+
+/** 訓練項目を削除 */
+export const deleteTrainingItem = async (itemId) => {
+  await deleteDoc(doc(db, 'trainingItems', itemId));
+};
+
+/**
+ * 年度内の実施状況を項目ごとに集計する。
+ * 「計画した項目を実施できているか」を確認するために使う。
+ */
+export const summarizeItemProgress = (items, trainings, fiscalYear) => {
+  const inYear = trainings.filter((t) => {
+    const d = t.trainingDate;
+    return d && fiscalYearOf(d) === fiscalYear;
+  });
+
+  return items.map((item) => {
+    const done = inYear.filter((t) => (t.itemIds || []).includes(item.id));
+    const lastDate = done.reduce((latest, t) => {
+      const d = t.trainingDate;
+      return !latest || (d && d > latest) ? d : latest;
+    }, null);
+    // のべ受講者数（同じ人が複数回受けた場合も回数として数える）
+    const attendeeTotal = done.reduce((sum, t) => sum + (t.attendeeNames?.length || 0), 0);
+    return {
+      item,
+      count: done.length,
+      lastDate,
+      attendeeTotal
+    };
+  });
+};

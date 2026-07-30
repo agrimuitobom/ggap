@@ -61,6 +61,8 @@ const VisitorsList = lazy(() => import('./pages/Visitors/VisitorsList'));
 const VisitorForm = lazy(() => import('./pages/Visitors/VisitorForm'));
 const TrainingsList = lazy(() => import('./pages/Trainings/TrainingsList'));
 const TrainingForm = lazy(() => import('./pages/Trainings/TrainingForm'));
+const QuickTrainingForm = lazy(() => import('./pages/Trainings/QuickTrainingForm'));
+const TrainingItemsManager = lazy(() => import('./pages/Trainings/TrainingItemsManager'));
 const WorkersList = lazy(() => import('./pages/Workers/WorkersList'));
 const WorkerForm = lazy(() => import('./pages/Workers/WorkerForm'));
 const GroupsList = lazy(() => import('./pages/Groups/GroupsList'));
@@ -210,6 +212,8 @@ function App() {
             
             {/* 教育・訓練記録 */}
             <Route path="trainings" element={<TrainingsList />} />
+            <Route path="trainings/quick" element={<QuickTrainingForm />} />
+            <Route path="trainings/items" element={<TrainingItemsManager />} />
             <Route path="trainings/new" element={<TrainingForm />} />
             <Route path="trainings/edit/:id" element={<TrainingForm />} />
 
