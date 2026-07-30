@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { deleteHarvestForWorkLog } from '../../services/harvestSyncService';
 import { firestoreLogger } from '../../utils/logger';
 
 const WorkLogsList = () => {
@@ -57,6 +58,8 @@ const WorkLogsList = () => {
     }
 
     try {
+      // この作業日誌から作られた収穫記録も一緒に取り消す（集計に残らないように）
+      await deleteHarvestForWorkLog(currentOrganization.id, id);
       await deleteDoc(doc(db, 'workLogs', id));
       setWorkLogs(workLogs.filter(log => log.id !== id));
       setDeleteConfirm(null);

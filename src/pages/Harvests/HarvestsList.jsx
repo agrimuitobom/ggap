@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { findUnsyncedHarvestWorkLogs, backfillHarvests } from '../../services/harvestSyncService';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
+
+const toDateString = (date) => {
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
+};
 
 const HarvestsList = () => {
   const navigate = useNavigate();
@@ -13,58 +20,135 @@ const HarvestsList = () => {
   const [loading, setLoading] = useState(true);
   const { currentOrganization } = useOrganization();
 
-  useEffect(() => {
-    const fetchHarvests = async () => {
-      if (!currentOrganization) {
-        setLoading(false);
-        return;
-      }
+  // 集計期間（廃棄率などの算出範囲）
+  const [periodPreset, setPeriodPreset] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState(toDateString(new Date()));
 
-      try {
-        const harvestsQuery = query(
-          collection(db, 'harvests'),
-          where('organizationId', '==', currentOrganization.id),
-          orderBy('harvestDate', 'desc')
-        );
+  // 作業日誌にあって収穫記録に未反映のもの
+  const [unsynced, setUnsynced] = useState([]);
+  const [syncing, setSyncing] = useState(false);
 
-        const querySnapshot = await getDocs(harvestsQuery);
-        const harvestsList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+  const fetchHarvests = useCallback(async () => {
+    if (!currentOrganization) {
+      setLoading(false);
+      return;
+    }
 
-        setHarvests(harvestsList);
-        setLoading(false);
-      } catch (error) {
-        firestoreLogger.error('収穫記録の取得に失敗しました', { organizationId: currentOrganization.id }, error);
-        toast.error('収穫記録の取得中にエラーが発生しました');
-        setLoading(false);
-      }
-    };
+    try {
+      const harvestsQuery = query(
+        collection(db, 'harvests'),
+        where('organizationId', '==', currentOrganization.id),
+        orderBy('harvestDate', 'desc')
+      );
 
-    fetchHarvests();
+      const querySnapshot = await getDocs(harvestsQuery);
+      const harvestsList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setHarvests(harvestsList);
+
+      // 作業日誌の収穫で未反映のものを確認する
+      const pending = await findUnsyncedHarvestWorkLogs(currentOrganization.id);
+      setUnsynced(pending);
+      setLoading(false);
+    } catch (error) {
+      firestoreLogger.error('収穫記録の取得に失敗しました', { organizationId: currentOrganization.id }, error);
+      toast.error('収穫記録の取得中にエラーが発生しました');
+      setLoading(false);
+    }
   }, [currentOrganization]);
 
-  // 全体の廃棄率を計算
+  useEffect(() => {
+    fetchHarvests();
+  }, [fetchHarvests]);
+
+  // 作業日誌の収穫を収穫記録に取り込む
+  const handleBackfill = async () => {
+    if (!currentOrganization || unsynced.length === 0) return;
+    if (!window.confirm(`作業日誌の収穫 ${unsynced.length}件を収穫記録に取り込みます。よろしいですか？`)) return;
+    setSyncing(true);
+    try {
+      const fieldsSnap = await getDocs(query(
+        collection(db, 'fields'),
+        where('organizationId', '==', currentOrganization.id)
+      ));
+      const fields = fieldsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const count = await backfillHarvests(currentOrganization.id, unsynced, fields);
+      toast.success(`${count}件を収穫記録に取り込みました`);
+      await fetchHarvests();
+    } catch (error) {
+      firestoreLogger.error('収穫記録の取り込みに失敗しました', { organizationId: currentOrganization.id }, error);
+      toast.error('取り込み中にエラーが発生しました');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // 期間で絞り込んだ収穫記録
+  const filteredHarvests = useMemo(() => {
+    if (!startDate && !endDate) return harvests;
+    const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+    const end = endDate ? new Date(`${endDate}T23:59:59`) : null;
+    return harvests.filter((h) => {
+      const d = h.harvestDate?.toDate ? h.harvestDate.toDate() : h.harvestDate ? new Date(h.harvestDate) : null;
+      if (!d) return false;
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    });
+  }, [harvests, startDate, endDate]);
+
+  // 期間プリセットの適用
+  const applyPreset = (preset) => {
+    setPeriodPreset(preset);
+    const today = new Date();
+    if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'thisMonth') {
+      setStartDate(toDateString(new Date(today.getFullYear(), today.getMonth(), 1)));
+      setEndDate(toDateString(today));
+    } else if (preset === 'thisYear') {
+      setStartDate(toDateString(new Date(today.getFullYear(), 0, 1)));
+      setEndDate(toDateString(today));
+    } else if (preset === 'last3Months') {
+      setStartDate(toDateString(new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())));
+      setEndDate(toDateString(today));
+    }
+  };
+
+  // 期間内の廃棄率を計算
   const totalStats = useMemo(() => {
     let totalHarvest = 0;
     let totalDisposal = 0;
+    // 株数ベースの集計（記録があるものだけ）
+    let totalPlants = 0;
+    let discardedPlants = 0;
 
-    harvests.forEach(harvest => {
+    filteredHarvests.forEach(harvest => {
       totalHarvest += parseFloat(harvest.quantity) || 0;
       totalDisposal += parseFloat(harvest.disposalAmount) || 0;
+      totalPlants += Number(harvest.totalPlants) || 0;
+      discardedPlants += Number(harvest.discardedPlants) || 0;
     });
 
     const totalAmount = totalHarvest + totalDisposal;
     const disposalRate = totalAmount > 0 ? ((totalDisposal / totalAmount) * 100).toFixed(1) : 0;
+    const plantDiscardRate = totalPlants > 0 ? ((discardedPlants / totalPlants) * 100).toFixed(1) : null;
 
     return {
       totalHarvest: totalHarvest.toFixed(1),
       totalDisposal: totalDisposal.toFixed(1),
       totalAmount: totalAmount.toFixed(1),
-      disposalRate
+      disposalRate,
+      totalPlants,
+      discardedPlants,
+      plantDiscardRate
     };
-  }, [harvests]);
+  }, [filteredHarvests]);
 
   const handleDelete = async (id) => {
     if (window.confirm('この収穫記録を削除してもよろしいですか？')) {
@@ -99,6 +183,67 @@ const HarvestsList = () => {
               <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
             </svg>
           </Link>
+        </div>
+      </div>
+
+      {/* 作業日誌の収穫が未反映の場合の取り込み案内 */}
+      {unsynced.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 mb-4">
+          <p className="text-sm text-amber-900 mb-2">
+            ⚠️ 作業日誌に「収穫」として記録されているが、収穫記録に反映されていないものが
+            <span className="font-bold">{unsynced.length}件</span>あります。
+            取り込むと、廃棄率の集計・トレーサビリティ・マスバランスに反映されます。
+          </p>
+          <button
+            onClick={handleBackfill}
+            disabled={syncing}
+            className="px-4 py-2 bg-amber-600 text-white text-sm font-bold rounded hover:bg-amber-700 disabled:opacity-50"
+          >
+            {syncing ? '取り込み中...' : '収穫記録に取り込む'}
+          </button>
+        </div>
+      )}
+
+      {/* 集計期間の指定 */}
+      <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <p className="text-sm font-bold text-gray-700 mb-2">集計期間</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[
+            { key: 'all', label: '全期間' },
+            { key: 'thisMonth', label: '今月' },
+            { key: 'last3Months', label: '過去3ヶ月' },
+            { key: 'thisYear', label: '今年' }
+          ].map((p) => (
+            <button
+              key={p.key}
+              onClick={() => applyPreset(p.key)}
+              className={`px-4 py-2 rounded-full border text-sm ${
+                periodPreset === p.key
+                  ? 'border-green-600 bg-green-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setPeriodPreset('custom'); }}
+            className="border rounded px-3 py-2 text-sm"
+          />
+          <span className="text-gray-500">〜</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => { setEndDate(e.target.value); setPeriodPreset('custom'); }}
+            className="border rounded px-3 py-2 text-sm"
+          />
+          <span className="text-sm text-gray-500 ml-auto">
+            対象 {filteredHarvests.length} 件 / 全 {harvests.length} 件
+          </span>
         </div>
       </div>
 
@@ -143,11 +288,27 @@ const HarvestsList = () => {
         </div>
       )}
 
+      {/* 株数ベースの廃棄率（記録がある場合のみ） */}
+      {totalStats.plantDiscardRate != null && (
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <p className="text-xs text-gray-500 mb-1">株数ベースの廃棄率（期間内）</p>
+          <p className="text-xl font-bold text-gray-800">
+            {totalStats.plantDiscardRate}%
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              （廃棄 {totalStats.discardedPlants} 株 / 総 {totalStats.totalPlants} 株）
+            </span>
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            株の大小に左右されないため、研究では株数ベースの廃棄率を主に使います。
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
         </div>
-      ) : harvests.length > 0 ? (
+      ) : filteredHarvests.length > 0 ? (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -179,7 +340,7 @@ const HarvestsList = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {harvests.map((harvest) => {
+              {filteredHarvests.map((harvest) => {
                 const disposalRate = harvest.disposalRate || 0;
                 return (
                   <tr
@@ -263,7 +424,7 @@ const HarvestsList = () => {
             </tbody>
           </table>
           <div className="bg-gray-50 px-4 py-2 border-t">
-            <p className="text-sm text-gray-500">{harvests.length}件の収穫記録</p>
+            <p className="text-sm text-gray-500">{filteredHarvests.length}件の収穫記録</p>
           </div>
         </div>
       ) : (

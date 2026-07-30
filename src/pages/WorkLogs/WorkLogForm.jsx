@@ -10,6 +10,7 @@ import { loadWorkLogDefaults, saveWorkLogDefaults } from '../../utils/workLogDef
 import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from '../../services/templateService';
 import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
 import { getPlantings, plantingLabel } from '../../services/plantingService';
+import { syncHarvestFromWorkLog } from '../../services/harvestSyncService';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 import toast from 'react-hot-toast';
 
@@ -432,12 +433,20 @@ const WorkLogForm = () => {
         updatedAt: serverTimestamp()
       };
 
+      // 収穫記録に反映するための作物名（作付 → 圃場の栽培中作物 の順に採用）
+      const harvestCropName = selectedPlanting?.cropName || selectedField?.currentCrop || '';
+
       if (isEditMode) {
         await updateDoc(doc(db, 'workLogs', id), workLogData);
 
         // 関連レコードを一度削除して再作成（整合性を保つため）
         await deleteRelatedRecords(id);
         await createRelatedRecords(doc(db, 'workLogs', id), selectedField);
+
+        // 収穫は harvests に反映する（作り直しではなく更新するのでロット番号は保たれる）
+        await syncHarvestFromWorkLog(currentOrganization.id, id, workLogData, {
+          cropName: harvestCropName
+        });
 
         setFormMessage('作業日誌が正常に更新されました');
       } else {
@@ -448,6 +457,10 @@ const WorkLogForm = () => {
 
         // 関連資材記録を作成
         await createRelatedRecords(workLogRef, selectedField);
+
+        await syncHarvestFromWorkLog(currentOrganization.id, workLogRef.id, workLogData, {
+          cropName: harvestCropName
+        });
 
         setFormMessage('作業日誌が正常に登録されました');
         resetForm();
