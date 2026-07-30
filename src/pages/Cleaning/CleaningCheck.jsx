@@ -410,10 +410,12 @@ const CleaningCheck = () => {
             </div>
           ) : (
             <div className="bg-white shadow rounded-lg overflow-x-auto">
-              <table className="border-collapse text-sm">
+              {/* table-fixed: 列幅を内容に左右されず一定に保つ
+                  （自動レイアウトだと2桁の日付の列だけ広くなってしまう） */}
+              <table className="border-collapse text-sm table-fixed">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 bg-gray-100 border px-3 py-2 text-left whitespace-nowrap min-w-44">
+                    <th className="sticky left-0 z-10 bg-gray-100 border px-3 py-2 text-left whitespace-nowrap w-44">
                       項目
                     </th>
                     {monthDays.map((day) => {
@@ -422,7 +424,7 @@ const CleaningCheck = () => {
                       return (
                         <th
                           key={day.toISOString()}
-                          className={`border px-1 py-2 text-center w-9 ${
+                          className={`border px-1 py-2 text-center w-10 ${
                             wd === 0 ? 'text-red-500' : wd === 6 ? 'text-blue-500' : 'text-gray-600'
                           } ${isSameDay(day, today) ? 'bg-green-50' : 'bg-gray-50'}`}
                         >
@@ -461,7 +463,7 @@ const CleaningCheck = () => {
                           <td
                             key={day.toISOString()}
                             onClick={() => toggleMonthCell(item, day)}
-                            className={`border text-center h-9 w-9 ${
+                            className={`border text-center h-9 w-10 ${
                               !applicable ? 'bg-gray-100' : ''
                             } ${isMember && !future ? 'cursor-pointer hover:bg-green-50' : ''}`}
                           >
