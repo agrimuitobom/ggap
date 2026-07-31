@@ -171,6 +171,10 @@ const Login = () => {
               アカウントをお持ちでない方はこちら
             </Link>
           </div>
+
+          <p className="text-xs text-center text-gray-500">
+            <Link to="/terms" className="text-blue-600 hover:text-blue-800 underline">利用規約</Link>
+          </p>
         </form>
       </div>
     </div>

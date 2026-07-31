@@ -213,6 +213,13 @@ const Register = () => {
               すでにアカウントをお持ちの方はこちら
             </Link>
           </div>
+
+          {/* 登録＝規約への同意であることを明示する */}
+          <p className="text-xs text-center text-gray-500">
+            アカウントを登録することで、
+            <Link to="/terms" className="text-blue-600 hover:text-blue-800 underline">利用規約</Link>
+            に同意したものとみなされます。
+          </p>
         </form>
       </div>
     </div>
