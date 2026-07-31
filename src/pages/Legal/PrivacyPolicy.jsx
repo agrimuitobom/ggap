@@ -1,14 +1,15 @@
 // src/pages/Legal/PrivacyPolicy.jsx
 // プライバシーポリシー。
 //
-// ★公開前に必ず下の定数を実際の内容に書き換えてください。
-//   （運営者名・連絡先が空のままだと、方針として成立しません）
+// ★公開前に、下の CONTACT（問い合わせ先メールアドレス）を記入してください。
+//   空のままでも表示は崩れませんが、方針としては連絡先の明示が必要です。
 import React from 'react';
 import { Link } from 'react-router-dom';
 
 const SERVICE_NAME = 'GAP Tracker';
-const OPERATOR_NAME = '（運営者名を記入してください）';
-const CONTACT = '（問い合わせ先メールアドレスを記入してください）';
+const OPERATOR_NAME = '野田千尋';
+// 連絡先メールアドレス。空にしておくと、代わりに「準備中」の案内が表示されます。
+const CONTACT = '';
 const EFFECTIVE_DATE = '2026年7月31日';
 
 const Section = ({ title, children }) => (
@@ -196,7 +197,12 @@ const PrivacyPolicy = () => (
 
     <Section title="14. お問い合わせ窓口">
       <p>個人情報の取り扱いに関するお問い合わせは、次の連絡先までお願いします。</p>
-      <p className="font-medium">{OPERATOR_NAME}　{CONTACT}</p>
+      <p className="font-medium">{OPERATOR_NAME}{CONTACT ? `　${CONTACT}` : ''}</p>
+      {!CONTACT && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded p-2">
+          ※ 問い合わせ用のメールアドレスは現在準備中です。当面は、所属組織の管理者を通じてご連絡ください。
+        </p>
+      )}
     </Section>
 
     <p className="text-sm text-gray-500 mt-8">以上</p>
