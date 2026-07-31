@@ -5,9 +5,8 @@
 // 「項目をタップ → 受講者（学年・班）をタップ → 記録」の3手で終わるようにする。
 // 実施者はログイン中のアカウントを自動で記録するため、押印の代わりになる。
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { collection, addDoc, updateDoc, doc, getDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -42,8 +41,12 @@ const chip = (active) =>
 
 const QuickTrainingForm = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
   const { currentUser, userProfile } = useAuth();
   const { currentOrganization } = useOrganization();
+  // 編集前に責任者確認が済んでいたか（編集すると確認をやり直す必要がある）
+  const [wasApproved, setWasApproved] = useState(false);
 
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -72,16 +75,39 @@ const QuickTrainingForm = () => {
         getDocs(query(collection(db, 'groups'), where('organizationId', '==', currentOrganization.id))),
         getWorkers(currentOrganization.id, currentUser?.uid)
       ]);
-      setItems(itemList.filter((i) => i.active !== false));
+      // 編集時は、無効化された項目でも選択状態を保てるように全件残す
+      setItems(isEditMode ? itemList : itemList.filter((i) => i.active !== false));
       setGroups(groupSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWorkers(workerList);
+
+      // 編集モード: 既存の記録を読み込む
+      if (isEditMode) {
+        const snap = await getDoc(doc(db, 'trainings', id));
+        if (!snap.exists()) {
+          toast.error('指定された記録が見つかりません');
+          navigate('/trainings');
+          return;
+        }
+        const t = snap.data();
+        const d = t.trainingDate?.toDate ? t.trainingDate.toDate() : null;
+        if (d) setDateStr(toDateString(d));
+        setSelectedItemIds(t.itemIds || []);
+        setAudiences(t.audiences || []);
+        setGroupId(t.groupId || '');
+        setAbsentIds(t.absentIds || []);
+        setContent(t.description || '');
+        setDuration(t.duration != null ? String(t.duration) : '');
+        setNotes(t.notes || '');
+        setWasApproved(!!t.approvedAt);
+        if (t.groupId) setShowRoster(true);
+      }
     } catch (err) {
       firestoreLogger.error('教育訓練データの取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('データの取得中にエラーが発生しました');
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization, currentUser]);
+  }, [currentOrganization, currentUser, id, isEditMode, navigate]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -131,7 +157,7 @@ const QuickTrainingForm = () => {
         ...(selectedGroup ? [selectedGroup.name] : [])
       ].join('・');
 
-      await addDoc(collection(db, 'trainings'), {
+      const payload = {
         organizationId: currentOrganization.id,
         trainingDate: new Date(`${dateStr}T00:00:00`),
         // 計画の項目との紐づけ（実施状況の集計に使う）
@@ -159,14 +185,35 @@ const QuickTrainingForm = () => {
         instructor: userProfile?.name || '',
         instructorType: 'internal',
         status: '実施済み',
+        updatedAt: serverTimestamp()
+      };
+
+      if (isEditMode) {
+        // 内容を変えたら責任者確認はやり直しになる（紙で押し直すのと同じ扱い）
+        await updateDoc(doc(db, 'trainings', id), {
+          ...payload,
+          approvedByUid: null,
+          approvedByName: '',
+          approvedAt: null
+        });
+        toast.success(
+          wasApproved
+            ? '記録を更新しました（責任者確認はやり直しになります）'
+            : '記録を更新しました'
+        );
+        navigate('/trainings');
+        return;
+      }
+
+      await addDoc(collection(db, 'trainings'), {
+        ...payload,
         recordedByUid: currentUser?.uid || null,
         recordedByName: userProfile?.name || '',
         // 責任者による確認（紙の「責任者確認印」に相当）
         approvedByUid: null,
         approvedByName: '',
         approvedAt: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        createdAt: serverTimestamp()
       });
 
       toast.success('教育訓練を記録しました');
@@ -225,14 +272,26 @@ const QuickTrainingForm = () => {
   return (
     <div className="container mx-auto p-4 max-w-2xl pb-24">
       <div className="flex justify-between items-center mb-2">
-        <h1 className="text-2xl font-bold">⚡ 教育訓練の記録</h1>
-        <Link to="/trainings/items" className="text-sm text-blue-600 hover:text-blue-800 underline">
-          項目を編集
+        <h1 className="text-2xl font-bold">
+          {isEditMode ? '✏️ 教育訓練の記録を編集' : '⚡ 教育訓練の記録'}
+        </h1>
+        <Link
+          to={isEditMode ? '/trainings' : '/trainings/items'}
+          className="text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          {isEditMode ? '一覧へ' : '項目を編集'}
         </Link>
       </div>
       <p className="text-sm text-gray-500 mb-4">
         実施した項目と受講者を選ぶだけで記録できます。実施者はログイン中のあなたが自動で記録されます。
       </p>
+
+      {isEditMode && wasApproved && (
+        <div className="bg-amber-50 border-2 border-amber-300 text-amber-800 rounded-lg p-3 mb-4 text-sm">
+          ⚠️ この記録は責任者確認済みです。内容を変更して保存すると確認は取り消され、
+          あらためて責任者の確認が必要になります。
+        </div>
+      )}
 
       {savedCount > 0 && (
         <div className="bg-green-50 border-2 border-green-300 rounded-lg p-3 mb-4 flex items-center justify-between">
@@ -452,16 +511,26 @@ const QuickTrainingForm = () => {
             canSave ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'
           }`}
         >
-          {saving ? '記録中...' : '記録する'}
+          {saving ? '保存中...' : isEditMode ? '更新する' : '記録する'}
         </button>
-        <button
-          type="button"
-          disabled={!canSave}
-          onClick={() => handleSave(true)}
-          className="w-full py-3 rounded-lg font-bold border-2 border-green-600 text-green-700 hover:bg-green-50 disabled:opacity-50"
-        >
-          記録して続けて入力
-        </button>
+        {isEditMode ? (
+          <button
+            type="button"
+            onClick={() => navigate('/trainings')}
+            className="w-full py-3 rounded-lg font-bold bg-gray-200 text-gray-700 hover:bg-gray-300"
+          >
+            キャンセル
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => handleSave(true)}
+            className="w-full py-3 rounded-lg font-bold border-2 border-green-600 text-green-700 hover:bg-green-50 disabled:opacity-50"
+          >
+            記録して続けて入力
+          </button>
+        )}
       </div>
     </div>
   );

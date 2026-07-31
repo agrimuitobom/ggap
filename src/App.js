@@ -213,6 +213,7 @@ function App() {
             {/* 教育・訓練記録 */}
             <Route path="trainings" element={<TrainingsList />} />
             <Route path="trainings/quick" element={<QuickTrainingForm />} />
+            <Route path="trainings/quick/edit/:id" element={<QuickTrainingForm />} />
             <Route path="trainings/items" element={<TrainingItemsManager />} />
             <Route path="trainings/new" element={<TrainingForm />} />
             <Route path="trainings/edit/:id" element={<TrainingForm />} />

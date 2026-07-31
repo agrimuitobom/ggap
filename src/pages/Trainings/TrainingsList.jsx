@@ -302,10 +302,14 @@ const TrainingsList = () => {
                   .filter(Boolean).join('・');
                 const attendees = training.attendeeNames || training.participants || [];
                 const absents = training.absentNames || [];
+                // クイック記録（項目に紐づく記録）はクイック画面で編集する
+                const editPath = (training.itemIds || []).length > 0
+                  ? `/trainings/quick/edit/${training.id}`
+                  : `/trainings/edit/${training.id}`;
                 return (
                 <tr
                   key={training.id}
-                  onClick={() => navigate(`/trainings/edit/${training.id}`)}
+                  onClick={() => navigate(editPath)}
                   className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4 whitespace-nowrap">
                     {training.trainingDate ? format(training.trainingDate, 'yyyy/MM/dd') : '-'}
@@ -376,8 +380,8 @@ const TrainingsList = () => {
                       </div>
                     ) : (
                       <div className="flex space-x-2">
-                        <Link 
-                          to={`/trainings/edit/${training.id}`} 
+                        <Link
+                          to={editPath}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           編集
