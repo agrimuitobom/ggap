@@ -9,6 +9,15 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { uiLogger } from '../../utils/logger';
 import EmployeeHome from './EmployeeHome';
+import {
+  getPpeItems,
+  getPpeTransactions,
+  getPpeChecks,
+  findLowStockItems,
+  daysSinceLastCheck,
+  isCheckOverdue,
+  CHECK_INTERVAL_DAYS
+} from '../../services/ppeService';
 
 const Dashboard = () => {
   const { userProfile, currentUser } = useAuth();
@@ -21,6 +30,9 @@ const Dashboard = () => {
   const [draftCount, setDraftCount] = useState(0);
   const [expiredPesticides, setExpiredPesticides] = useState([]);
   const [expiringPesticides, setExpiringPesticides] = useState([]);
+  const [lowStockPpe, setLowStockPpe] = useState([]);
+  const [ppeCheckOverdue, setPpeCheckOverdue] = useState(false);
+  const [ppeCheckDays, setPpeCheckDays] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -153,6 +165,18 @@ const Dashboard = () => {
           });
         });
         setRecentVisitors(visitors);
+
+        // 保護具（PPE）: 在庫切れと着用確認の未実施をチェック
+        // FV-Smart 20.03.03 は「使用されている証拠」と「在庫の維持」の両方を求めている
+        const [ppeItems, ppeTransactions, ppeChecks] = await Promise.all([
+          getPpeItems(currentOrganization.id),
+          getPpeTransactions(currentOrganization.id),
+          getPpeChecks(currentOrganization.id)
+        ]);
+        setLowStockPpe(findLowStockItems(ppeItems, ppeTransactions));
+        // 品目を1件も登録していない組織には警告を出さない
+        setPpeCheckOverdue(ppeItems.length > 0 && isCheckOverdue(ppeChecks));
+        setPpeCheckDays(daysSinceLastCheck(ppeChecks));
       } catch (err) {
         uiLogger.error('Error fetching dashboard data', { component: 'Dashboard', userId: currentUser?.uid }, err);
         setError('データの取得中にエラーが発生しました。');
@@ -197,6 +221,32 @@ const Dashboard = () => {
             🚫 <span className="font-bold">有効期限切れの農薬が{expiredPesticides.length}件</span>あります
             （{expiredPesticides.slice(0, 3).map(p => p.name).join('、')}{expiredPesticides.length > 3 ? ' ほか' : ''}）。
             期限切れ農薬の使用は審査で不適合になります。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">確認する →</span>
+        </Link>
+      )}
+
+      {ppeCheckOverdue && (
+        <Link
+          to="/ppe/checks"
+          className="flex items-center justify-between bg-amber-50 border-2 border-amber-300 text-amber-900 px-4 py-3 mb-4 rounded-lg hover:bg-amber-100 transition-colors"
+        >
+          <span>
+            🦺 <span className="font-bold">保護具の着用確認が{ppeCheckDays === null ? '未実施' : `${ppeCheckDays}日前`}です</span>。
+            提供した保護具が実際に使われている証拠が必要です（目安は{CHECK_INTERVAL_DAYS}日に1回）。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">記録する →</span>
+        </Link>
+      )}
+
+      {lowStockPpe.length > 0 && (
+        <Link
+          to="/ppe"
+          className="flex items-center justify-between bg-orange-50 border-2 border-orange-300 text-orange-800 px-4 py-3 mb-4 rounded-lg hover:bg-orange-100 transition-colors"
+        >
+          <span>
+            📦 <span className="font-bold">保護具の在庫が不足している品目が{lowStockPpe.length}件</span>あります
+            （{lowStockPpe.slice(0, 3).map(i => `${i.name}: 残り${i.stock}${i.unit}`).join('、')}{lowStockPpe.length > 3 ? ' ほか' : ''}）。
           </span>
           <span className="shrink-0 ml-3 text-sm font-semibold">確認する →</span>
         </Link>

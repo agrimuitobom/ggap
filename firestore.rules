@@ -369,6 +369,27 @@ service cloud.firestore {
       allow delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // 保護具（PPE）の品目マスタ
+    match /ppeItems/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 保護具の入出庫記録（在庫の維持を示す証拠）
+    match /ppeTransactions/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
+    // 保護具の着用確認記録（実際に使用されていることを示す証拠）
+    match /ppeChecks/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 作業日誌のマイテンプレート
     match /workLogTemplates/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

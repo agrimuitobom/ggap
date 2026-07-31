@@ -298,6 +298,12 @@ const MainLayout = () => {
                 <Link to="/trainings" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   教育・訓練記録
                 </Link>
+                <Link to="/ppe/checks" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  保護具の着用確認
+                </Link>
+                <Link to="/ppe" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  保護具の品目・在庫
+                </Link>
                 <Link to="/incidents" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   事故・ヒヤリハット
                 </Link>

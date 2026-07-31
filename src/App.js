@@ -21,6 +21,9 @@ const QuickWorkLogForm = lazy(() => import('./pages/WorkLogs/QuickWorkLogForm'))
 const WorkLogCalendar = lazy(() => import('./pages/WorkLogs/WorkLogCalendar'));
 const CleaningCheck = lazy(() => import('./pages/Cleaning/CleaningCheck'));
 const CleaningItemsManager = lazy(() => import('./pages/Cleaning/CleaningItemsManager'));
+const PPEItems = lazy(() => import('./pages/PPE/PPEItems'));
+const PPEChecks = lazy(() => import('./pages/PPE/PPEChecks'));
+const PPECheckForm = lazy(() => import('./pages/PPE/PPECheckForm'));
 const NutrientLogs = lazy(() => import('./pages/Nutrient/NutrientLogs'));
 const PlantingsList = lazy(() => import('./pages/Plantings/PlantingsList'));
 const PlantingForm = lazy(() => import('./pages/Plantings/PlantingForm'));
@@ -137,6 +140,12 @@ function App() {
             {/* 清掃チェック */}
             <Route path="cleaning" element={<CleaningCheck />} />
             <Route path="cleaning/items" element={<CleaningItemsManager />} />
+
+            {/* 保護具（PPE）管理 */}
+            <Route path="ppe" element={<PPEItems />} />
+            <Route path="ppe/checks" element={<PPEChecks />} />
+            <Route path="ppe/checks/new" element={<PPECheckForm />} />
+            <Route path="ppe/checks/edit/:id" element={<PPECheckForm />} />
 
             {/* 作付・処理区 */}
             <Route path="plantings" element={<PlantingsList />} />

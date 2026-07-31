@@ -49,6 +49,9 @@ export const COLLECTION_LABELS = {
   visitors: '訪問者記録',
   cleaningItems: '清掃項目',
   cleaningChecks: '清掃チェック',
+  ppeItems: '保護具の品目',
+  ppeTransactions: '保護具の入出庫',
+  ppeChecks: '保護具の着用確認',
   incidents: '事故・ヒヤリハット',
   equipments: '機器',
   equipmentChecks: '機器の校正・点検',
@@ -70,7 +73,8 @@ export const summarizeRecord = (collectionName, data = {}) => {
 
   const namePart =
     data.name || data.title || data.cropName || data.materialName ||
-    data.speciesName || data.content || data.workType || data.lotNumber || '';
+    data.speciesName || data.content || data.workType || data.lotNumber ||
+    data.itemName || data.workName || '';
 
   const wherePart = data.fieldName ? `@${data.fieldName}` : '';
 
