@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { calcFertilizerStock, formatStock } from '../../services/inventoryService';
 import { firestoreLogger } from '../../utils/logger';
@@ -20,6 +22,7 @@ const FertilizersList = () => {
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
 
   const fetchFertilizers = useCallback(async () => {
     if (!currentOrganization) return;
@@ -83,7 +86,7 @@ const FertilizersList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'fertilizers', id));
+      await moveToTrash('fertilizers', id, currentOrganization.id, userProfile?.name);
       setFertilizers(fertilizers.filter(fertilizer => fertilizer.id !== id));
       setDeleteConfirm(null);
     } catch (err) {

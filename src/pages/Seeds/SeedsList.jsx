@@ -3,12 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
 
 const SeedsList = () => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const [seeds, setSeeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,7 +59,7 @@ const SeedsList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'seeds', id));
+      await moveToTrash('seeds', id, currentOrganization.id, userProfile?.name);
       setSeeds(seeds.filter(seed => seed.id !== id));
       setDeleteConfirm(null);
     } catch (err) {

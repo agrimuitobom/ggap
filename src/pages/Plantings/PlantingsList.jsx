@@ -3,6 +3,7 @@
 // 作物×作次でまとめて表示し、処理区と反復の構成が一目で分かるようにする。
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getPlantings, deletePlanting } from '../../services/plantingService';
 import { firestoreLogger } from '../../utils/logger';
@@ -23,6 +24,7 @@ const TREATMENT_STYLE = {
 const PlantingsList = () => {
   const navigate = useNavigate();
   const { currentOrganization, isMember } = useOrganization();
+  const { userProfile } = useAuth();
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -46,7 +48,7 @@ const PlantingsList = () => {
     e.stopPropagation();
     if (!window.confirm(`「${p.cropName} 第${p.cropCycle || '-'}作 ${p.treatment || ''}${p.replicate ? `-${p.replicate}` : ''}」を削除しますか？`)) return;
     try {
-      await deletePlanting(p.id);
+      await deletePlanting(p.id, currentOrganization.id, userProfile?.name);
       setPlantings((prev) => prev.filter((x) => x.id !== p.id));
       toast.success('削除しました');
     } catch (err) {

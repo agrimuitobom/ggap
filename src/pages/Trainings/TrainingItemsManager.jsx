@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import {
   TRAINING_FREQUENCIES,
@@ -27,6 +28,7 @@ const chip = (active) =>
 
 const TrainingItemsManager = () => {
   const { currentOrganization, isMember } = useOrganization();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [trainings, setTrainings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ const TrainingItemsManager = () => {
   const handleDelete = async (item) => {
     if (!window.confirm(`「${item.title}」を削除しますか？\n過去の実施記録は残ります。`)) return;
     try {
-      await deleteTrainingItem(item.id);
+      await deleteTrainingItem(item.id, currentOrganization.id, userProfile?.name);
       toast.success('削除しました');
       await load();
     } catch (err) {

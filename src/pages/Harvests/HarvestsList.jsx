@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { findUnsyncedHarvestWorkLogs, backfillHarvests } from '../../services/harvestSyncService';
 import { format } from 'date-fns';
@@ -19,6 +21,7 @@ const HarvestsList = () => {
   const [harvests, setHarvests] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
 
   // 集計期間（廃棄率などの算出範囲）
   const [periodPreset, setPeriodPreset] = useState('all');
@@ -153,7 +156,7 @@ const HarvestsList = () => {
   const handleDelete = async (id) => {
     if (window.confirm('この収穫記録を削除してもよろしいですか？')) {
       try {
-        await deleteDoc(doc(db, 'harvests', id));
+        await moveToTrash('harvests', id, currentOrganization.id, userProfile?.name);
         setHarvests(harvests.filter(harvest => harvest.id !== id));
         toast.success('収穫記録を削除しました');
       } catch (error) {

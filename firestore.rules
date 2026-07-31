@@ -317,6 +317,15 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // ゴミ箱（削除した記録の一時保管）
+    // 完全な削除は管理者のみ。メンバーは削除（ゴミ箱へ移動）と復元ができる。
+    match /trash/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+      allow delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 教育訓練の項目マスタ（年間計画）
     match /trainingItems/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

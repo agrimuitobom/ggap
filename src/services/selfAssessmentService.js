@@ -19,6 +19,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { moveToTrash } from './trashService';
 
 export const ASSESSMENT_STATUS = ['適合', '不適合', '該当なし'];
 
@@ -173,8 +174,9 @@ export const updateSelfAssessment = async (id, updates) => {
 };
 
 /** 自己点検を削除 */
-export const deleteSelfAssessment = async (id) => {
-  await deleteDoc(doc(db, 'selfAssessments', id));
+export const deleteSelfAssessment = async (id, organizationId, deletedByName) => {
+  // すぐには消さず、ゴミ箱へ移して一定期間戻せるようにする
+  await moveToTrash('selfAssessments', id, organizationId, deletedByName);
 };
 
 /** 進捗の集計 */

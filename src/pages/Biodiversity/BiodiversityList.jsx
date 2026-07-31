@@ -3,6 +3,7 @@
 // 生物多様性計画の「年2回の定期観察」「データベース化・経年変化の追跡」に対応する。
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import {
   SPECIES_CATEGORIES,
@@ -18,6 +19,7 @@ import toast from 'react-hot-toast';
 const BiodiversityList = () => {
   const navigate = useNavigate();
   const { currentOrganization, isMember } = useOrganization();
+  const { userProfile } = useAuth();
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +50,7 @@ const BiodiversityList = () => {
     e.stopPropagation();
     if (!window.confirm(`${s.surveyDate?.toLocaleDateString('ja-JP')} の観察記録を削除しますか？`)) return;
     try {
-      await deleteBiodiversitySurvey(s.id);
+      await deleteBiodiversitySurvey(s.id, currentOrganization.id, userProfile?.name);
       setSurveys((prev) => prev.filter((x) => x.id !== s.id));
       toast.success('削除しました');
     } catch (err) {

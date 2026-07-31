@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
+import { moveToTrash } from '../../services/trashService';
 import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
 
 const HarvestDetail = () => {
   const { id } = useParams();
+  const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [harvest, setHarvest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +44,7 @@ const HarvestDetail = () => {
   const handleDelete = async () => {
     if (window.confirm('この収穫記録を削除してもよろしいですか？')) {
       try {
-        await deleteDoc(doc(db, 'harvests', id));
+        await moveToTrash('harvests', id, currentOrganization.id, userProfile?.name);
         toast.success('収穫記録を削除しました');
         navigate('/harvests');
       } catch (error) {

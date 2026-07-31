@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getWorkers } from '../../services/workerService';
@@ -12,7 +13,7 @@ import CSVImporter from '../../components/Import/CSVImporter';
 
 const WorkersList = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const { currentOrganization } = useOrganization();
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +97,7 @@ const WorkersList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'workers', workerId));
+      await moveToTrash('workers', workerId, currentOrganization.id, userProfile?.name);
       setWorkers(workers.filter(worker => worker.id !== workerId));
       toast.success('従業員を削除しました');
     } catch (err) {

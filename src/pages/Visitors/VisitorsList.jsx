@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -12,6 +14,7 @@ import { firestoreLogger } from '../../utils/logger';
 const VisitorsList = () => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,7 +107,7 @@ const VisitorsList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'visitors', id));
+      await moveToTrash('visitors', id, currentOrganization.id, userProfile?.name);
       setVisitors(visitors.filter(visitor => visitor.id !== id));
       setDeleteConfirm(null);
       toast.success('訪問者記録を削除しました');

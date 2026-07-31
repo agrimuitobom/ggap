@@ -3,12 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
 
 const FertilizerUsesList = () => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const [fertilizerUses, setFertilizerUses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,7 +73,7 @@ const FertilizerUsesList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'fertilizerUses', id));
+      await moveToTrash('fertilizerUses', id, currentOrganization.id, userProfile?.name);
       setFertilizerUses(fertilizerUses.filter(use => use.id !== id));
       setDeleteConfirm(null);
     } catch (err) {

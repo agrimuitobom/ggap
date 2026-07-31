@@ -58,7 +58,7 @@ const SelfAssessmentList = () => {
     e.stopPropagation();
     if (!window.confirm(`「${title}」を削除しますか？`)) return;
     try {
-      await deleteSelfAssessment(id);
+      await deleteSelfAssessment(id, currentOrganization.id, userProfile?.name);
       setAssessments((prev) => prev.filter((a) => a.id !== id));
       toast.success('削除しました');
     } catch (err) {

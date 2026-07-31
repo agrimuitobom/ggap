@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getTrainingItems } from '../../services/trainingItemService';
@@ -77,7 +78,7 @@ const TrainingsList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'trainings', id));
+      await moveToTrash('trainings', id, currentOrganization.id, userProfile?.name);
       setTrainings(trainings.filter(training => training.id !== id));
       setDeleteConfirm(null);
       toast.success('教育・訓練記録を削除しました');

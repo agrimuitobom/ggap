@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -12,6 +14,7 @@ const ShipmentsList = () => {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     const fetchShipments = async () => {
@@ -45,7 +48,7 @@ const ShipmentsList = () => {
   const handleDelete = async (id) => {
     if (window.confirm('この出荷記録を削除してもよろしいですか？')) {
       try {
-        await deleteDoc(doc(db, 'shipments', id));
+        await moveToTrash('shipments', id, currentOrganization.id, userProfile?.name);
         setShipments(shipments.filter(shipment => shipment.id !== id));
         toast.success('出荷記録を削除しました');
       } catch (error) {

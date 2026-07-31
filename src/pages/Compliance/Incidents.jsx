@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, deleteDoc, doc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import VoiceInput from '../../components/common/VoiceInput';
@@ -97,7 +98,7 @@ const Incidents = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('この記録を削除しますか？')) return;
     try {
-      await deleteDoc(doc(db, 'incidents', id));
+      await moveToTrash('incidents', id, currentOrganization.id, userProfile?.name);
       setIncidents((prev) => prev.filter((i) => i.id !== id));
       toast.success('削除しました');
     } catch (err) {

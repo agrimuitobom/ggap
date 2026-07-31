@@ -2,6 +2,7 @@
 // 清掃項目（項目名・頻度・実施曜日）の管理画面。
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import {
   getCleaningItems,
@@ -16,6 +17,7 @@ const emptyForm = { name: '', frequencyLabel: '毎日', weekdays: [] };
 
 const CleaningItemsManager = () => {
   const { currentOrganization, isMember } = useOrganization();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
@@ -91,7 +93,7 @@ const CleaningItemsManager = () => {
   const handleDelete = async (item) => {
     if (!window.confirm(`「${item.name}」を削除しますか？\n過去のチェック記録は残ります。`)) return;
     try {
-      await deleteCleaningItem(item.id);
+      await deleteCleaningItem(item.id, currentOrganization.id, userProfile?.name);
       toast.success('項目を削除しました');
       await loadItems();
     } catch (err) {

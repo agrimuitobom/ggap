@@ -3,12 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { isSoillessType } from '../../constants/cultivation';
 import { firestoreLogger } from '../../utils/logger';
 
 const FieldsList = () => {
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -53,7 +56,7 @@ const FieldsList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'fields', id));
+      await moveToTrash('fields', id, currentOrganization.id, userProfile?.name);
       setFields(fields.filter(field => field.id !== id));
       setDeleteConfirm(null);
     } catch (err) {

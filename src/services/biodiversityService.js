@@ -16,6 +16,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { moveToTrash } from './trashService';
 
 // 計画書の区分（3.1〜3.3）に合わせた調査エリア
 export const SURVEY_AREAS = [
@@ -90,8 +91,9 @@ export const saveBiodiversitySurvey = async (organizationId, surveyId, form) => 
 };
 
 /** 調査を削除 */
-export const deleteBiodiversitySurvey = async (id) => {
-  await deleteDoc(doc(db, 'biodiversitySurveys', id));
+export const deleteBiodiversitySurvey = async (id, organizationId, deletedByName) => {
+  // すぐには消さず、ゴミ箱へ移して一定期間戻せるようにする
+  await moveToTrash('biodiversitySurveys', id, organizationId, deletedByName);
 };
 
 /**

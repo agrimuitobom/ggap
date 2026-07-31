@@ -16,6 +16,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { moveToTrash } from './trashService';
 import { firestoreLogger } from '../utils/logger';
 
 /** ロット番号の生成（収穫記録と同じ形式） */
@@ -106,10 +107,11 @@ export const syncHarvestFromWorkLog = async (organizationId, workLogId, workLog,
 };
 
 /** 作業日誌を削除したときに、そこから作られた収穫記録も取り消す */
-export const deleteHarvestForWorkLog = async (organizationId, workLogId) => {
+export const deleteHarvestForWorkLog = async (organizationId, workLogId, deletedByName) => {
   try {
     const existing = await findLinkedHarvest(organizationId, workLogId);
-    if (existing) await deleteDoc(doc(db, 'harvests', existing.id));
+    // 作業日誌と同じくゴミ箱へ移す（作業日誌を戻すときに収穫記録も戻せるように）
+    if (existing) await moveToTrash('harvests', existing.id, organizationId, deletedByName);
   } catch (err) {
     firestoreLogger.error('作業日誌に紐づく収穫記録の削除に失敗しました', { workLogId }, err);
   }

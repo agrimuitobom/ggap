@@ -3,13 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
 
 const GroupsList = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const { currentOrganization } = useOrganization();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,7 @@ const GroupsList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'groups', groupId));
+      await moveToTrash('groups', groupId, currentOrganization.id, userProfile?.name);
       setGroups(groups.filter(group => group.id !== groupId));
       toast.success('グループを削除しました');
     } catch (err) {

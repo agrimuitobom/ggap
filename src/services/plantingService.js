@@ -20,6 +20,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { moveToTrash } from './trashService';
 
 // 処理区の種別（途中で増やすと前半・後半のデータが比較できなくなるため固定）
 export const TREATMENTS = ['慣行区', '減肥区', 'その他'];
@@ -139,8 +140,9 @@ export const createExperimentPlantings = async (organizationId, form, field, tre
 };
 
 /** 作付を削除 */
-export const deletePlanting = async (id) => {
-  await deleteDoc(doc(db, 'plantings', id));
+export const deletePlanting = async (id, organizationId, deletedByName) => {
+  // すぐには消さず、ゴミ箱へ移して一定期間戻せるようにする
+  await moveToTrash('plantings', id, organizationId, deletedByName);
 };
 
 /** 表示用のラベル（例: サラダ菜 第1作 慣行区-1） */

@@ -16,6 +16,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { moveToTrash } from './trashService';
 import { firestoreLogger } from '../utils/logger';
 
 // 実施頻度の目安
@@ -156,8 +157,9 @@ export const saveTrainingItem = async (organizationId, itemId, form) => {
 };
 
 /** 訓練項目を削除 */
-export const deleteTrainingItem = async (itemId) => {
-  await deleteDoc(doc(db, 'trainingItems', itemId));
+export const deleteTrainingItem = async (itemId, organizationId, deletedByName) => {
+  // すぐには消さず、ゴミ箱へ移して一定期間戻せるようにする
+  await moveToTrash('trainingItems', itemId, organizationId, deletedByName);
 };
 
 /**

@@ -20,6 +20,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { moveToTrash } from './trashService';
 import { firestoreLogger } from '../utils/logger';
 
 // 紙の「おそうじカレンダー」に基づく標準清掃項目
@@ -103,8 +104,9 @@ export const saveCleaningItem = async (organizationId, itemId, data) => {
 };
 
 /** 清掃項目を削除 */
-export const deleteCleaningItem = async (itemId) => {
-  await deleteDoc(doc(db, 'cleaningItems', itemId));
+export const deleteCleaningItem = async (itemId, organizationId, deletedByName) => {
+  // すぐには消さず、ゴミ箱へ移して一定期間戻せるようにする
+  await moveToTrash('cleaningItems', itemId, organizationId, deletedByName);
 };
 
 /** 指定日のチェック記録を取得（なければ空配列） */

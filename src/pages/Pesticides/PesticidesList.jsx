@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { moveToTrash } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { calcPesticideStock, formatStock } from '../../services/inventoryService';
 import { firestoreLogger } from '../../utils/logger';
@@ -16,6 +18,7 @@ const STOCK_STYLES = {
 const PesticidesList = () => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -89,7 +92,7 @@ const PesticidesList = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'pesticides', id));
+      await moveToTrash('pesticides', id, currentOrganization.id, userProfile?.name);
       setPesticides(pesticides.filter(pesticide => pesticide.id !== id));
       setDeleteConfirm(null);
     } catch (err) {
