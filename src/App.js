@@ -74,6 +74,7 @@ const FertilizerUsageReport = lazy(() => import('./pages/Reports/FertilizerUsage
 const BusinessAnalytics = lazy(() => import('./pages/Reports/BusinessAnalytics'));
 const TrainingReport = lazy(() => import('./pages/Reports/TrainingReport'));
 const TraceabilityReport = lazy(() => import('./pages/Reports/TraceabilityReport'));
+const BackupPage = lazy(() => import('./pages/Backup/BackupPage'));
 const OrganizationSettings = lazy(() => import('./pages/Organizations/OrganizationSettings'));
 const OrganizationSwitcher = lazy(() => import('./pages/Organizations/OrganizationSwitcher'));
 const InvitationsPage = lazy(() => import('./pages/Organizations/InvitationsPage'));
@@ -236,6 +237,9 @@ function App() {
             <Route path="reports/training" element={<TrainingReport />} />
             <Route path="reports/traceability" element={<TraceabilityReport />} />
             <Route path="reports/mass-balance" element={<MassBalanceReport />} />
+
+            {/* バックアップ・復元 */}
+            <Route path="backup" element={<BackupPage />} />
 
             {/* 組織管理 */}
             <Route path="organizations/settings" element={<OrganizationSettings />} />

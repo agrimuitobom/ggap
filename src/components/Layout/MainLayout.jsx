@@ -372,6 +372,9 @@ const MainLayout = () => {
                 <Link to="/organizations/settings" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   組織設定
                 </Link>
+                <Link to="/backup" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  💾 バックアップ
+                </Link>
                 <Link to="/organizations/invitations" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100 flex items-center justify-between">
                   <span>招待一覧</span>
                   {invitations.length > 0 && (
