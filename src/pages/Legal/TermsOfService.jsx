@@ -194,8 +194,9 @@ const TermsOfService = () => (
 
     <p className="text-sm text-gray-500 mt-8">以上</p>
 
-    <div className="mt-6">
+    <div className="mt-6 flex flex-wrap gap-3">
       <Link to="/" className="text-blue-600 hover:text-blue-800 underline text-sm">ホームへ戻る</Link>
+      <Link to="/privacy" className="text-blue-600 hover:text-blue-800 underline text-sm">プライバシーポリシー</Link>
     </div>
   </div>
 );

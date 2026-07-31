@@ -77,6 +77,7 @@ const TraceabilityReport = lazy(() => import('./pages/Reports/TraceabilityReport
 const BackupPage = lazy(() => import('./pages/Backup/BackupPage'));
 const TrashPage = lazy(() => import('./pages/Trash/TrashPage'));
 const TermsOfService = lazy(() => import('./pages/Legal/TermsOfService'));
+const PrivacyPolicy = lazy(() => import('./pages/Legal/PrivacyPolicy'));
 const OrganizationSettings = lazy(() => import('./pages/Organizations/OrganizationSettings'));
 const OrganizationSwitcher = lazy(() => import('./pages/Organizations/OrganizationSwitcher'));
 const InvitationsPage = lazy(() => import('./pages/Organizations/InvitationsPage'));
@@ -118,8 +119,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* 規約（ログインしていなくても閲覧できるようにする） */}
+          {/* 規約・ポリシー（ログインしていなくても閲覧できるようにする） */}
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           
           {/* 認証が必要なページ */}
           <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
