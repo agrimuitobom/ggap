@@ -6,6 +6,7 @@ import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getLastFertilizerUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
+import { AMOUNT_BASES } from '../../services/fertilizerCalc';
 import toast from 'react-hot-toast';
 
 const FertilizerUseForm = () => {
@@ -21,6 +22,8 @@ const FertilizerUseForm = () => {
     fieldId: '',
     amount: '',
     unit: 'kg',
+    amountBasis: '原液',
+    dilutionRatio: '',
     method: '',
     notes: ''
   });
@@ -91,6 +94,8 @@ const FertilizerUseForm = () => {
               fieldId: data.fieldId || '',
               amount: data.amount?.toString() || '',
               unit: data.unit || 'kg',
+              amountBasis: data.amountBasis || '原液',
+              dilutionRatio: data.dilutionRatio?.toString() || '',
               method: data.method || '',
               notes: data.notes || ''
             });
@@ -165,6 +170,9 @@ const FertilizerUseForm = () => {
         organizationId: currentOrganization.id,
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,
+        // 液肥を希釈して使う場合、入力した量が原液か希釈後かで成分量が変わる
+        amountBasis: formData.amountBasis || '原液',
+        dilutionRatio: formData.dilutionRatio ? Number(formData.dilutionRatio) : null,
         method: formData.method,
         notes: formData.notes,
         updatedAt: serverTimestamp()
@@ -322,6 +330,54 @@ const FertilizerUseForm = () => {
               <option value="その他">その他</option>
             </select>
           </div>
+
+          {/* 液肥を希釈して使う場合、入力した数値が何を指すかで成分量が変わる */}
+          {(formData.unit === 'L' || formData.unit === 'ml') && (
+            <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
+              <p className="text-sm font-bold text-blue-900 mb-2">入力した量は？</p>
+              <div className="space-y-2">
+                {AMOUNT_BASES.map((basis) => (
+                  <label key={basis.value} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="amountBasis"
+                      value={basis.value}
+                      checked={formData.amountBasis === basis.value}
+                      onChange={handleChange}
+                      className="h-4 w-4"
+                    />
+                    {basis.label}
+                  </label>
+                ))}
+              </div>
+
+              {formData.amountBasis === '希釈後' && (
+                <div className="mt-3">
+                  <label className="block text-sm text-blue-900 mb-1" htmlFor="dilutionRatio">
+                    希釈倍率 *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="mobile-input w-32"
+                      id="dilutionRatio"
+                      type="number"
+                      name="dilutionRatio"
+                      value={formData.dilutionRatio}
+                      onChange={handleChange}
+                      step="1"
+                      min="1"
+                      placeholder="例: 100"
+                    />
+                    <span className="text-sm text-blue-900">倍</span>
+                  </div>
+                  <p className="text-xs text-blue-800 mt-1">
+                    成分量は「原液量 × 比重 × 保証成分%」で計算します。
+                    希釈後の量で入力する場合は、倍率で割って原液量を求めます。
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="mobile-form-field">

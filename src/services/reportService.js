@@ -11,6 +11,7 @@ import { db } from './firebase';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { businessLogger } from '../utils/logger';
+import { calcNutrients, hasNoNutrientData } from './fertilizerCalc';
 
 export class ReportService {
   constructor(organizationId) {
@@ -85,9 +86,19 @@ export class ReportService {
       });
 
       const fertilizerUsesSnapshot = await getDocs(fertilizerUsesQuery);
-      
+
       businessLogger.debug('Query result received', { count: fertilizerUsesSnapshot.size });
-      
+
+      // 成分(%)と比重は肥料マスタ側にあるため、ここで突き合わせる。
+      // 使用記録に成分を写し取っていないので、マスタを直せば過去の記録も正しくなる。
+      const fertilizersSnapshot = await getDocs(
+        query(collection(db, 'fertilizers'), where('organizationId', '==', this.organizationId))
+      );
+      const fertilizerMap = {};
+      fertilizersSnapshot.forEach((f) => {
+        fertilizerMap[f.id] = { id: f.id, ...f.data() };
+      });
+
       const fertilizerUsage = [];
       
       fertilizerUsesSnapshot.forEach(doc => {
@@ -102,6 +113,9 @@ export class ReportService {
           fertilizerName: data.fertilizerName
         });
         
+        const fertilizer = fertilizerMap[data.fertilizerId] || {};
+        const calc = calcNutrients(data, fertilizer);
+
         fertilizerUsage.push({
           id: doc.id,
           date: data.date?.toDate() || new Date(),
@@ -110,9 +124,24 @@ export class ReportService {
           amount: data.amount,
           unit: data.unit,
           method: data.method,
-          nitrogen: data.nitrogen || 0,
-          phosphorus: data.phosphorus || 0,
-          potassium: data.potassium || 0,
+          // 希釈して使う液肥のための情報
+          amountBasis: data.amountBasis || '原液',
+          dilutionRatio: data.dilutionRatio || null,
+          // 成分(%)は肥料マスタから引く。マスタを直せば過去の記録にも反映される
+          nitrogen: fertilizer.nitrogenContent ?? 0,
+          phosphorus: fertilizer.phosphorusContent ?? 0,
+          potassium: fertilizer.potassiumContent ?? 0,
+          density: fertilizer.density ?? null,
+          formType: fertilizer.formType || '',
+          hasNoNutrientData: hasNoNutrientData(fertilizer),
+          fertilizerMissing: !fertilizerMap[data.fertilizerId],
+          // 換算結果（換算できない場合は null）
+          stockAmount: calc.stockAmount,
+          massKg: calc.massKg,
+          n: calc.n,
+          p: calc.p,
+          k: calc.k,
+          calcReason: calc.reason,
           applicator: data.appliedByName || '',
           notes: data.notes
         });

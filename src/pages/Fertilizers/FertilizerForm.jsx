@@ -5,6 +5,7 @@ import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'fir
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import { FORM_TYPES, DEFAULT_LIQUID_DENSITY } from '../../services/fertilizerCalc';
 
 const FertilizerForm = () => {
   const { id } = useParams();
@@ -14,6 +15,8 @@ const FertilizerForm = () => {
     name: '',
     manufacturer: '',
     type: '',
+    formType: '固形',
+    density: '',
     nitrogenContent: '',
     phosphorusContent: '',
     potassiumContent: '',
@@ -44,6 +47,8 @@ const FertilizerForm = () => {
               name: data.name || '',
               manufacturer: data.manufacturer || '',
               type: data.type || '',
+              formType: data.formType || '固形',
+              density: data.density?.toString() || '',
               nitrogenContent: data.nitrogenContent?.toString() || '',
               phosphorusContent: data.phosphorusContent?.toString() || '',
               potassiumContent: data.potassiumContent?.toString() || '',
@@ -93,6 +98,8 @@ const FertilizerForm = () => {
     try {
       const fertilizerData = {
         ...formData,
+        formType: formData.formType || '固形',
+        density: formData.density !== '' ? Number(formData.density) : null,
         nitrogenContent: formData.nitrogenContent ? Number(formData.nitrogenContent) : null,
         phosphorusContent: formData.phosphorusContent ? Number(formData.phosphorusContent) : null,
         potassiumContent: formData.potassiumContent ? Number(formData.potassiumContent) : null,
@@ -117,6 +124,8 @@ const FertilizerForm = () => {
           name: '',
           manufacturer: '',
           type: '',
+          formType: '固形',
+          density: '',
           nitrogenContent: '',
           phosphorusContent: '',
           potassiumContent: '',
@@ -229,10 +238,55 @@ const FertilizerForm = () => {
           </select>
         </div>
         
+        {/* 液肥は比重がないと L → kg に換算できず、成分量が計算できない */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="formType">
+            性状 *
+          </label>
+          <select
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="formType"
+            name="formType"
+            value={formData.formType}
+            onChange={handleChange}
+          >
+            {FORM_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        {formData.formType === '液体' && (
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="density">
+              比重 (kg/L)
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="density"
+              type="number"
+              name="density"
+              value={formData.density}
+              onChange={handleChange}
+              step="0.01"
+              min="0"
+              placeholder={`例: ${DEFAULT_LIQUID_DENSITY}`}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              液肥を L で記録する場合、比重がないと成分量(kg)を計算できません。
+              製品のラベルや仕様書に記載があります。分からない場合はおおよそ {DEFAULT_LIQUID_DENSITY} 前後です。
+            </p>
+          </div>
+        )}
+
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2">
             成分含有量 (N-P-K)
           </label>
+          <p className="text-xs text-gray-500 mb-2">
+            製品の保証成分を入力してください。ここを直すと、過去の施肥レポートの成分量も
+            すべて計算し直されます（記録の入れ直しは不要です）。
+          </p>
           <div className="flex space-x-2">
             <div className="flex-1">
               <label className="block text-gray-700 text-xs mb-1" htmlFor="nitrogenContent">

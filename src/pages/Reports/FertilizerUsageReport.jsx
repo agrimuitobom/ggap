@@ -1,11 +1,13 @@
 // src/pages/Reports/FertilizerUsageReport.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import ReportService from '../../services/reportService';
 import { firestoreLogger } from '../../utils/logger';
 import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
+import { summarizeUsage } from '../../services/fertilizerCalc';
 
 const FertilizerUsageReport = () => {
   const { currentUser } = useAuth();
@@ -94,6 +96,11 @@ const FertilizerUsageReport = () => {
       'N成分(%)',
       'P成分(%)',
       'K成分(%)',
+      '原液換算量',
+      '重量(kg)',
+      'N成分量(kg)',
+      'P成分量(kg)',
+      'K成分量(kg)',
       '施肥者',
       '備考'
     ];
@@ -108,6 +115,11 @@ const FertilizerUsageReport = () => {
       record.nitrogen || '',
       record.phosphorus || '',
       record.potassium || '',
+      record.stockAmount !== null && record.stockAmount !== undefined ? record.stockAmount.toFixed(3) : '',
+      record.massKg !== null && record.massKg !== undefined ? record.massKg.toFixed(3) : '',
+      record.n !== null && record.n !== undefined ? record.n.toFixed(3) : '',
+      record.p !== null && record.p !== undefined ? record.p.toFixed(3) : '',
+      record.k !== null && record.k !== undefined ? record.k.toFixed(3) : '',
       record.applicator || '',
       record.notes || ''
     ]);
@@ -130,23 +142,11 @@ const FertilizerUsageReport = () => {
   };
 
 
-  // NPK成分の合計計算
-  const calculateNPKTotals = () => {
-    const totals = { N: 0, P: 0, K: 0 };
-    reportData.forEach(record => {
-      const amount = parseFloat(record.amount) || 0;
-      const n = parseFloat(record.nitrogen) || 0;
-      const p = parseFloat(record.phosphorus) || 0;
-      const k = parseFloat(record.potassium) || 0;
-
-      totals.N += (amount * n) / 100;
-      totals.P += (amount * p) / 100;
-      totals.K += (amount * k) / 100;
-    });
-    return totals;
-  };
-
-  const npkTotals = calculateNPKTotals();
+  // 単位別の使用量と、重量に換算できた記録だけの成分量を集計する。
+  // L と kg を足すと意味のない数字になるため、単位をまたいだ合計は出さない。
+  const summary = summarizeUsage(reportData);
+  const npkTotals = { N: summary.nutrients.n, P: summary.nutrients.p, K: summary.nutrients.k };
+  const unitEntries = Object.entries(summary.byUnit);
 
   if (loading) {
     return (
@@ -241,15 +241,25 @@ const FertilizerUsageReport = () => {
             </p>
           </div>
           <div className="bg-orange-50 p-4 rounded">
-            <h3 className="text-lg font-semibold text-orange-800">総施肥量</h3>
-            <p className="text-2xl font-bold text-orange-600">
-              {reportData.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0).toFixed(1)}kg
-            </p>
+            <h3 className="text-lg font-semibold text-orange-800">使用量（単位別）</h3>
+            {unitEntries.length === 0 ? (
+              <p className="text-2xl font-bold text-orange-600">—</p>
+            ) : (
+              unitEntries.map(([unit, total]) => (
+                <p key={unit} className="text-2xl font-bold text-orange-600">
+                  {total.toFixed(1)}{unit}
+                </p>
+              ))
+            )}
           </div>
         </div>
 
         {/* NPK成分サマリー */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <p className="text-sm text-gray-600 mb-2">
+          成分量は「原液の重量 × 保証成分（%）」で計算しています
+          （{reportData.length}件中 {summary.convertedCount}件を計算に使用）。
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="bg-red-50 p-4 rounded">
             <h3 className="text-lg font-semibold text-red-800">窒素(N)成分総量</h3>
             <p className="text-2xl font-bold text-red-600">{npkTotals.N.toFixed(2)}kg</p>
@@ -263,6 +273,36 @@ const FertilizerUsageReport = () => {
             <p className="text-2xl font-bold text-blue-600">{npkTotals.K.toFixed(2)}kg</p>
           </div>
         </div>
+
+        {/* 計算できなかった理由を隠さずに出す */}
+        {summary.missingNutrientNames.length > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded p-3 mb-4 text-sm text-amber-900">
+            <p className="font-bold mb-1">成分（N-P-K）が未登録の肥料があります</p>
+            <p>
+              {summary.missingNutrientNames.join('、')} は成分が0%として計算されています。
+              <Link to="/fertilizers" className="underline font-medium ml-1">肥料一覧</Link>
+              から成分を入力すると、過去の記録もすべて計算し直されます（記録の入れ直しは不要です）。
+            </p>
+          </div>
+        )}
+
+        {summary.unconvertible.length > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded p-3 mb-4 text-sm text-amber-900">
+            <p className="font-bold mb-1">
+              重量に換算できなかった記録が{summary.unconvertible.length}件あります（成分量に含めていません）
+            </p>
+            <ul className="list-disc list-outside ml-5">
+              {[...new Set(summary.unconvertible.map((r) => `${r.fertilizerName}：${r.calcReason}`))]
+                .slice(0, 5)
+                .map((line, i) => <li key={i}>{line}</li>)}
+            </ul>
+            <p className="mt-1">
+              液肥は
+              <Link to="/fertilizers" className="underline font-medium mx-1">肥料一覧</Link>
+              で「性状＝液体」と「比重(kg/L)」を登録すると計算できるようになります。
+            </p>
+          </div>
+        )}
 
         {/* レポートテーブル */}
         {reportData.length > 0 ? (
@@ -286,7 +326,10 @@ const FertilizerUsageReport = () => {
                     施肥方法
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
-                    NPK成分
+                    成分(%)
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                    成分量(kg)
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     実施者
@@ -307,6 +350,11 @@ const FertilizerUsageReport = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {record.amount || '-'} {record.unit || ''}
+                      {record.amountBasis === '希釈後' && record.dilutionRatio && (
+                        <div className="text-xs text-gray-500">
+                          {record.dilutionRatio}倍希釈 → 原液 {record.stockAmount?.toFixed(2)}{record.unit}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {record.method || '-'}
@@ -317,6 +365,17 @@ const FertilizerUsageReport = () => {
                         <div>P: {record.phosphorus || 0}%</div>
                         <div>K: {record.potassium || 0}%</div>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                      {record.massKg === null ? (
+                        <span className="text-xs text-amber-700">換算不可</span>
+                      ) : (
+                        <div className="text-xs">
+                          <div>N: {record.n.toFixed(3)}</div>
+                          <div>P: {record.p.toFixed(3)}</div>
+                          <div>K: {record.k.toFixed(3)}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {record.applicator || '-'}
