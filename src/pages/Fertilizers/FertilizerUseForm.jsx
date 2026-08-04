@@ -7,7 +7,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { getLastFertilizerUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
 import { AMOUNT_BASES } from '../../services/fertilizerCalc';
-import { getStockSolutions, stockSolutionLabel } from '../../services/stockSolutionService';
+import { getStockSolutions, stockSolutionLabel, findActiveSolution } from '../../services/stockSolutionService';
 import toast from 'react-hot-toast';
 
 const FertilizerUseForm = () => {
@@ -128,6 +128,24 @@ const FertilizerUseForm = () => {
     fetchData();
   }, [id, isEditMode, navigate, currentOrganization]);
 
+  // その日に使用中のはずの母液（調製日がその日以前で最も新しいもの）
+  const activeSolution = findActiveSolution(stockSolutions, formData.date);
+
+  // 母液モードに切り替えたとき、使用中の母液を自動で選んでおく
+  useEffect(() => {
+    if (formData.sourceType !== '母液' || formData.stockSolutionId || !activeSolution) return;
+    setFormData(prev => ({
+      ...prev,
+      stockSolutionId: activeSolution.id,
+      unit: prev.unit === 'ml' ? 'ml' : 'L'
+    }));
+  }, [formData.sourceType, formData.stockSolutionId, activeSolution]);
+
+  const selectedSolution = stockSolutions.find(s => s.id === formData.stockSolutionId);
+  const remainingText = selectedSolution
+    ? `この母液の調製量は ${selectedSolution.totalVolume}L です。残量は母液（原液）調製記録の画面で確認できます。`
+    : '';
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -180,8 +198,12 @@ const FertilizerUseForm = () => {
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,
         // 液肥を希釈して使う場合、入力した量が原液か希釈後かで成分量が変わる
-        amountBasis: formData.sourceType === '母液' ? '希釈後' : (formData.amountBasis || '原液'),
-        dilutionRatio: formData.dilutionRatio ? Number(formData.dilutionRatio) : null,
+        amountBasis: formData.amountBasis || '原液',
+        // 母液をそのまま投入した場合は倍率を持たせない（＝1倍として計算される）
+        dilutionRatio:
+          formData.amountBasis === '希釈後' && formData.dilutionRatio
+            ? Number(formData.dilutionRatio)
+            : null,
         // 母液を希釈して施用した場合、成分量は母液の調製記録からさかのぼって計算する
         sourceType: formData.sourceType || '肥料',
         stockSolutionId: formData.sourceType === '母液' ? formData.stockSolutionId : '',
@@ -309,6 +331,11 @@ const FertilizerUseForm = () => {
                 <option key={s.id} value={s.id}>{stockSolutionLabel(s)}</option>
               ))}
             </select>
+            {activeSolution && formData.stockSolutionId === activeSolution.id && (
+              <p className="text-xs text-green-700 mt-1">
+                この日に使用中の母液を自動で選びました。違う場合は変更してください。
+              </p>
+            )}
             {stockSolutions.length === 0 ? (
               <p className="text-red-500 text-xs mt-1">
                 母液の調製記録がありません。先に
@@ -408,27 +435,62 @@ const FertilizerUseForm = () => {
           {/* 液肥を希釈して使う場合、入力した数値が何を指すかで成分量が変わる */}
           {formData.sourceType === '母液' ? (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
-              <label className="block text-sm font-bold text-blue-900 mb-1" htmlFor="dilutionRatioStock">
-                希釈倍率 *
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  className="mobile-input w-32"
-                  id="dilutionRatioStock"
-                  type="number"
-                  name="dilutionRatio"
-                  value={formData.dilutionRatio}
-                  onChange={handleChange}
-                  step="1"
-                  min="1"
-                  placeholder="例: 100"
-                  required
-                />
-                <span className="text-sm text-blue-900">倍</span>
+              <p className="text-sm font-bold text-blue-900 mb-2">入力した量は？</p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="amountBasis"
+                    value="原液"
+                    checked={formData.amountBasis !== '希釈後'}
+                    onChange={() => setFormData(prev => ({ ...prev, amountBasis: '原液', dilutionRatio: '' }))}
+                    className="h-4 w-4 mt-1"
+                  />
+                  <span>
+                    <strong>母液そのものの量</strong>（タンクに入れた母液が◯L）
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="amountBasis"
+                    value="希釈後"
+                    checked={formData.amountBasis === '希釈後'}
+                    onChange={() => setFormData(prev => ({ ...prev, amountBasis: '希釈後' }))}
+                    className="h-4 w-4 mt-1"
+                  />
+                  <span>
+                    <strong>希釈後の液の量</strong>（薄めた液を◯L散布した）
+                  </span>
+                </label>
               </div>
-              <p className="text-xs text-blue-800 mt-1">
-                散布量 ÷ 希釈倍率 = 使った母液の量。そこから肥料製品の消費量と成分量を計算します。
-              </p>
+
+              {formData.amountBasis === '希釈後' && (
+                <div className="mt-3">
+                  <label className="block text-sm font-bold text-blue-900 mb-1" htmlFor="dilutionRatioStock">
+                    希釈倍率 *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="mobile-input w-32"
+                      id="dilutionRatioStock"
+                      type="number"
+                      name="dilutionRatio"
+                      value={formData.dilutionRatio}
+                      onChange={handleChange}
+                      step="1"
+                      min="1"
+                      placeholder="例: 100"
+                      required
+                    />
+                    <span className="text-sm text-blue-900">倍</span>
+                  </div>
+                </div>
+              )}
+
+              {remainingText && (
+                <p className="text-xs text-blue-800 mt-2">{remainingText}</p>
+              )}
             </div>
           ) : (formData.unit === 'L' || formData.unit === 'ml') && (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">

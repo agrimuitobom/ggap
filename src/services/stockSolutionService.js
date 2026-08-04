@@ -81,6 +81,46 @@ export const deleteStockSolution = async (solutionId, organizationId, deletedByN
   await moveToTrash('stockSolutions', solutionId, organizationId, deletedByName);
 };
 
+/**
+ * 母液の使用量と残量を計算する。
+ * 母液は作り置きして少しずつ使い、なくなったらまた作る運用が普通なので、
+ * 「あと何L残っているか」が分かると次の調製のタイミングが読める。
+ * @param {object} solution 母液の調製記録
+ * @param {Array} uses その母液を指す施肥記録（amount, unit, dilutionRatio）
+ */
+export const calcSolutionUsage = (solution, uses = []) => {
+  const total = Number(solution?.totalVolume) || 0;
+  let used = 0;
+  uses.forEach((use) => {
+    const amount = Number(use.amount);
+    if (!Number.isFinite(amount)) return;
+    const liters = use.unit === 'ml' ? amount / 1000 : amount;
+    // 希釈倍率がなければ母液をそのまま使ったとみなす
+    const ratio = Number(use.dilutionRatio) > 0 ? Number(use.dilutionRatio) : 1;
+    used += liters / ratio;
+  });
+  const remaining = total - used;
+  return {
+    total,
+    used,
+    remaining,
+    ratio: total > 0 ? remaining / total : 0,
+    // 使った量が作った量を超えている＝記録のどこかが実態と合っていない
+    overdrawn: total > 0 && remaining < -0.001
+  };
+};
+
+/**
+ * 指定日に使っていたはずの母液を返す。
+ * 調製日がその日以前で、いちばん新しいものを「使用中の母液」とみなす。
+ */
+export const findActiveSolution = (solutions = [], dateKey) => {
+  const candidates = solutions
+    .filter((s) => s.preparedDate && s.preparedDate <= dateKey)
+    .sort((a, b) => b.preparedDate.localeCompare(a.preparedDate));
+  return candidates[0] || null;
+};
+
 /** 表示用のラベル（例: 2026-04-01 A液（Mk1号）200L） */
 export const stockSolutionLabel = (s) => {
   if (!s) return '';

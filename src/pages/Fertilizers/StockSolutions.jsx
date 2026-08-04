@@ -12,8 +12,7 @@ import {
   where,
   getDocs,
   writeBatch,
-  doc,
-  Timestamp
+  doc
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,7 +20,8 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import {
   getStockSolutions,
   saveStockSolution,
-  deleteStockSolution
+  deleteStockSolution,
+  calcSolutionUsage
 } from '../../services/stockSolutionService';
 import { firestoreLogger } from '../../utils/logger';
 import toast from 'react-hot-toast';
@@ -55,26 +55,32 @@ const StockSolutions = () => {
   const [saving, setSaving] = useState(false);
   const formRef = useRef(null);
 
-  // 既存の施肥記録をまとめて母液に紐づけるための状態
-  const [linkTarget, setLinkTarget] = useState(null); // 母液
-  const [linkFrom, setLinkFrom] = useState('');
-  const [linkTo, setLinkTo] = useState('');
-  const [linkRatio, setLinkRatio] = useState('');
-  const [linking, setLinking] = useState(false);
+  const [uses, setUses] = useState([]);
+
+  // 既存の施肥記録を調製日ごとに自動で振り分けるための状態
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignMode, setAssignMode] = useState('そのまま'); // そのまま | 希釈
+  const [assignRatio, setAssignRatio] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   const load = useCallback(async () => {
     if (!currentOrganization) return;
     try {
       setLoading(true);
-      const [solutionList, fertilizerSnapshot] = await Promise.all([
+      const [solutionList, fertilizerSnapshot, usesSnapshot] = await Promise.all([
         getStockSolutions(currentOrganization.id),
         getDocs(query(
           collection(db, 'fertilizers'),
+          where('organizationId', '==', currentOrganization.id)
+        )),
+        getDocs(query(
+          collection(db, 'fertilizerUses'),
           where('organizationId', '==', currentOrganization.id)
         ))
       ]);
       setSolutions(solutionList);
       setFertilizers(fertilizerSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setUses(usesSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
       firestoreLogger.error('母液調製記録の取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('母液の調製記録の取得中にエラーが発生しました');
@@ -160,69 +166,95 @@ const StockSolutions = () => {
     }
   };
 
-  const openLink = (solution) => {
-    setLinkTarget(solution);
-    setLinkFrom(solution.preparedDate || '');
-    setLinkTo(todayKey());
-    setLinkRatio(solution.defaultDilutionRatio?.toString() || '');
+  const usesBySolution = {};
+  uses.forEach((u) => {
+    if (!u.stockSolutionId) return;
+    if (!usesBySolution[u.stockSolutionId]) usesBySolution[u.stockSolutionId] = [];
+    usesBySolution[u.stockSolutionId].push(u);
+  });
+
+  // 調製日で区切って「この期間はこの母液」と決める
+  const periodOf = (index) => {
+    const sorted = [...solutions].sort((a, b) => (a.preparedDate || '').localeCompare(b.preparedDate || ''));
+    const pos = sorted.findIndex((s) => s.id === solutions[index].id);
+    return {
+      from: sorted[pos]?.preparedDate || '',
+      to: sorted[pos + 1]?.preparedDate || ''
+    };
   };
 
-  /** 期間内の施肥記録をまとめてこの母液に紐づける（過去の記録を作り直さずに済ませるため） */
-  const handleBulkLink = async () => {
-    if (!linkTarget || !linkFrom || !linkTo || !Number(linkRatio)) {
-      toast.error('期間と希釈倍率を入力してください');
+  /**
+   * 既存の施肥記録を、日付が入る期間の母液へ自動で振り分ける。
+   * 母液は作った順に使い切るので、調製日で区切れば正しく割り当てられる。
+   */
+  const handleAutoAssign = async () => {
+    if (solutions.length === 0) return;
+    if (assignMode === '希釈' && !Number(assignRatio)) {
+      toast.error('希釈倍率を入力してください');
       return;
     }
     try {
-      setLinking(true);
-      const start = new Date(`${linkFrom}T00:00:00`);
-      const end = new Date(`${linkTo}T23:59:59`);
-      const snapshot = await getDocs(query(
-        collection(db, 'fertilizerUses'),
-        where('organizationId', '==', currentOrganization.id),
-        where('date', '>=', Timestamp.fromDate(start)),
-        where('date', '<=', Timestamp.fromDate(end))
-      ));
+      setAssigning(true);
+      const sorted = [...solutions]
+        .filter((s) => s.preparedDate)
+        .sort((a, b) => a.preparedDate.localeCompare(b.preparedDate));
+      if (sorted.length === 0) {
+        toast.error('調製日が入力された母液がありません');
+        return;
+      }
 
-      // 母液の材料に含まれる肥料で記録されているものだけを対象にする
-      const ingredientIds = new Set((linkTarget.ingredients || []).map((i) => i.fertilizerId));
-      const targets = snapshot.docs.filter((d) => {
-        const data = d.data();
-        if (data.sourceType === '母液') return false;
-        return ingredientIds.has(data.fertilizerId);
+      const ingredientIds = new Set();
+      sorted.forEach((s) => (s.ingredients || []).forEach((i) => ingredientIds.add(i.fertilizerId)));
+
+      // 対象: まだ母液に紐づいておらず、母液の材料になっている肥料で記録されたもの
+      const targets = [];
+      uses.forEach((u) => {
+        if (u.sourceType === '母液') return;
+        if (!ingredientIds.has(u.fertilizerId)) return;
+        const d = u.date?.toDate ? u.date.toDate() : u.date ? new Date(u.date) : null;
+        if (!d) return;
+        const key = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        // その日以前で最も新しい調製記録
+        let match = null;
+        sorted.forEach((s) => {
+          if (s.preparedDate <= key) match = s;
+        });
+        if (match) targets.push({ id: u.id, solutionId: match.id });
       });
 
       if (targets.length === 0) {
-        toast('対象になる施肥記録が見つかりませんでした', { icon: 'ℹ️' });
+        toast('振り分けの対象になる施肥記録が見つかりませんでした', { icon: 'ℹ️' });
         return;
       }
       if (!window.confirm(
-        `${targets.length}件の施肥記録を「${linkTarget.name}」からの希釈（${linkRatio}倍）として更新します。よろしいですか？`
+        `${targets.length}件の施肥記録を、調製日にもとづいて各母液へ振り分けます。\n` +
+        `使用形態：${assignMode === 'そのまま' ? '母液をそのまま投入' : `${assignRatio}倍に希釈して施用`}\n` +
+        'よろしいですか？'
       )) {
         return;
       }
 
-      // 500件ずつに分けて更新
       for (let i = 0; i < targets.length; i += 400) {
         const batch = writeBatch(db);
-        targets.slice(i, i + 400).forEach((d) => {
-          batch.update(doc(db, 'fertilizerUses', d.id), {
+        targets.slice(i, i + 400).forEach((t) => {
+          batch.update(doc(db, 'fertilizerUses', t.id), {
             sourceType: '母液',
-            stockSolutionId: linkTarget.id,
-            amountBasis: '希釈後',
-            dilutionRatio: Number(linkRatio)
+            stockSolutionId: t.solutionId,
+            amountBasis: assignMode === 'そのまま' ? '原液' : '希釈後',
+            dilutionRatio: assignMode === 'そのまま' ? null : Number(assignRatio)
           });
         });
         await batch.commit();
       }
 
-      toast.success(`${targets.length}件を更新しました`);
-      setLinkTarget(null);
+      toast.success(`${targets.length}件を振り分けました`);
+      setAssignOpen(false);
+      await load();
     } catch (err) {
-      firestoreLogger.error('施肥記録の一括紐づけエラー', { organizationId: currentOrganization?.id }, err);
+      firestoreLogger.error('施肥記録の自動振り分けエラー', { organizationId: currentOrganization?.id }, err);
       toast.error('更新中にエラーが発生しました');
     } finally {
-      setLinking(false);
+      setAssigning(false);
     }
   };
 
@@ -261,7 +293,10 @@ const StockSolutions = () => {
         <p className="text-gray-500 text-center py-8">調製記録がありません。</p>
       ) : (
         <div className="space-y-3 mb-6">
-          {solutions.map((s) => (
+          {solutions.map((s, index) => {
+            const usage = calcSolutionUsage(s, usesBySolution[s.id] || []);
+            const period = periodOf(index);
+            return (
             <div key={s.id} className="bg-white rounded shadow p-4">
               <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                 <div>
@@ -280,9 +315,6 @@ const StockSolutions = () => {
                     <button type="button" onClick={() => startEdit(s)} className="text-blue-600 hover:text-blue-800 text-sm">
                       編集
                     </button>
-                    <button type="button" onClick={() => openLink(s)} className="text-green-700 hover:text-green-900 text-sm">
-                      既存記録を紐づけ
-                    </button>
                     <button type="button" onClick={() => handleDelete(s)} className="text-red-600 hover:text-red-800 text-sm">
                       削除
                     </button>
@@ -299,48 +331,121 @@ const StockSolutions = () => {
                 </ul>
               </div>
 
+              {/* 残量。なくなったら次を作る運用なので、ここが次の調製の目安になる */}
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-gray-600">
+                    使用 {usage.used.toFixed(1)}L / {usage.total}L
+                  </span>
+                  <span className={`font-bold ${
+                    usage.overdrawn ? 'text-red-700' : usage.ratio < 0.2 ? 'text-amber-700' : 'text-green-700'
+                  }`}>
+                    残り {usage.remaining.toFixed(1)}L
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      usage.overdrawn ? 'bg-red-500' : usage.ratio < 0.2 ? 'bg-amber-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(0, usage.ratio * 100))}%` }}
+                  />
+                </div>
+                {usage.overdrawn && (
+                  <p className="text-xs text-red-700 mt-1">
+                    作った量より多く使ったことになっています。調製量か使用量の記録を確認してください。
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  この母液を使った期間：{period.from} 〜 {period.to ? period.to : '現在'}
+                  （施肥記録 {(usesBySolution[s.id] || []).length}件）
+                </p>
+              </div>
+
               {s.notes && <p className="text-sm text-gray-600 mt-2">{s.notes}</p>}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* 既存記録の一括紐づけ */}
-      {linkTarget && (
+      {/* 既存記録の自動振り分け */}
+      {isMember && solutions.length > 0 && uses.some((u) => u.sourceType !== '母液') && (
         <div className="bg-white rounded shadow border-2 border-green-500 p-4 mb-6">
-          <h2 className="font-bold mb-2">既存の施肥記録を「{linkTarget.name}」に紐づける</h2>
+          <h2 className="font-bold mb-2">既存の施肥記録を母液に振り分ける</h2>
           <p className="text-sm text-gray-600 mb-3">
-            すでに登録済みの施肥記録を、この母液からの希釈として更新します。
-            対象は、期間内で「{(linkTarget.ingredients || []).map((i) => i.fertilizerName).join('、')}」として
-            記録されているものです。記録を作り直す必要はありません。
+            母液は作った順に使い切るので、<strong>調製日で期間を区切れば、どの記録がどの母液のものか自動で決まります</strong>。
+            登録済みの母液が{solutions.length}件あるので、その日付にもとづいて振り分けます。記録の作り直しは不要です。
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <div>
-              <label className="block text-sm text-gray-700 mb-1">開始日</label>
-              <input type="date" value={linkFrom} onChange={(e) => setLinkFrom(e.target.value)} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 mb-1">終了日</label>
-              <input type="date" value={linkTo} onChange={(e) => setLinkTo(e.target.value)} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 mb-1">希釈倍率</label>
-              <input type="number" min="1" value={linkRatio} onChange={(e) => setLinkRatio(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="例: 100" />
-            </div>
-          </div>
-          <div className="flex gap-2">
+
+          {!assignOpen ? (
             <button
               type="button"
-              onClick={handleBulkLink}
-              disabled={linking}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:bg-gray-300"
+              onClick={() => setAssignOpen(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
             >
-              {linking ? '更新中...' : 'まとめて更新する'}
+              振り分けの設定を開く
             </button>
-            <button type="button" onClick={() => setLinkTarget(null)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">
-              キャンセル
-            </button>
-          </div>
+          ) : (
+            <>
+              <p className="text-sm font-bold text-gray-700 mb-2">施肥記録に入力してある量は？</p>
+              <div className="space-y-2 mb-3">
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    checked={assignMode === 'そのまま'}
+                    onChange={() => setAssignMode('そのまま')}
+                    className="h-4 w-4 mt-1"
+                  />
+                  <span>
+                    <strong>母液そのものの量</strong>（タンクに入れた母液が◯L）
+                    <span className="block text-xs text-gray-500">
+                      母液を作り置きして少しずつ投入する運用では、通常こちらです。
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    checked={assignMode === '希釈'}
+                    onChange={() => setAssignMode('希釈')}
+                    className="h-4 w-4 mt-1"
+                  />
+                  <span>
+                    <strong>希釈後の液の量</strong>（薄めた液を◯L散布した）
+                  </span>
+                </label>
+              </div>
+
+              {assignMode === '希釈' && (
+                <div className="mb-3">
+                  <label className="block text-sm text-gray-700 mb-1">希釈倍率</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={assignRatio}
+                    onChange={(e) => setAssignRatio(e.target.value)}
+                    className="border rounded px-3 py-2 w-32"
+                    placeholder="例: 100"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoAssign}
+                  disabled={assigning}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:bg-gray-300"
+                >
+                  {assigning ? '振り分け中...' : '調製日にもとづいて振り分ける'}
+                </button>
+                <button type="button" onClick={() => setAssignOpen(false)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">
+                  キャンセル
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

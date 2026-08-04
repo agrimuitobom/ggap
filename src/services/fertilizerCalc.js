@@ -127,13 +127,14 @@ export const calcFromStockSolution = (record = {}, solution = null, fertilizerMa
   }
 
   const applied = Number(record.amount);
-  const ratio = Number(record.dilutionRatio);
   if (!Number.isFinite(applied)) {
     return { ...empty, reason: '使用量が未入力です' };
   }
-  if (!Number.isFinite(ratio) || ratio <= 0) {
-    return { ...empty, reason: '希釈倍率が未入力のため母液の使用量を計算できません' };
-  }
+
+  // 希釈倍率がなければ「母液をそのままタンクに入れた」とみなす（倍率1）。
+  // 母液を作り置きして少しずつ投入する運用では、これが普通の使い方になる。
+  const rawRatio = Number(record.dilutionRatio);
+  const ratio = Number.isFinite(rawRatio) && rawRatio > 0 ? rawRatio : 1;
 
   // 使用量は L で記録されている前提。ml の場合だけ L に直す
   const appliedLiters = record.unit === 'ml' ? applied / 1000 : applied;
