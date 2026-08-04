@@ -34,6 +34,7 @@ export const COLLECTION_LABELS = {
   seedUses: '播種・定植記録',
   fertilizers: '肥料',
   fertilizerUses: '施肥記録',
+  stockSolutions: '母液の調製記録',
   pesticides: '農薬',
   pesticideUses: '農薬使用記録',
   fieldInspections: '圃場点検',

@@ -1,12 +1,13 @@
 // src/pages/Fertilizers/FertilizerUseForm.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { getLastFertilizerUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
 import { AMOUNT_BASES } from '../../services/fertilizerCalc';
+import { getStockSolutions, stockSolutionLabel } from '../../services/stockSolutionService';
 import toast from 'react-hot-toast';
 
 const FertilizerUseForm = () => {
@@ -15,6 +16,7 @@ const FertilizerUseForm = () => {
   const location = useLocation();
   const { currentOrganization } = useOrganization();
   const [fertilizers, setFertilizers] = useState([]);
+  const [stockSolutions, setStockSolutions] = useState([]);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -24,6 +26,8 @@ const FertilizerUseForm = () => {
     unit: 'kg',
     amountBasis: '原液',
     dilutionRatio: '',
+    sourceType: '肥料',
+    stockSolutionId: '',
     method: '',
     notes: ''
   });
@@ -66,6 +70,9 @@ const FertilizerUseForm = () => {
         });
         setFertilizers(fertilizersList);
 
+        // 母液（原液タンク）の調製記録
+        setStockSolutions(await getStockSolutions(currentOrganization.id));
+
         // 圃場データを取得
         const fieldsQuery = query(
           collection(db, 'fields'),
@@ -96,6 +103,8 @@ const FertilizerUseForm = () => {
               unit: data.unit || 'kg',
               amountBasis: data.amountBasis || '原液',
               dilutionRatio: data.dilutionRatio?.toString() || '',
+              sourceType: data.sourceType || '肥料',
+              stockSolutionId: data.stockSolutionId || '',
               method: data.method || '',
               notes: data.notes || ''
             });
@@ -171,8 +180,11 @@ const FertilizerUseForm = () => {
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit,
         // 液肥を希釈して使う場合、入力した量が原液か希釈後かで成分量が変わる
-        amountBasis: formData.amountBasis || '原液',
+        amountBasis: formData.sourceType === '母液' ? '希釈後' : (formData.amountBasis || '原液'),
         dilutionRatio: formData.dilutionRatio ? Number(formData.dilutionRatio) : null,
+        // 母液を希釈して施用した場合、成分量は母液の調製記録からさかのぼって計算する
+        sourceType: formData.sourceType || '肥料',
+        stockSolutionId: formData.sourceType === '母液' ? formData.stockSolutionId : '',
         method: formData.method,
         notes: formData.notes,
         updatedAt: serverTimestamp()
@@ -250,29 +262,91 @@ const FertilizerUseForm = () => {
           />
         </div>
         
+        {/* 母液（原液タンク）を希釈して使う場合は、肥料ではなく母液を選ぶ */}
         <div className="mobile-form-field">
-          <label className="mobile-form-label" htmlFor="fertilizerId">
-            肥料 *
-          </label>
-          <select
-            className="mobile-select w-full"
-            id="fertilizerId"
-            name="fertilizerId"
-            value={formData.fertilizerId}
-            onChange={handleChange}
-            required
-          >
-            <option value="">肥料を選択してください</option>
-            {fertilizers.map(fertilizer => (
-              <option key={fertilizer.id} value={fertilizer.id}>{fertilizer.name}</option>
+          <label className="mobile-form-label">施用したもの *</label>
+          <div className="flex gap-2">
+            {['肥料', '母液'].map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, sourceType: type }))}
+                className={`flex-1 py-3 rounded border-2 text-sm font-medium ${
+                  formData.sourceType === type
+                    ? 'border-green-600 bg-green-50 text-green-800'
+                    : 'border-gray-200 text-gray-600'
+                }`}
+              >
+                {type === '肥料' ? '肥料を直接施用' : '母液を希釈して施用'}
+              </button>
             ))}
-          </select>
-          {fertilizers.length === 0 && (
-            <p className="text-red-500 text-xs mt-1">
-              肥料が登録されていません。先に肥料を登録してください。
-            </p>
-          )}
+          </div>
         </div>
+
+        {formData.sourceType === '母液' ? (
+          <div className="mobile-form-field">
+            <label className="mobile-form-label" htmlFor="stockSolutionId">
+              母液 *
+            </label>
+            <select
+              className="mobile-select w-full"
+              id="stockSolutionId"
+              name="stockSolutionId"
+              value={formData.stockSolutionId}
+              onChange={(e) => {
+                const sol = stockSolutions.find(s => s.id === e.target.value);
+                setFormData(prev => ({
+                  ...prev,
+                  stockSolutionId: e.target.value,
+                  unit: prev.unit === 'ml' ? 'ml' : 'L',
+                  dilutionRatio: prev.dilutionRatio || (sol?.defaultDilutionRatio?.toString() || '')
+                }));
+              }}
+              required
+            >
+              <option value="">母液を選択してください</option>
+              {stockSolutions.map(s => (
+                <option key={s.id} value={s.id}>{stockSolutionLabel(s)}</option>
+              ))}
+            </select>
+            {stockSolutions.length === 0 ? (
+              <p className="text-red-500 text-xs mt-1">
+                母液の調製記録がありません。先に
+                <Link to="/stock-solutions" className="underline mx-1">母液の調製記録</Link>
+                を登録してください。
+              </p>
+            ) : (
+              <p className="text-xs text-gray-500 mt-1">
+                使用量には<strong>希釈後に散布した量</strong>を入力してください。
+                母液の調製記録から、肥料製品の使用量と成分量を計算します。
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mobile-form-field">
+            <label className="mobile-form-label" htmlFor="fertilizerId">
+              肥料 *
+            </label>
+            <select
+              className="mobile-select w-full"
+              id="fertilizerId"
+              name="fertilizerId"
+              value={formData.fertilizerId}
+              onChange={handleChange}
+              required
+            >
+              <option value="">肥料を選択してください</option>
+              {fertilizers.map(fertilizer => (
+                <option key={fertilizer.id} value={fertilizer.id}>{fertilizer.name}</option>
+              ))}
+            </select>
+            {fertilizers.length === 0 && (
+              <p className="text-red-500 text-xs mt-1">
+                肥料が登録されていません。先に肥料を登録してください。
+              </p>
+            )}
+          </div>
+        )}
         
         <div className="mobile-form-field">
           <label className="mobile-form-label" htmlFor="fieldId">
@@ -332,7 +406,31 @@ const FertilizerUseForm = () => {
           </div>
 
           {/* 液肥を希釈して使う場合、入力した数値が何を指すかで成分量が変わる */}
-          {(formData.unit === 'L' || formData.unit === 'ml') && (
+          {formData.sourceType === '母液' ? (
+            <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
+              <label className="block text-sm font-bold text-blue-900 mb-1" htmlFor="dilutionRatioStock">
+                希釈倍率 *
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  className="mobile-input w-32"
+                  id="dilutionRatioStock"
+                  type="number"
+                  name="dilutionRatio"
+                  value={formData.dilutionRatio}
+                  onChange={handleChange}
+                  step="1"
+                  min="1"
+                  placeholder="例: 100"
+                  required
+                />
+                <span className="text-sm text-blue-900">倍</span>
+              </div>
+              <p className="text-xs text-blue-800 mt-1">
+                散布量 ÷ 希釈倍率 = 使った母液の量。そこから肥料製品の消費量と成分量を計算します。
+              </p>
+            </div>
+          ) : (formData.unit === 'L' || formData.unit === 'ml') && (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
               <p className="text-sm font-bold text-blue-900 mb-2">入力した量は？</p>
               <div className="space-y-2">

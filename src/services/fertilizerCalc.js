@@ -103,6 +103,101 @@ export const calcNutrients = (record = {}, fertilizer = {}) => {
   };
 };
 
+/**
+ * 母液（原液タンク）を希釈して施用した場合の成分量を求める。
+ *
+ *   希釈後の使用量 ÷ 希釈倍率 = 使った母液の量
+ *   使った母液の量 ÷ 母液の全量 = 母液のうち使った割合
+ *   各肥料製品の投入量 × その割合 = その施肥で消費した製品の量
+ *   製品の量(kg) × 保証成分(%) = 成分量
+ *
+ * @param {object} record 施肥記録（amount, unit, dilutionRatio）
+ * @param {object} solution 母液の調製記録（ingredients, totalVolume）
+ * @param {object} fertilizerMap { fertilizerId: 肥料マスタ }
+ */
+export const calcFromStockSolution = (record = {}, solution = null, fertilizerMap = {}) => {
+  const empty = { stockAmount: null, massKg: null, n: null, p: null, k: null, consumed: [] };
+
+  if (!solution) {
+    return { ...empty, reason: '母液の調製記録が見つかりません' };
+  }
+  const totalVolume = Number(solution.totalVolume);
+  if (!Number.isFinite(totalVolume) || totalVolume <= 0) {
+    return { ...empty, reason: '母液の全量(L)が未登録のため計算できません' };
+  }
+
+  const applied = Number(record.amount);
+  const ratio = Number(record.dilutionRatio);
+  if (!Number.isFinite(applied)) {
+    return { ...empty, reason: '使用量が未入力です' };
+  }
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    return { ...empty, reason: '希釈倍率が未入力のため母液の使用量を計算できません' };
+  }
+
+  // 使用量は L で記録されている前提。ml の場合だけ L に直す
+  const appliedLiters = record.unit === 'ml' ? applied / 1000 : applied;
+  const usedStockLiters = appliedLiters / ratio;
+  const share = usedStockLiters / totalVolume;
+
+  const nutrients = { n: 0, p: 0, k: 0 };
+  const consumed = [];
+  let massKg = 0;
+  let unconvertible = null;
+
+  (solution.ingredients || []).forEach((ing) => {
+    const fertilizer = fertilizerMap[ing.fertilizerId] || {};
+    const ingKg = toKilograms(ing.amount, ing.unit, fertilizer.density);
+    if (ingKg === null) {
+      unconvertible = `母液の材料「${ing.fertilizerName}」を重量に換算できません`;
+      return;
+    }
+    const usedKg = ingKg * share;
+    massKg += usedKg;
+    consumed.push({
+      fertilizerId: ing.fertilizerId,
+      fertilizerName: ing.fertilizerName,
+      usedKg
+    });
+    nutrients.n += (usedKg * (Number(fertilizer.nitrogenContent) || 0)) / 100;
+    nutrients.p += (usedKg * (Number(fertilizer.phosphorusContent) || 0)) / 100;
+    nutrients.k += (usedKg * (Number(fertilizer.potassiumContent) || 0)) / 100;
+  });
+
+  if (unconvertible) {
+    return { ...empty, reason: unconvertible };
+  }
+  if (consumed.length === 0) {
+    return { ...empty, reason: '母液に肥料が登録されていません' };
+  }
+
+  return {
+    stockAmount: usedStockLiters,
+    massKg,
+    n: nutrients.n,
+    p: nutrients.p,
+    k: nutrients.k,
+    consumed,
+    reason: ''
+  };
+};
+
+/**
+ * 母液の調製で消費した肥料製品の量を、製品ごとに集計する。
+ * 在庫計算で「母液を作った分」を引くために使う。
+ */
+export const stockSolutionConsumption = (solutions = []) => {
+  const byFertilizer = {};
+  solutions.forEach((s) => {
+    (s.ingredients || []).forEach((ing) => {
+      if (!ing.fertilizerId) return;
+      if (!byFertilizer[ing.fertilizerId]) byFertilizer[ing.fertilizerId] = [];
+      byFertilizer[ing.fertilizerId].push({ amount: ing.amount, unit: ing.unit });
+    });
+  });
+  return byFertilizer;
+};
+
 /** 成分が1つも登録されていない肥料か（0%表示の原因を画面で説明するために使う） */
 export const hasNoNutrientData = (fertilizer = {}) =>
   !Number(fertilizer.nitrogenContent) &&

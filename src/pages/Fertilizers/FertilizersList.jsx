@@ -29,13 +29,17 @@ const FertilizersList = () => {
 
     try {
       setLoading(true);
-      const [querySnapshot, usesSnapshot] = await Promise.all([
+      const [querySnapshot, usesSnapshot, solutionsSnapshot] = await Promise.all([
         getDocs(query(
           collection(db, 'fertilizers'),
           where('organizationId', '==', currentOrganization.id)
         )),
         getDocs(query(
           collection(db, 'fertilizerUses'),
+          where('organizationId', '==', currentOrganization.id)
+        )),
+        getDocs(query(
+          collection(db, 'stockSolutions'),
           where('organizationId', '==', currentOrganization.id)
         ))
       ]);
@@ -49,6 +53,18 @@ const FertilizersList = () => {
           usesByFertilizer[use.fertilizerId] = [];
         }
         usesByFertilizer[use.fertilizerId].push(use);
+      });
+
+      // 母液を作った分も肥料の消費として数える。
+      // 母液方式では製品が減るのは調製のときで、日々の施肥記録には現れない。
+      solutionsSnapshot.forEach((solDoc) => {
+        (solDoc.data().ingredients || []).forEach((ing) => {
+          if (!ing.fertilizerId) return;
+          if (!usesByFertilizer[ing.fertilizerId]) {
+            usesByFertilizer[ing.fertilizerId] = [];
+          }
+          usesByFertilizer[ing.fertilizerId].push({ amount: ing.amount, unit: ing.unit });
+        });
       });
 
       const fertilizersList = [];

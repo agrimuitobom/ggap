@@ -49,6 +49,7 @@ const FertilizersList = lazy(() => import('./pages/Fertilizers/FertilizersList')
 const FertilizerForm = lazy(() => import('./pages/Fertilizers/FertilizerForm'));
 const FertilizerUseForm = lazy(() => import('./pages/Fertilizers/FertilizerUseForm'));
 const FertilizerUsesList = lazy(() => import('./pages/Fertilizers/FertilizerUsesList'));
+const StockSolutions = lazy(() => import('./pages/Fertilizers/StockSolutions'));
 const PesticidesList = lazy(() => import('./pages/Pesticides/PesticidesList'));
 const PesticideForm = lazy(() => import('./pages/Pesticides/PesticideForm'));
 const PesticideUseForm = lazy(() => import('./pages/Pesticides/PesticideUseForm'));
@@ -198,6 +199,7 @@ function App() {
             <Route path="fertilizers/new" element={<FertilizerForm />} />
             <Route path="fertilizers/edit/:id" element={<FertilizerForm />} />
             <Route path="fertilizer-uses" element={<FertilizerUsesList />} />
+            <Route path="stock-solutions" element={<StockSolutions />} />
             <Route path="fertilizer-uses/new" element={<FertilizerUseForm />} />
             <Route path="fertilizer-uses/edit/:id" element={<FertilizerUseForm />} />
             

@@ -150,6 +150,9 @@ const MainLayout = () => {
                 <Link to="/fertilizer-uses/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   施肥記録登録
                 </Link>
+                <Link to="/stock-solutions" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  母液（原液）調製記録
+                </Link>
                 <Link to="/pesticides" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   農薬一覧
                 </Link>

@@ -11,7 +11,7 @@ import { db } from './firebase';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { businessLogger } from '../utils/logger';
-import { calcNutrients, hasNoNutrientData } from './fertilizerCalc';
+import { calcNutrients, calcFromStockSolution, hasNoNutrientData } from './fertilizerCalc';
 
 export class ReportService {
   constructor(organizationId) {
@@ -99,6 +99,16 @@ export class ReportService {
         fertilizerMap[f.id] = { id: f.id, ...f.data() };
       });
 
+      // 母液（原液タンク）を希釈して施用した記録は、母液の調製内容から
+      // 肥料製品の消費量をさかのぼって成分量を求める
+      const solutionsSnapshot = await getDocs(
+        query(collection(db, 'stockSolutions'), where('organizationId', '==', this.organizationId))
+      );
+      const solutionMap = {};
+      solutionsSnapshot.forEach((sol) => {
+        solutionMap[sol.id] = { id: sol.id, ...sol.data() };
+      });
+
       const fertilizerUsage = [];
       
       fertilizerUsesSnapshot.forEach(doc => {
@@ -113,28 +123,40 @@ export class ReportService {
           fertilizerName: data.fertilizerName
         });
         
+        const usesStockSolution = data.sourceType === '母液' && data.stockSolutionId;
+        const solution = usesStockSolution ? solutionMap[data.stockSolutionId] : null;
         const fertilizer = fertilizerMap[data.fertilizerId] || {};
-        const calc = calcNutrients(data, fertilizer);
+        const calc = usesStockSolution
+          ? calcFromStockSolution(data, solution, fertilizerMap)
+          : calcNutrients(data, fertilizer);
 
         fertilizerUsage.push({
           id: doc.id,
           date: data.date?.toDate() || new Date(),
           fieldName: data.fieldName,
-          fertilizerName: data.fertilizerName,
+          fertilizerName: usesStockSolution
+            ? (solution?.name || data.fertilizerName || '母液（記録なし）')
+            : data.fertilizerName,
           amount: data.amount,
           unit: data.unit,
           method: data.method,
+          sourceType: data.sourceType || '肥料',
+          stockSolutionId: data.stockSolutionId || null,
+          stockSolutionName: solution?.name || '',
+          consumed: calc.consumed || [],
           // 希釈して使う液肥のための情報
           amountBasis: data.amountBasis || '原液',
           dilutionRatio: data.dilutionRatio || null,
           // 成分(%)は肥料マスタから引く。マスタを直せば過去の記録にも反映される
-          nitrogen: fertilizer.nitrogenContent ?? 0,
-          phosphorus: fertilizer.phosphorusContent ?? 0,
-          potassium: fertilizer.potassiumContent ?? 0,
+          nitrogen: usesStockSolution ? null : (fertilizer.nitrogenContent ?? 0),
+          phosphorus: usesStockSolution ? null : (fertilizer.phosphorusContent ?? 0),
+          potassium: usesStockSolution ? null : (fertilizer.potassiumContent ?? 0),
           density: fertilizer.density ?? null,
           formType: fertilizer.formType || '',
-          hasNoNutrientData: hasNoNutrientData(fertilizer),
-          fertilizerMissing: !fertilizerMap[data.fertilizerId],
+          hasNoNutrientData: usesStockSolution
+            ? (solution?.ingredients || []).some((ing) => hasNoNutrientData(fertilizerMap[ing.fertilizerId] || {}))
+            : hasNoNutrientData(fertilizer),
+          fertilizerMissing: !usesStockSolution && !fertilizerMap[data.fertilizerId],
           // 換算結果（換算できない場合は null）
           stockAmount: calc.stockAmount,
           massKg: calc.massKg,
