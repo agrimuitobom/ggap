@@ -4,7 +4,7 @@
 // GGAP審査では養液・用水の管理記録が求められるため、
 // 「いつ・どの系統で・どんな値だったか・どう調整したか」を残す。
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, query, where, orderBy, limit, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, limit, startAfter, getDocs, getCountFromServer, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,6 +38,11 @@ const judge = (key, value) => {
   return 'ok';
 };
 
+// 一度に読み込む件数。これを超える分は「もっと見る」で追加読み込みする。
+// 以前は50件で打ち切っており、それ以上の記録が画面に出ないため
+// 「保存できていない」ように見えていた。
+const PAGE_SIZE = 50;
+
 const NutrientLogs = () => {
   const { currentUser, userProfile } = useAuth();
   const { currentOrganization, isMember } = useOrganization();
@@ -45,6 +50,11 @@ const NutrientLogs = () => {
   const [fields, setFields] = useState([]);
   const [plantings, setPlantings] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -68,10 +78,22 @@ const NutrientLogs = () => {
           collection(db, 'nutrientLogs'),
           where('organizationId', '==', currentOrganization.id),
           orderBy('date', 'desc'),
-          limit(50)
+          limit(PAGE_SIZE)
         )),
         getPlantings(currentOrganization.id)
       ]);
+
+      // 全体で何件あるかを表示する（画面に出ている件数＝保存件数ではないため）
+      try {
+        const countSnap = await getCountFromServer(query(
+          collection(db, 'nutrientLogs'),
+          where('organizationId', '==', currentOrganization.id)
+        ));
+        setTotalCount(countSnap.data().count);
+      } catch (countErr) {
+        // 件数が取れなくても記録の表示自体は続ける
+        setTotalCount(null);
+      }
 
       // 処理区ごとに養液の目標ECが異なるため、栽培中の作付を選べるようにする
       setPlantings(plantingList.filter((p) => p.status === '栽培中'));
@@ -87,6 +109,8 @@ const NutrientLogs = () => {
         ...d.data(),
         date: d.data().date?.toDate ? d.data().date.toDate() : null
       })));
+      setLastDoc(logsSnap.docs[logsSnap.docs.length - 1] || null);
+      setHasMore(logsSnap.docs.length === PAGE_SIZE);
     } catch (err) {
       firestoreLogger.error('養液管理記録の取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('データの取得中にエラーが発生しました');
@@ -96,6 +120,82 @@ const NutrientLogs = () => {
   }, [currentOrganization]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  /** 続きを読み込む（古い記録へさかのぼる） */
+  const loadMore = async () => {
+    if (!currentOrganization || !lastDoc || loadingMore) return;
+    try {
+      setLoadingMore(true);
+      const snap = await getDocs(query(
+        collection(db, 'nutrientLogs'),
+        where('organizationId', '==', currentOrganization.id),
+        orderBy('date', 'desc'),
+        startAfter(lastDoc),
+        limit(PAGE_SIZE)
+      ));
+      setLogs((prev) => [...prev, ...snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        date: d.data().date?.toDate ? d.data().date.toDate() : null
+      }))]);
+      setLastDoc(snap.docs[snap.docs.length - 1] || lastDoc);
+      setHasMore(snap.docs.length === PAGE_SIZE);
+    } catch (err) {
+      firestoreLogger.error('養液管理記録の追加取得エラー', { organizationId: currentOrganization?.id }, err);
+      toast.error('続きの読み込み中にエラーが発生しました');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  /** 全期間をCSVに書き出す（審査で全記録を提出できるように） */
+  const exportCsv = async () => {
+    if (!currentOrganization) return;
+    try {
+      setExporting(true);
+      const snap = await getDocs(query(
+        collection(db, 'nutrientLogs'),
+        where('organizationId', '==', currentOrganization.id),
+        orderBy('date', 'desc')
+      ));
+      const headers = ['測定日', '圃場・ベッド', '作付', '処理区', 'EC(mS/cm)', 'pH', '水温(℃)', '補給量(L)', '目標EC', '範囲外', '調整・処置', '備考', '記録者'];
+      const rows = snap.docs.map((d) => {
+        const v = d.data();
+        const date = v.date?.toDate ? v.date.toDate() : null;
+        return [
+          date ? date.toLocaleDateString('ja-JP') : '',
+          v.fieldName || '',
+          v.plantingLabel || '',
+          v.treatment || '',
+          v.ec ?? '',
+          v.ph ?? '',
+          v.waterTemp ?? '',
+          v.replenishAmount ?? '',
+          v.targetEc ?? '',
+          v.outOfRange ? '範囲外' : '',
+          v.adjustment || '',
+          v.notes || '',
+          v.createdByName || ''
+        ];
+      });
+      const csv = [headers, ...rows]
+        .map((row) => row.map((f) => `"${String(f).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      // Excelで文字化けしないよう BOM を付ける
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `養液管理記録_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast.success(`${rows.length}件を書き出しました`);
+    } catch (err) {
+      firestoreLogger.error('養液管理記録のCSV書き出しエラー', { organizationId: currentOrganization?.id }, err);
+      toast.error('書き出し中にエラーが発生しました');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const selectedPlanting = plantings.find((p) => p.id === plantingId);
   // 目標ECが設定されていれば、その値からの乖離で判定する（許容幅 ±0.3 mS/cm）
@@ -363,7 +463,24 @@ const NutrientLogs = () => {
       )}
 
       {/* 記録一覧 */}
-      <h2 className="font-bold text-gray-700 mb-2">最近の記録</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <h2 className="font-bold text-gray-700">
+          記録一覧
+          {totalCount !== null && (
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              全{totalCount}件中 {logs.length}件を表示
+            </span>
+          )}
+        </h2>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={exporting}
+          className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm disabled:opacity-50"
+        >
+          {exporting ? '書き出し中...' : '📄 CSVで全期間を書き出す'}
+        </button>
+      </div>
       {loading ? (
         <p className="text-sm text-gray-400">読み込み中...</p>
       ) : logs.length === 0 ? (
@@ -415,6 +532,19 @@ const NutrientLogs = () => {
               ))}
             </tbody>
           </table>
+
+          {hasMore && (
+            <div className="p-3 border-t text-center">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm disabled:opacity-50"
+              >
+                {loadingMore ? '読み込み中...' : `もっと見る（あと${totalCount !== null ? totalCount - logs.length : '?'}件）`}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
