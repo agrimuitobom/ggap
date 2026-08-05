@@ -79,18 +79,22 @@ service cloud.firestore {
     // 組織招待
     match /organizationInvitations/{inviteId} {
       // 招待された人は自分宛ての招待を読み取り可能（クエリを含む）
+      // メールアドレスは大文字小文字を区別せずに比較する
       allow read: if request.auth != null &&
-                     (request.auth.token.email == resource.data.email ||
+                     ((request.auth.token.email != null &&
+                       request.auth.token.email.lower() == resource.data.email.lower()) ||
                       isOrgAdmin(resource.data.organizationId));
       // 自分宛ての招待、または自分が管理者である組織の招待のみ検索可能
       allow list: if request.auth != null &&
-                     (resource.data.email == request.auth.token.email ||
+                     ((request.auth.token.email != null &&
+                       resource.data.email.lower() == request.auth.token.email.lower()) ||
                       isOrgAdmin(resource.data.organizationId));
       // 管理者のみ招待を作成可能
       allow create: if request.auth != null && isOrgAdmin(request.resource.data.organizationId);
       // 招待された本人または管理者のみ更新可能
       allow update: if request.auth != null &&
-                       (request.auth.token.email == resource.data.email ||
+                       ((request.auth.token.email != null &&
+                         request.auth.token.email.lower() == resource.data.email.lower()) ||
                         isOrgAdmin(resource.data.organizationId));
       allow delete: if request.auth != null && isOrgAdmin(resource.data.organizationId);
     }

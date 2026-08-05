@@ -91,6 +91,15 @@ const InvitationsPage = () => {
             />
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">招待はありません</h3>
+          {/* 照合に使っているメールアドレスを見せる。
+              招待側と1文字でも違えば表示されないため、原因の切り分けに要る */}
+          <p className="mt-2 text-sm text-gray-700">
+            この画面は <span className="font-mono font-bold">{currentUser?.email}</span> 宛の招待を表示します。
+          </p>
+          <p className="text-xs text-gray-500">
+            招待した側が入力したメールアドレスと一致していない場合は表示されません。
+            管理者に、組織設定の「承認待ちの招待」に出ている宛先を確認してもらってください。
+          </p>
           <p className="mt-1 text-sm text-gray-500">
             現在、あなた宛ての組織招待はありません
           </p>

@@ -352,9 +352,21 @@ export const getOrganizationInvitations = async (organizationId) => {
       where('organizationId', '==', organizationId)
     );
     const snapshot = await getDocs(invitationsQuery);
-    return snapshot.docs
+    const invitations = snapshot.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((inv) => inv.status === 'pending');
+
+    // 招待の照合はメールアドレスの完全一致で行う。過去に大文字や空白が
+    // 混ざったまま保存された招待は相手の画面に出ないため、ここでそろえる。
+    for (const inv of invitations) {
+      const normalized = (inv.email || '').trim().toLowerCase();
+      if (normalized && normalized !== inv.email) {
+        await updateDoc(doc(db, 'organizationInvitations', inv.id), { email: normalized });
+        inv.email = normalized;
+      }
+    }
+
+    return invitations;
   } catch (error) {
     firestoreLogger.error('Error fetching organization invitations', {}, error);
     throw error;
