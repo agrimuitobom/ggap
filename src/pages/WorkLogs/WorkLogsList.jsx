@@ -17,6 +17,11 @@ const WorkLogsList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  // 並べ替えと絞り込み。既定は今までどおり日付の新しい順
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+  const [filterWorkType, setFilterWorkType] = useState('');
+  const [filterField, setFilterField] = useState('');
 
   const fetchWorkLogs = useCallback(async () => {
     if (!currentOrganization) return;
@@ -76,6 +81,68 @@ const WorkLogsList = () => {
     setDeleteConfirm(null);
   };
 
+  // 絞り込みの選択肢は、実際に記録されている値から作る
+  const workTypeOptions = [...new Set(workLogs.map((l) => l.workType).filter(Boolean))].sort();
+  const fieldOptions = [...new Set(workLogs.map((l) => l.fieldName).filter(Boolean))].sort();
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      // 日付・数量は大きい順、文字は五十音順から始めるのが自然
+      setSortDir(key === 'date' || key === 'workHours' || key === 'harvestAmount' || key === 'wasteAmount' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortValue = (log, key) => {
+    switch (key) {
+      case 'date':
+        return log.date ? log.date.getTime() : 0;
+      case 'workHours':
+      case 'harvestAmount':
+      case 'wasteAmount':
+        return Number(log[key]) || 0;
+      case 'workerNames':
+        return (log.workerNames || []).join(',');
+      default:
+        return log[key] || '';
+    }
+  };
+
+  const visibleLogs = workLogs
+    .filter((l) => !filterWorkType || l.workType === filterWorkType)
+    .filter((l) => !filterField || l.fieldName === filterField)
+    .slice()
+    .sort((a, b) => {
+      const va = sortValue(a, sortKey);
+      const vb = sortValue(b, sortKey);
+      let result;
+      if (typeof va === 'number' && typeof vb === 'number') {
+        result = va - vb;
+      } else {
+        // 日本語は localeCompare でないと並び順が崩れる
+        result = String(va).localeCompare(String(vb), 'ja');
+      }
+      return sortDir === 'asc' ? result : -result;
+    });
+
+  // 見出しに並べ替えの向きを出す
+  const SortableHeader = ({ label, sortKey: key }) => (
+    <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">
+      <button
+        type="button"
+        onClick={() => toggleSort(key)}
+        className="flex items-center gap-1 hover:text-blue-700"
+      >
+        {label}
+        <span className={sortKey === key ? 'text-blue-700' : 'text-gray-300'}>
+          {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
+
   if (loading) {
     return (
       <div className="container mx-auto p-4">
@@ -119,23 +186,78 @@ const WorkLogsList = () => {
         </div>
       )}
       
+      {workLogs.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-3 mb-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">作業内容で絞り込む</label>
+              <select
+                value={filterWorkType}
+                onChange={(e) => setFilterWorkType(e.target.value)}
+                className="border rounded px-3 py-2 text-sm"
+              >
+                <option value="">すべて</option>
+                {workTypeOptions.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">圃場で絞り込む</label>
+              <select
+                value={filterField}
+                onChange={(e) => setFilterField(e.target.value)}
+                className="border rounded px-3 py-2 text-sm"
+              >
+                <option value="">すべて</option>
+                {fieldOptions.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+            {(filterWorkType || filterField) && (
+              <button
+                type="button"
+                onClick={() => { setFilterWorkType(''); setFilterField(''); }}
+                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm"
+              >
+                絞り込みを解除
+              </button>
+            )}
+            <span className="text-sm text-gray-500 ml-auto">
+              {visibleLogs.length}件 / 全{workLogs.length}件
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            見出しをタップすると、その列で並べ替えできます。
+          </p>
+        </div>
+      )}
+
       {workLogs.length > 0 ? (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="min-w-full table-auto">
             <thead>
               <tr className="bg-gray-100">
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">日付</th>
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">圃場</th>
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">作業内容</th>
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">担当者</th>
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">作業時間</th>
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">収穫量</th>
-                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">廃棄量</th>
+                <SortableHeader label="日付" sortKey="date" />
+                <SortableHeader label="圃場" sortKey="fieldName" />
+                <SortableHeader label="作業内容" sortKey="workType" />
+                <SortableHeader label="担当者" sortKey="workerNames" />
+                <SortableHeader label="作業時間" sortKey="workHours" />
+                <SortableHeader label="収穫量" sortKey="harvestAmount" />
+                <SortableHeader label="廃棄量" sortKey="wasteAmount" />
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody>
-              {workLogs.map((log) => (
+              {visibleLogs.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-6 px-4 text-center text-gray-500">
+                    絞り込みに一致する作業日誌がありません。
+                  </td>
+                </tr>
+              )}
+              {visibleLogs.map((log) => (
                 <tr
                   key={log.id}
                   onClick={() => navigate(`/work-logs/edit/${log.id}`)}
