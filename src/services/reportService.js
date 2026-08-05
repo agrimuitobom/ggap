@@ -153,6 +153,8 @@ export class ReportService {
           potassium: usesStockSolution ? null : (fertilizer.potassiumContent ?? 0),
           density: fertilizer.density ?? null,
           formType: fertilizer.formType || '',
+          // pH調整剤などは肥料ではないため、集計上は区別できるようにする
+          materialType: fertilizer.type || '',
           hasNoNutrientData: usesStockSolution
             ? (solution?.ingredients || []).some((ing) => hasNoNutrientData(fertilizerMap[ing.fertilizerId] || {}))
             : hasNoNutrientData(fertilizer),

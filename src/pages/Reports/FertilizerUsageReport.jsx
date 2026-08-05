@@ -9,6 +9,9 @@ import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import { summarizeUsage } from '../../services/fertilizerCalc';
 
+// 肥料として登録してあるが肥料ではない資材。件数の集計から分けて数える
+const NON_FERTILIZER_TYPES = ['pH調整剤', '土壌改良資材'];
+
 const FertilizerUsageReport = () => {
   const { currentUser } = useAuth();
   const { currentOrganization } = useOrganization();
@@ -231,8 +234,20 @@ const FertilizerUsageReport = () => {
           <div className="bg-green-50 p-4 rounded">
             <h3 className="text-lg font-semibold text-green-800">使用肥料種類</h3>
             <p className="text-2xl font-bold text-green-600">
-              {[...new Set(reportData.map(r => r.fertilizerName))].length}種類
+              {[...new Set(
+                reportData.filter(r => !NON_FERTILIZER_TYPES.includes(r.materialType)).map(r => r.fertilizerName)
+              )].length}種類
             </p>
+            {[...new Set(
+              reportData.filter(r => NON_FERTILIZER_TYPES.includes(r.materialType)).map(r => r.fertilizerName)
+            )].length > 0 && (
+              <p className="text-xs text-green-800 mt-1">
+                ほかに肥料以外の資材（pH調整剤など）
+                {[...new Set(
+                  reportData.filter(r => NON_FERTILIZER_TYPES.includes(r.materialType)).map(r => r.fertilizerName)
+                )].length}種類
+              </p>
+            )}
           </div>
           <div className="bg-purple-50 p-4 rounded">
             <h3 className="text-lg font-semibold text-purple-800">対象圃場</h3>
@@ -347,6 +362,9 @@ const FertilizerUsageReport = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {record.fertilizerName || '-'}
+                      {NON_FERTILIZER_TYPES.includes(record.materialType) && (
+                        <span className="block text-xs text-gray-500">{record.materialType}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {record.amount || '-'} {record.unit || ''}

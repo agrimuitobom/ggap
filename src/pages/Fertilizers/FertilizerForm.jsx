@@ -216,7 +216,7 @@ const FertilizerForm = () => {
         
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="type">
-            肥料タイプ *
+            区分 *
           </label>
           <select
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -234,6 +234,8 @@ const FertilizerForm = () => {
             <option value="カリ肥料">カリ肥料</option>
             <option value="複合肥料">複合肥料</option>
             <option value="微量要素肥料">微量要素肥料</option>
+            <option value="pH調整剤">pH調整剤</option>
+            <option value="土壌改良資材">土壌改良資材</option>
             <option value="その他">その他</option>
           </select>
         </div>
