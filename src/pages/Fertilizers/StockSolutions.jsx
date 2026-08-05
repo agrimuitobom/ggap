@@ -62,6 +62,8 @@ const StockSolutions = () => {
   const [assignMode, setAssignMode] = useState('そのまま'); // そのまま | 希釈
   const [assignRatio, setAssignRatio] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [unassigning, setUnassigning] = useState(false);
 
   const load = useCallback(async () => {
     if (!currentOrganization) return;
@@ -265,6 +267,51 @@ const StockSolutions = () => {
     }
   };
 
+  /**
+   * 母液への紐づけをすべて解除して、振り分け前の状態に戻す。
+   * 肥料・数量・日付はそのまま残るので、記録が失われることはない。
+   */
+  const handleUnassignAll = async () => {
+    const assigned = uses.filter((u) => u.sourceType === '母液');
+    if (assigned.length === 0) {
+      toast('母液に紐づいている施肥記録はありません', { icon: 'ℹ️' });
+      return;
+    }
+    if (!window.confirm(
+      `${assigned.length}件の施肥記録の母液への紐づけを解除し、「肥料を直接施用」に戻します。\n` +
+      '肥料名・数量・日付はそのまま残ります。よろしいですか？'
+    )) {
+      return;
+    }
+    try {
+      setUnassigning(true);
+      for (let i = 0; i < assigned.length; i += 400) {
+        const batch = writeBatch(db);
+        assigned.slice(i, i + 400).forEach((u) => {
+          batch.update(doc(db, 'fertilizerUses', u.id), {
+            sourceType: '肥料',
+            stockSolutionId: '',
+            amountBasis: '原液',
+            dilutionRatio: null
+          });
+        });
+        await batch.commit();
+      }
+      toast.success(`${assigned.length}件の紐づけを解除しました`);
+      await load();
+    } catch (err) {
+      firestoreLogger.error('母液紐づけの解除エラー', { organizationId: currentOrganization?.id }, err);
+      toast.error('解除中にエラーが発生しました');
+    } finally {
+      setUnassigning(false);
+    }
+  };
+
+  const formatUseDate = (u) => {
+    const d = u.date?.toDate ? u.date.toDate() : u.date ? new Date(u.date) : null;
+    return d ? d.toLocaleDateString('ja-JP') : '—';
+  };
+
   if (loading) {
     return <div className="container mx-auto p-4">読み込み中...</div>;
   }
@@ -365,8 +412,58 @@ const StockSolutions = () => {
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   この母液を使った期間：{period.from} 〜 {period.to ? period.to : '現在'}
-                  （施肥記録 {(usesBySolution[s.id] || []).length}件）
                 </p>
+                {(usesBySolution[s.id] || []).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                  >
+                    この母液を使った施肥記録 {(usesBySolution[s.id] || []).length}件を
+                    {expandedId === s.id ? '閉じる' : '見る'}
+                  </button>
+                )}
+
+                {/* 何が積み上がって使用量になっているのかを確認できるようにする */}
+                {expandedId === s.id && (
+                  <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-2">
+                    <table className="min-w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-500">
+                          <th className="text-left py-1">日付</th>
+                          <th className="text-left py-1">肥料</th>
+                          <th className="text-right py-1">入力量</th>
+                          <th className="text-right py-1">母液換算</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...(usesBySolution[s.id] || [])]
+                          .sort((a, b) => {
+                            const da = a.date?.toDate ? a.date.toDate().getTime() : 0;
+                            const dbb = b.date?.toDate ? b.date.toDate().getTime() : 0;
+                            return da - dbb;
+                          })
+                          .map((u) => {
+                            const liters = u.unit === 'ml' ? (Number(u.amount) || 0) / 1000 : Number(u.amount) || 0;
+                            const ratio = Number(u.dilutionRatio) > 0 ? Number(u.dilutionRatio) : 1;
+                            return (
+                              <tr key={u.id} className="border-t border-gray-200">
+                                <td className="py-1">{formatUseDate(u)}</td>
+                                <td className="py-1">{u.fertilizerName}</td>
+                                <td className="py-1 text-right">{u.amount}{u.unit}</td>
+                                <td className="py-1 text-right">{(liters / ratio).toFixed(2)}L</td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                    <p className="text-xs text-gray-500 mt-2">
+                      「母液換算」の合計が、この母液から使ったことになっている量です。
+                      作った量を超えている場合は、この期間に母液を作り直した記録が抜けているか、
+                      入力量が母液そのものではなく希釈後の量である可能性があります。
+                    </p>
+                  </div>
+                )}
               </div>
 
               {s.notes && <p className="text-sm text-gray-600 mt-2">{s.notes}</p>}
@@ -385,6 +482,8 @@ const StockSolutions = () => {
             登録済みの母液が{solutions.length}件あるので、その日付にもとづいて振り分けます。記録の作り直しは不要です。
             施肥記録の肥料と母液の材料を突き合わせるので、同じ日にA液とB液を作っていても取り違えません。
             すでに振り分け済みのものも、正しい母液へ付け替えられます。
+            結果がおかしければ「振り分けを取り消す」で元に戻せます（肥料名・数量・日付は
+            振り分けても変わらないので、記録が失われることはありません）。
           </p>
 
           {!assignOpen ? (
@@ -440,7 +539,7 @@ const StockSolutions = () => {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={handleAutoAssign}
@@ -448,6 +547,14 @@ const StockSolutions = () => {
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:bg-gray-300"
                 >
                   {assigning ? '振り分け中...' : '調製日にもとづいて振り分ける'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUnassignAll}
+                  disabled={unassigning}
+                  className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded disabled:opacity-50"
+                >
+                  {unassigning ? '解除中...' : '振り分けを取り消す'}
                 </button>
                 <button type="button" onClick={() => setAssignOpen(false)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">
                   キャンセル
