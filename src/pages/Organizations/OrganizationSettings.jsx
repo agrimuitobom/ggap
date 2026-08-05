@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   updateOrganization,
   inviteMemberToOrganization,
+  getOrganizationInvitations,
+  cancelInvitation,
   removeMemberFromOrganization,
   updateMemberRole
 } from '../../services/organizationService';
@@ -22,14 +24,17 @@ const OrganizationSettings = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
 
   useEffect(() => {
     if (currentOrganization) {
       setOrganizationName(currentOrganization.name);
       setOrganizationDescription(currentOrganization.description || '');
       loadMembers();
+      loadInvitations();
     }
-  }, [currentOrganization]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOrganization, isAdmin]);
 
   const loadMembers = async () => {
     try {
@@ -73,7 +78,10 @@ const OrganizationSettings = () => {
         inviteRole,
         currentUser.uid
       );
-      toast.success(`${inviteEmail} に招待メールを送信しました`);
+      // メールは送信されない。招待された本人が同じメールアドレスで
+      // ログインし、自分で「招待一覧」から承認する必要がある
+      toast.success('招待を作成しました。相手にログインしてもらってください');
+      await loadInvitations();
       setInviteEmail('');
       setInviteRole('member');
       setShowInviteForm(false);
@@ -106,6 +114,27 @@ const OrganizationSettings = () => {
     } catch (error) {
       firestoreLogger.error('権限の変更に失敗しました', { organizationId: currentOrganization.id, userId, newRole }, error);
       toast.error('権限の変更に失敗しました');
+    }
+  };
+
+  const loadInvitations = async () => {
+    if (!currentOrganization || !isAdmin) return;
+    try {
+      setPendingInvitations(await getOrganizationInvitations(currentOrganization.id));
+    } catch (err) {
+      firestoreLogger.error('招待一覧の取得に失敗しました', { organizationId: currentOrganization?.id }, err);
+    }
+  };
+
+  const handleCancelInvitation = async (invitation) => {
+    if (!window.confirm(`${invitation.email} への招待を取り消しますか？`)) return;
+    try {
+      await cancelInvitation(invitation.id);
+      toast.success('招待を取り消しました');
+      await loadInvitations();
+    } catch (err) {
+      firestoreLogger.error('招待の取り消しに失敗しました', { invitationId: invitation.id }, err);
+      toast.error('取り消し中にエラーが発生しました');
     }
   };
 
@@ -243,6 +272,22 @@ const OrganizationSettings = () => {
         {/* 招待フォーム */}
         {showInviteForm && isAdmin && (
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <div className="bg-amber-50 border border-amber-300 rounded p-3 mb-4 text-sm text-amber-900">
+              <p className="font-bold mb-1">この招待でメールは送信されません</p>
+              <p>
+                招待は、このアプリの中に「このメールアドレスの人を受け入れる」という
+                印を置くだけです。相手には次の手順を伝えてください。
+              </p>
+              <ol className="list-decimal list-outside ml-5 mt-2 space-y-1">
+                <li>アプリで<strong>同じメールアドレス</strong>のアカウントを作る（すでにあればログイン）</li>
+                <li>サイドバーの「組織管理 → 招待一覧」を開く</li>
+                <li>表示された招待を承認する</li>
+              </ol>
+              <p className="mt-2">
+                メールアドレスが1文字でも違うと招待は表示されません。招待の有効期限は7日間です。
+              </p>
+            </div>
+
             <form onSubmit={handleInviteMember} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -276,7 +321,7 @@ const OrganizationSettings = () => {
                   type="submit"
                   className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300"
                 >
-                  招待を送信
+                  招待を作成
                 </button>
                 <button
                   type="button"
@@ -291,6 +336,36 @@ const OrganizationSettings = () => {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* 承認待ちの招待。メールが飛ばない以上、誰宛に出したかを見えるようにする */}
+        {isAdmin && pendingInvitations.length > 0 && (
+          <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
+            <p className="font-bold text-blue-900 mb-2">
+              承認待ちの招待（{pendingInvitations.length}件）
+            </p>
+            <p className="text-sm text-blue-900 mb-3">
+              下のメールアドレスで<strong>相手がログインし、招待一覧から承認する</strong>と
+              メンバーになります。まだ承認されていません。
+            </p>
+            <ul className="space-y-2">
+              {pendingInvitations.map((inv) => (
+                <li key={inv.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded px-3 py-2">
+                  <span className="text-sm">
+                    <span className="font-mono">{inv.email}</span>
+                    <span className="ml-2 text-gray-600">{getRoleLabel(inv.role)}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCancelInvitation(inv)}
+                    className="text-red-600 hover:text-red-800 text-sm"
+                  >
+                    取り消す
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

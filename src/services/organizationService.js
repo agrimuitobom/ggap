@@ -322,7 +322,9 @@ export const inviteMemberToOrganization = async (organizationId, email, role, in
     const inviteRef = doc(collection(db, 'organizationInvitations'));
     await setDoc(inviteRef, {
       organizationId,
-      email,
+      // 招待の照合はメールアドレスの完全一致で行うため、
+      // 前後の空白と大文字小文字の違いで一致しなくなるのを防ぐ
+      email: (email || '').trim().toLowerCase(),
       role,
       invitedBy,
       status: 'pending',
@@ -335,6 +337,36 @@ export const inviteMemberToOrganization = async (organizationId, email, role, in
     firestoreLogger.error('Error inviting member', {}, error);
     throw error;
   }
+};
+
+/**
+ * 組織に出ている招待の一覧を取得（管理者用）
+ * メールは送信されないため、管理者が「誰宛に招待を出したか」を
+ * 確認できないと、招待が届かない理由が分からなくなる。
+ * @param {string} organizationId - 組織ID
+ */
+export const getOrganizationInvitations = async (organizationId) => {
+  try {
+    const invitationsQuery = query(
+      collection(db, 'organizationInvitations'),
+      where('organizationId', '==', organizationId)
+    );
+    const snapshot = await getDocs(invitationsQuery);
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((inv) => inv.status === 'pending');
+  } catch (error) {
+    firestoreLogger.error('Error fetching organization invitations', {}, error);
+    throw error;
+  }
+};
+
+/**
+ * 招待を取り消す（管理者用）
+ * @param {string} invitationId - 招待ID
+ */
+export const cancelInvitation = async (invitationId) => {
+  await deleteDoc(doc(db, 'organizationInvitations', invitationId));
 };
 
 /**
@@ -381,7 +413,7 @@ export const getUserInvitations = async (email) => {
   try {
     const invitationsQuery = query(
       collection(db, 'organizationInvitations'),
-      where('email', '==', email),
+      where('email', '==', (email || '').trim().toLowerCase()),
       where('status', '==', 'pending')
     );
 
