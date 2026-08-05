@@ -26,13 +26,24 @@ const convert = (amount, fromUnit, toUnit) => {
  * @param {Array} uses - その肥料の使用記録（amount, unit）
  * @returns {{used: number, remaining: number, ratio: number, approximate: boolean}|null}
  */
-export const calcFertilizerStock = (fertilizer, uses) => {
-  const purchaseAmount = Number(fertilizer.purchaseAmount);
-  const purchaseUnit = fertilizer.purchaseUnit;
-  if (!purchaseAmount || !purchaseUnit) return null;
+export const calcFertilizerStock = (fertilizer, uses, purchases = []) => {
+  const purchaseUnit = fertilizer.purchaseUnit || purchases[0]?.unit;
+  if (!purchaseUnit) return null;
+
+  // マスタに書かれた購入量（旧方式）と、買い足した購入記録を合算する
+  let purchaseAmount = Number(fertilizer.purchaseAmount) || 0;
+  let approximate = false;
+  purchases.forEach((p) => {
+    const converted = convert(Number(p.amount) || 0, p.unit || purchaseUnit, purchaseUnit);
+    if (converted === null) {
+      approximate = true;
+      return;
+    }
+    purchaseAmount += converted;
+  });
+  if (!purchaseAmount) return null;
 
   let used = 0;
-  let approximate = false;
   uses.forEach((use) => {
     if (!use.amount) return;
     const converted = convert(Number(use.amount), use.unit || purchaseUnit, purchaseUnit);

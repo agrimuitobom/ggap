@@ -7,6 +7,7 @@ import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { calcFertilizerStock, formatStock } from '../../services/inventoryService';
+import { getFertilizerPurchases, findDuplicateFertilizers } from '../../services/fertilizerPurchaseService';
 import { firestoreLogger } from '../../utils/logger';
 
 const STOCK_STYLES = {
@@ -29,7 +30,7 @@ const FertilizersList = () => {
 
     try {
       setLoading(true);
-      const [querySnapshot, usesSnapshot, solutionsSnapshot] = await Promise.all([
+      const [querySnapshot, usesSnapshot, solutionsSnapshot, purchaseList] = await Promise.all([
         getDocs(query(
           collection(db, 'fertilizers'),
           where('organizationId', '==', currentOrganization.id)
@@ -41,8 +42,17 @@ const FertilizersList = () => {
         getDocs(query(
           collection(db, 'stockSolutions'),
           where('organizationId', '==', currentOrganization.id)
-        ))
+        )),
+        getFertilizerPurchases(currentOrganization.id)
       ]);
+
+      // 買い足したぶんは購入記録に入るため、在庫計算に渡す
+      const purchasesByFertilizer = {};
+      purchaseList.forEach((p) => {
+        if (!p.fertilizerId) return;
+        if (!purchasesByFertilizer[p.fertilizerId]) purchasesByFertilizer[p.fertilizerId] = [];
+        purchasesByFertilizer[p.fertilizerId].push(p);
+      });
 
       // 肥料ごとの使用記録をまとめる
       const usesByFertilizer = {};
@@ -75,7 +85,11 @@ const FertilizersList = () => {
           ...data,
           purchaseDate: data.purchaseDate?.toDate(),
           stock: formatStock(
-            calcFertilizerStock(data, usesByFertilizer[doc.id] || []),
+            calcFertilizerStock(
+              data,
+              usesByFertilizer[doc.id] || [],
+              purchasesByFertilizer[doc.id] || []
+            ),
             data.purchaseUnit
           )
         });
@@ -115,6 +129,9 @@ const FertilizersList = () => {
     setDeleteConfirm(null);
   };
 
+  // 同じ名前・同じ製造元の肥料が複数あれば、統合を促す
+  const duplicateGroups = findDuplicateFertilizers(fertilizers);
+
   if (loading) {
     return (
       <div className="container mx-auto p-4">
@@ -142,6 +159,21 @@ const FertilizersList = () => {
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
           {error}
         </div>
+      )}
+
+      {/* 同じ肥料を買い足すたびに新規登録すると、選択欄で区別できなくなる */}
+      {duplicateGroups.length > 0 && (
+        <Link
+          to="/fertilizer-purchases"
+          className="flex items-center justify-between bg-red-50 border-2 border-red-400 text-red-800 px-4 py-3 mb-4 rounded-lg hover:bg-red-100 transition-colors"
+        >
+          <span>
+            ⚠️ <span className="font-bold">同じ名前で重複している肥料が{duplicateGroups.length}種類</span>あります
+            （{duplicateGroups.slice(0, 3).map((g) => g[0].name).join('、')}{duplicateGroups.length > 3 ? ' ほか' : ''}）。
+            買い足すたびに新規登録すると、施肥記録の選択欄で区別できず、在庫も分かれてしまいます。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">まとめる →</span>
+        </Link>
       )}
       
       {fertilizers.length > 0 ? (

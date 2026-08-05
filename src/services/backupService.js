@@ -30,6 +30,7 @@ export const BACKUP_COLLECTIONS = [
   'fertilizers',
   'fertilizerUses',
   'stockSolutions',
+  'fertilizerPurchases',
   'pesticides',
   'pesticideUses',
   'fieldInspections',

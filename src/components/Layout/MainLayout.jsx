@@ -144,6 +144,9 @@ const MainLayout = () => {
                 <Link to="/fertilizers/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   肥料登録
                 </Link>
+                <Link to="/fertilizer-purchases" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  肥料の購入記録
+                </Link>
                 <Link to="/fertilizer-uses" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   施肥記録一覧
                 </Link>

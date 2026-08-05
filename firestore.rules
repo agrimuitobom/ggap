@@ -369,6 +369,13 @@ service cloud.firestore {
       allow delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // 肥料の購入（入荷）記録
+    match /fertilizerPurchases/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 母液（原液）の調製記録
     match /stockSolutions/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
