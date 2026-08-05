@@ -173,13 +173,17 @@ const StockSolutions = () => {
     usesBySolution[u.stockSolutionId].push(u);
   });
 
-  // 調製日で区切って「この期間はこの母液」と決める
-  const periodOf = (index) => {
-    const sorted = [...solutions].sort((a, b) => (a.preparedDate || '').localeCompare(b.preparedDate || ''));
-    const pos = sorted.findIndex((s) => s.id === solutions[index].id);
+  // 期間は「同じ系統（同じ名称）の母液」の中で前後を見る。
+  // A液とB液は別のタンクで同じ日に作ることがあり、全部を1本の時系列に
+  // 並べると、同じ日の別系統が「次の調製」と誤認されて期間が潰れてしまう。
+  const periodOf = (solution) => {
+    const sameLine = solutions
+      .filter((s) => s.name === solution.name && s.preparedDate)
+      .sort((a, b) => a.preparedDate.localeCompare(b.preparedDate));
+    const pos = sameLine.findIndex((s) => s.id === solution.id);
     return {
-      from: sorted[pos]?.preparedDate || '',
-      to: sorted[pos + 1]?.preparedDate || ''
+      from: sameLine[pos]?.preparedDate || solution.preparedDate || '',
+      to: sameLine[pos + 1]?.preparedDate || ''
     };
   };
 
@@ -203,23 +207,26 @@ const StockSolutions = () => {
         return;
       }
 
-      const ingredientIds = new Set();
-      sorted.forEach((s) => (s.ingredients || []).forEach((i) => ingredientIds.add(i.fertilizerId)));
-
-      // 対象: まだ母液に紐づいておらず、母液の材料になっている肥料で記録されたもの
+      // 対象: 母液の材料になっている肥料で記録されたもの。
+      // すでに振り分け済みのものも、正しい母液へ付け替えられるよう対象に含める
+      // （割り当ては日付と肥料から一意に決まるので、やり直しても結果は変わらない）
       const targets = [];
       uses.forEach((u) => {
-        if (u.sourceType === '母液') return;
-        if (!ingredientIds.has(u.fertilizerId)) return;
+        if (!u.fertilizerId) return;
         const d = u.date?.toDate ? u.date.toDate() : u.date ? new Date(u.date) : null;
         if (!d) return;
         const key = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-        // その日以前で最も新しい調製記録
+
+        // その肥料を溶かしてある母液の中から、その日以前で最も新しいものを選ぶ。
+        // 同じ日にA液とB液を作っていても、肥料が違えば取り違えない。
         let match = null;
         sorted.forEach((s) => {
-          if (s.preparedDate <= key) match = s;
+          const contains = (s.ingredients || []).some((i) => i.fertilizerId === u.fertilizerId);
+          if (contains && s.preparedDate <= key) match = s;
         });
-        if (match) targets.push({ id: u.id, solutionId: match.id });
+        if (match && match.id !== u.stockSolutionId) {
+          targets.push({ id: u.id, solutionId: match.id });
+        }
       });
 
       if (targets.length === 0) {
@@ -293,9 +300,9 @@ const StockSolutions = () => {
         <p className="text-gray-500 text-center py-8">調製記録がありません。</p>
       ) : (
         <div className="space-y-3 mb-6">
-          {solutions.map((s, index) => {
+          {solutions.map((s) => {
             const usage = calcSolutionUsage(s, usesBySolution[s.id] || []);
-            const period = periodOf(index);
+            const period = periodOf(s);
             return (
             <div key={s.id} className="bg-white rounded shadow p-4">
               <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
@@ -376,6 +383,8 @@ const StockSolutions = () => {
           <p className="text-sm text-gray-600 mb-3">
             母液は作った順に使い切るので、<strong>調製日で期間を区切れば、どの記録がどの母液のものか自動で決まります</strong>。
             登録済みの母液が{solutions.length}件あるので、その日付にもとづいて振り分けます。記録の作り直しは不要です。
+            施肥記録の肥料と母液の材料を突き合わせるので、同じ日にA液とB液を作っていても取り違えません。
+            すでに振り分け済みのものも、正しい母液へ付け替えられます。
           </p>
 
           {!assignOpen ? (
