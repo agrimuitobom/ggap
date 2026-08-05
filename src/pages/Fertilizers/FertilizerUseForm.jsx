@@ -17,6 +17,8 @@ const FertilizerUseForm = () => {
   const { currentOrganization } = useOrganization();
   const [fertilizers, setFertilizers] = useState([]);
   const [stockSolutions, setStockSolutions] = useState([]);
+  // 編集画面で「元は何を記録したのか」を見失わないよう、読み込んだ内容を残す
+  const [originalRecord, setOriginalRecord] = useState(null);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -95,6 +97,7 @@ const FertilizerUseForm = () => {
           
           if (docSnap.exists()) {
             const data = docSnap.data();
+            setOriginalRecord(data);
             setFormData({
               date: data.date?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
               fertilizerId: data.fertilizerId || '',
@@ -142,9 +145,14 @@ const FertilizerUseForm = () => {
   }, [formData.sourceType, formData.stockSolutionId, activeSolution]);
 
   const selectedSolution = stockSolutions.find(s => s.id === formData.stockSolutionId);
+  const selectedFertilizer = fertilizers.find(f => f.id === formData.fertilizerId);
   const remainingText = selectedSolution
     ? `この母液の調製量は ${selectedSolution.totalVolume}L です。残量は母液（原液）調製記録の画面で確認できます。`
     : '';
+
+  // 記録では母液を指しているのに、その母液が見つからない場合
+  const missingSolution =
+    formData.sourceType === '母液' && formData.stockSolutionId && !selectedSolution;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -185,13 +193,13 @@ const FertilizerUseForm = () => {
     
     try {
       // 選択された肥料と圃場の名前を取得
-      const selectedFertilizer = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
+      const fertilizerForSave = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
       const selectedField = fields.find(field => field.id === formData.fieldId);
       
       const fertilizerUseData = {
         date: new Date(formData.date),
         fertilizerId: formData.fertilizerId,
-        fertilizerName: selectedFertilizer ? selectedFertilizer.name : '',
+        fertilizerName: fertilizerForSave ? fertilizerForSave.name : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
         organizationId: currentOrganization.id,
@@ -284,6 +292,29 @@ const FertilizerUseForm = () => {
           />
         </div>
         
+        {/* 編集中に「元は何を記録したのか」が分かるようにする */}
+        {isEditMode && originalRecord && (
+          <div className="mobile-form-field bg-gray-50 border border-gray-200 rounded p-3">
+            <p className="text-xs text-gray-500 mb-1">この記録に保存されている内容</p>
+            <p className="text-sm text-gray-800">
+              {originalRecord.date?.toDate
+                ? originalRecord.date.toDate().toLocaleDateString('ja-JP')
+                : ''}
+              　{originalRecord.fieldName || '圃場なし'}
+            </p>
+            <p className="text-sm font-bold text-gray-900">
+              {originalRecord.sourceType === '母液'
+                ? `母液：${stockSolutions.find(s => s.id === originalRecord.stockSolutionId)?.name || '（記録された母液が見つかりません）'}`
+                : `肥料：${originalRecord.fertilizerName || '（記録なし）'}`}
+              {originalRecord.amount != null && ` ／ ${originalRecord.amount}${originalRecord.unit || ''}`}
+              {originalRecord.dilutionRatio ? ` ／ ${originalRecord.dilutionRatio}倍希釈` : ''}
+            </p>
+            {originalRecord.method && (
+              <p className="text-sm text-gray-600">{originalRecord.method}</p>
+            )}
+          </div>
+        )}
+
         {/* 母液（原液タンク）を希釈して使う場合は、肥料ではなく母液を選ぶ */}
         <div className="mobile-form-field">
           <label className="mobile-form-label">施用したもの *</label>
@@ -336,6 +367,27 @@ const FertilizerUseForm = () => {
                 この日に使用中の母液を自動で選びました。違う場合は変更してください。
               </p>
             )}
+
+            {missingSolution && (
+              <p className="text-xs text-red-700 mt-1">
+                この記録が指している母液が見つかりません（削除された可能性があります）。
+                正しい母液を選び直してください。
+              </p>
+            )}
+
+            {/* 「この母液って何が入ってるんだっけ？」に答える */}
+            {selectedSolution && (
+              <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-700">
+                <p className="font-bold mb-1">
+                  {selectedSolution.preparedDate} 調製 ／ 全量 {selectedSolution.totalVolume}L
+                </p>
+                <ul>
+                  {(selectedSolution.ingredients || []).map((ing, i) => (
+                    <li key={i}>・{ing.fertilizerName} {ing.amount}{ing.unit}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {stockSolutions.length === 0 ? (
               <p className="text-red-500 text-xs mt-1">
                 母液の調製記録がありません。先に
@@ -371,6 +423,24 @@ const FertilizerUseForm = () => {
               <p className="text-red-500 text-xs mt-1">
                 肥料が登録されていません。先に肥料を登録してください。
               </p>
+            )}
+
+            {/* 「この肥料って何だっけ？」に答える */}
+            {selectedFertilizer && (
+              <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-700">
+                <p>
+                  {selectedFertilizer.manufacturer && `${selectedFertilizer.manufacturer}　`}
+                  {selectedFertilizer.type || '区分なし'}
+                  {selectedFertilizer.formType && `／${selectedFertilizer.formType}`}
+                </p>
+                <p>
+                  成分 N{selectedFertilizer.nitrogenContent ?? 0}
+                  －P{selectedFertilizer.phosphorusContent ?? 0}
+                  －K{selectedFertilizer.potassiumContent ?? 0}
+                  {selectedFertilizer.density ? `　比重 ${selectedFertilizer.density}kg/L` : ''}
+                </p>
+                {selectedFertilizer.notes && <p className="text-gray-500">{selectedFertilizer.notes}</p>}
+              </div>
             )}
           </div>
         )}
