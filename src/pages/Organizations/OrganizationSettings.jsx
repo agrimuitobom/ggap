@@ -26,6 +26,9 @@ const OrganizationSettings = () => {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState([]);
 
+  // useEffect の依存配列は描画時に評価されるため、ここで先に決めておく
+  const isAdmin = userRole === 'admin';
+
   useEffect(() => {
     if (currentOrganization) {
       setOrganizationName(currentOrganization.name);
@@ -164,7 +167,6 @@ const OrganizationSettings = () => {
     }
   };
 
-  const isAdmin = userRole === 'admin';
 
   if (!currentOrganization) {
     return (
