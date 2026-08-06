@@ -139,7 +139,7 @@ const FertilizerUsesList = () => {
                   onClick={() => navigate(`/fertilizer-uses/edit/${use.id}`)}
                   className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.date?.toLocaleDateString() || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fertilizerName || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fertilizerName || (use.sourceType === '母液' ? '母液から施用' : '-')}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.fieldName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.amount ? `${use.amount} ${use.unit}` : '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">{use.method || '-'}</td>
@@ -190,7 +190,9 @@ const FertilizerUsesList = () => {
               <div key={use.id} className="mobile-card">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="font-semibold text-lg text-gray-900">{use.fertilizerName || '-'}</h3>
+                    <h3 className="font-semibold text-lg text-gray-900">
+                      {use.fertilizerName || (use.sourceType === '母液' ? '母液から施用' : '-')}
+                    </h3>
                     <p className="text-sm text-gray-600">{use.date?.toLocaleDateString() || '-'}</p>
                   </div>
                   <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">

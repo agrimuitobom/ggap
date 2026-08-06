@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getLastFertilizerUse } from '../../services/lastUseService';
 import { firestoreLogger } from '../../utils/logger';
 import { AMOUNT_BASES } from '../../services/fertilizerCalc';
@@ -15,6 +16,7 @@ const FertilizerUseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentOrganization } = useOrganization();
+  const { userProfile } = useAuth();
   const [fertilizers, setFertilizers] = useState([]);
   const [stockSolutions, setStockSolutions] = useState([]);
   // 編集画面で「元は何を記録したのか」を見失わないよう、読み込んだ内容を残す
@@ -199,7 +201,14 @@ const FertilizerUseForm = () => {
       const fertilizerUseData = {
         date: new Date(formData.date),
         fertilizerId: formData.fertilizerId,
-        fertilizerName: fertilizerForSave ? fertilizerForSave.name : '',
+        // 母液から施用した場合は肥料を選ばないため、一覧で空欄にならないよう
+        // 母液の名称を肥料名として残す
+        fertilizerName:
+          formData.sourceType === '母液'
+            ? `母液：${stockSolutions.find(s => s.id === formData.stockSolutionId)?.name || ''}`
+            : (fertilizerForSave ? fertilizerForSave.name : ''),
+        // 誰が施用したかは審査で必ず問われる。記録した人を既定で残す
+        appliedByName: userProfile?.name || '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
         organizationId: currentOrganization.id,
