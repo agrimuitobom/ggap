@@ -120,7 +120,11 @@ const PPEChecks = () => {
                 key={check.id}
                 onClick={() => isMember && navigate(`/ppe/checks/edit/${check.id}`)}
                 className={`bg-white rounded shadow p-4 ${isMember ? 'cursor-pointer hover:bg-gray-50' : ''} ${
-                  ng ? 'border-l-4 border-red-500' : 'border-l-4 border-green-500'
+                  check.noApplicableWork
+                    ? 'border-l-4 border-gray-400'
+                    : ng
+                    ? 'border-l-4 border-red-500'
+                    : 'border-l-4 border-green-500'
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
@@ -131,8 +135,18 @@ const PPEChecks = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded ${ng ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                      {ng ? `未着用 ${ngCount}件` : `着用 ${okCount}件`}
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      check.noApplicableWork
+                        ? 'bg-gray-100 text-gray-700'
+                        : ng
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {check.noApplicableWork
+                        ? '該当作業なし'
+                        : ng
+                        ? `未着用 ${ngCount}件`
+                        : `着用 ${okCount}件`}
                     </span>
                     <span onClick={(e) => e.stopPropagation()}>
                       {isMember && (

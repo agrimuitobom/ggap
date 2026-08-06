@@ -47,6 +47,8 @@ const PPECheckForm = () => {
   // { itemId: 'ok' | 'ng' | 'na' }
   const [results, setResults] = useState({});
   const [findings, setFindings] = useState('');
+  // 保護具を要する作業自体がなかった期間も、記録を空けずに残す
+  const [noApplicableWork, setNoApplicableWork] = useState(false);
   const [correctiveAction, setCorrectiveAction] = useState('');
   const [photos, setPhotos] = useState([]); // { file, previewUrl }
   const [existingPhotoUrls, setExistingPhotoUrls] = useState([]);
@@ -74,6 +76,7 @@ const PPECheckForm = () => {
         setTargetIds(check.targetIds || []);
         setOtherTargets(check.otherTargets || '');
         setFindings(check.findings || '');
+        setNoApplicableWork(!!check.noApplicableWork);
         setCorrectiveAction(check.correctiveAction || '');
         setExistingPhotoUrls(check.photoUrls || []);
         const map = {};
@@ -159,13 +162,17 @@ const PPECheckForm = () => {
     return urls;
   };
 
-  const ngItems = items.filter((i) => results[i.id] === 'ng');
+  const ngItems = noApplicableWork ? [] : items.filter((i) => results[i.id] === 'ng');
   const canSave = !!date && !saving && items.length > 0;
 
   const handleSave = async () => {
     if (!canSave || !currentOrganization) return;
     if (ngItems.length > 0 && !correctiveAction.trim()) {
       toast.error('未着用があるときは、是正した内容を入力してください');
+      return;
+    }
+    if (noApplicableWork && !findings.trim()) {
+      toast.error('保護具を要する作業がなかった理由を入力してください');
       return;
     }
     setSaving(true);
@@ -189,10 +196,12 @@ const PPECheckForm = () => {
         targetIds,
         targetNames: selected.map((w) => w.name),
         otherTargets,
+        noApplicableWork,
         results: items.map((i) => ({
           itemId: i.id,
           itemName: i.name,
-          result: results[i.id] || 'na'
+          // 該当作業がなかった期間は、すべて「対象外」として残す
+          result: noApplicableWork ? 'na' : (results[i.id] || 'na')
         })),
         findings,
         correctiveAction,
@@ -249,7 +258,27 @@ const PPECheckForm = () => {
         <p className="text-sm text-gray-500 mt-2">確認者：{userProfile?.name || '—'}</p>
       </div>
 
-      {/* 作業（選ぶと関係する保護具だけが⭕になる） */}
+      {/* 保護具を要する作業がない期間も、確認した事実として記録に残す */}
+      <div className="bg-white rounded shadow p-4 mb-4">
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={noApplicableWork}
+            onChange={(e) => setNoApplicableWork(e.target.checked)}
+            className="h-5 w-5 mt-0.5"
+          />
+          <span className="text-sm">
+            <span className="font-bold">この期間、保護具を要する作業がなかった</span>
+            <span className="block text-xs text-gray-500 mt-1">
+              薬剤の取扱いや母液の調製などが無ければ、着用の機会もありません。
+              その場合は着用状況ではなく「該当作業がなかったこと」を記録します。
+              記録が飛んでいるより、確認したうえで該当なしと残っている方が確実です。
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {!noApplicableWork && (
       <div className="bg-white rounded shadow p-4 mb-4">
         <label className="block text-sm font-bold text-gray-700 mb-2">
           確認した作業
@@ -279,8 +308,10 @@ const PPECheckForm = () => {
           placeholder="その他の作業を入力"
         />
       </div>
+      )}
 
       {/* 着用状況 */}
+      {!noApplicableWork && (
       <div className="bg-white rounded shadow p-4 mb-4">
         <label className="block text-sm font-bold text-gray-700 mb-1">着用状況</label>
         <p className="text-xs text-gray-500 mb-3">
@@ -316,8 +347,10 @@ const PPECheckForm = () => {
           })}
         </div>
       </div>
+      )}
 
       {/* 対象者 */}
+      {!noApplicableWork && (
       <div className="bg-white rounded shadow p-4 mb-4">
         <label className="block text-sm font-bold text-gray-700 mb-2">
           対象者<span className="font-normal text-gray-500">（任意）</span>
@@ -348,6 +381,7 @@ const PPECheckForm = () => {
           placeholder="例: 2年生 実習班A（8名）"
         />
       </div>
+      )}
 
       {/* 未着用があったときだけ是正を求める */}
       {ngItems.length > 0 && (
@@ -375,14 +409,20 @@ const PPECheckForm = () => {
       {/* 気づき */}
       <div className="bg-white rounded shadow p-4 mb-4">
         <label className="block text-sm font-bold text-gray-700 mb-2">
-          気づいたこと<span className="font-normal text-gray-500">（任意）</span>
+          {noApplicableWork ? (
+            <>該当作業がなかった理由 <span className="text-red-600">*</span></>
+          ) : (
+            <>気づいたこと<span className="font-normal text-gray-500">（任意）</span></>
+          )}
         </label>
         <textarea
           value={findings}
           onChange={(e) => setFindings(e.target.value)}
           rows={2}
           className="w-full border rounded px-3 py-2 text-sm"
-          placeholder="例: 手袋のサイズがSしか残っていないため、Mを補充する"
+          placeholder={noApplicableWork
+            ? '例: 5月以降、pH調整剤の取扱いと母液の調製を行っておらず、保護具を要する作業が発生していない'
+            : '例: 手袋のサイズがSしか残っていないため、Mを補充する'}
         />
       </div>
 

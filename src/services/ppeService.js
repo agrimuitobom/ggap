@@ -292,6 +292,8 @@ export const savePpeCheck = async (organizationId, checkId, data) => {
     targetIds: data.targetIds || [],
     targetNames: data.targetNames || [],
     otherTargets: (data.otherTargets || '').trim(),
+    // 保護具を要する作業が無かった期間の記録（記録の空白を埋める）
+    noApplicableWork: !!data.noApplicableWork,
     // [{ itemId, itemName, result }]
     results: data.results || [],
     findings: (data.findings || '').trim(),
@@ -315,7 +317,7 @@ export const deletePpeCheck = async (checkId, organizationId, deletedByName = ''
 
 /** 未着用（ng）が1件でもあるか */
 export const hasNonCompliance = (check) =>
-  (check?.results || []).some((r) => r.result === 'ng');
+  !check?.noApplicableWork && (check?.results || []).some((r) => r.result === 'ng');
 
 /** 最後に着用確認を行ってからの経過日数（記録がなければ null） */
 export const daysSinceLastCheck = (checks = []) => {
