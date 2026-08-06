@@ -7,6 +7,8 @@ import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import toast from 'react-hot-toast';
+import { findRecordsWithWrongApplier, repairAppliers } from '../../services/applierRepairService';
 
 const FertilizerUsesList = () => {
   const navigate = useNavigate();
@@ -16,12 +18,50 @@ const FertilizerUsesList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  // 作業者が組織名のままになっている記録の件数
+  const [wrongApplierCount, setWrongApplierCount] = useState(0);
+  const [repairing, setRepairing] = useState(false);
 
   useEffect(() => {
     if (currentOrganization) {
       fetchFertilizerUses();
+      checkAppliers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOrganization]);
+
+  const checkAppliers = async () => {
+    if (!currentOrganization) return;
+    try {
+      const { items } = await findRecordsWithWrongApplier(
+        currentOrganization.id,
+        currentOrganization.name
+      );
+      setWrongApplierCount(items.length);
+    } catch (err) {
+      firestoreLogger.error('施用者の点検に失敗しました', { organizationId: currentOrganization?.id }, err);
+    }
+  };
+
+  const handleRepairAppliers = async () => {
+    if (!window.confirm(
+      `${wrongApplierCount}件の記録の作業者を、作業日誌の担当者に置き換えます。よろしいですか？`
+    )) {
+      return;
+    }
+    try {
+      setRepairing(true);
+      const count = await repairAppliers(currentOrganization.id, currentOrganization.name);
+      toast.success(`${count}件の作業者を修正しました`);
+      await fetchFertilizerUses();
+      await checkAppliers();
+    } catch (err) {
+      firestoreLogger.error('施用者の修正に失敗しました', { organizationId: currentOrganization?.id }, err);
+      toast.error('修正中にエラーが発生しました');
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   const fetchFertilizerUses = async () => {
     if (!currentOrganization) return;
@@ -109,6 +149,28 @@ const FertilizerUsesList = () => {
         </Link>
       </div>
       
+      {/* 作業日誌から自動作成した記録の施用者が組織名になっていた分を直す */}
+      {wrongApplierCount > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded p-3 mb-4">
+          <p className="font-bold text-amber-900 mb-1">
+            ⚠️ 作業者が組織名のままの記録が{wrongApplierCount}件あります
+          </p>
+          <p className="text-sm text-amber-900 mb-3">
+            作業日誌から自動作成された施肥・農薬使用記録に、施用者として組織名が
+            入っていました。審査では「誰が施用したか」を問われるため、
+            作業日誌の担当者に置き換えます。
+          </p>
+          <button
+            type="button"
+            onClick={handleRepairAppliers}
+            disabled={repairing}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded text-sm disabled:bg-gray-300"
+          >
+            {repairing ? '修正中...' : '担当者名に修正する'}
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
           {error}

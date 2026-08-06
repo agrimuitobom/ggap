@@ -213,6 +213,16 @@ const WorkLogForm = () => {
   const createRelatedRecords = async (workLogRef, selectedField) => {
     const promises = [];
 
+    // 施用者は組織名ではなく、実際に作業した担当者。審査では
+    // 「誰が施用したか」を必ず問われるため、作業日誌の担当者を引き継ぐ。
+    // 担当者が未入力の場合は、記録した人を残す。
+    const applierNames = users
+      .filter((user) => formData.workers.includes(user.id))
+      .map((user) => user.name);
+    const appliedByName = applierNames.length > 0
+      ? applierNames.join('、')
+      : (userProfile?.name || '');
+
     // 施肥記録作成
     if (formData.workType === '施肥' && formData.fertilizerId) {
       const selectedFertilizer = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
@@ -231,8 +241,8 @@ const WorkLogForm = () => {
         fertilizerName: selectedFertilizer ? selectedFertilizer.name : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        appliedBy: currentOrganization.id,
-        appliedByName: currentOrganization.name || '',
+        appliedBy: currentUser?.uid || '',
+        appliedByName,
         organizationId: currentOrganization.id,
         amount: formData.fertilizerAmount ? Number(formData.fertilizerAmount) : null,
         unit: formData.fertilizerUnit,
@@ -294,8 +304,8 @@ const WorkLogForm = () => {
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
         targetPest: formData.targetPest,
-        appliedBy: currentOrganization.id,
-        appliedByName: currentOrganization.name || '',
+        appliedBy: currentUser?.uid || '',
+        appliedByName,
         organizationId: currentOrganization.id,
         dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
         amount: formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
