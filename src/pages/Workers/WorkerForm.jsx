@@ -15,6 +15,7 @@ const WorkerForm = () => {
   const { currentOrganization } = useOrganization();
   const [formData, setFormData] = useState({
     name: '',
+    nameKana: '',
     email: '',
     phone: '',
     role: '',
@@ -64,6 +65,7 @@ const WorkerForm = () => {
         const data = docSnap.data();
         setFormData({
           name: data.name || '',
+          nameKana: data.nameKana || '',
           email: data.email || '',
           phone: data.phone || '',
           role: data.role || '',
@@ -194,6 +196,25 @@ const WorkerForm = () => {
                 required
                 placeholder="山田 太郎"
               />
+            </div>
+
+            {/* 漢字だけでは五十音順に並べられないため、ふりがなで並び順を決める */}
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="nameKana">
+                ふりがな
+              </label>
+              <input
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                id="nameKana"
+                type="text"
+                name="nameKana"
+                value={formData.nameKana}
+                onChange={handleChange}
+                placeholder="やまだ たろう"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                入力すると、一覧を名簿どおりの五十音順に並べられます。
+              </p>
             </div>
 
             <div className="mb-4">

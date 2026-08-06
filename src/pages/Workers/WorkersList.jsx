@@ -19,6 +19,9 @@ const WorkersList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
+  // 既定は「役職ごとにまとめて氏名順」。見出しをタップすると個別の列で並べ替える
+  const [sortKey, setSortKey] = useState('default');
+  const [sortDir, setSortDir] = useState('asc');
 
   const roles = [
     '農場主',
@@ -33,6 +36,7 @@ const WorkersList = () => {
   // CSVテンプレートの列定義
   const templateColumns = [
     { key: 'name', label: '名前', required: true },
+    { key: 'nameKana', label: 'ふりがな', required: false },
     { key: 'role', label: '役職', required: true },
     { key: 'email', label: 'メールアドレス', required: false },
     { key: 'phone', label: '電話番号', required: false },
@@ -171,13 +175,67 @@ const WorkersList = () => {
     toast.success('CSVをエクスポートしました');
   };
 
-  const filteredWorkers = workers.filter(worker => {
-    const matchesSearch =
-      (worker.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (worker.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = !filterRole || worker.role === filterRole;
-    return matchesSearch && matchesRole;
-  });
+  // 並べ替えの値。名前はふりがながあればそれを使う。
+  // 漢字だけでは読みが分からず、五十音順に並べられないため。
+  const sortValue = (worker, key) => {
+    switch (key) {
+      case 'name':
+        return worker.nameKana || worker.name || '';
+      case 'hireDate': {
+        const d = worker.hireDate?.toDate ? worker.hireDate.toDate() : worker.hireDate ? new Date(worker.hireDate) : null;
+        return d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
+      }
+      default:
+        return worker[key] || '';
+    }
+  };
+
+  const compareBy = (a, b, key) => {
+    const va = sortValue(a, key);
+    const vb = sortValue(b, key);
+    if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+    return String(va).localeCompare(String(vb), 'ja');
+  };
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const filteredWorkers = workers
+    .filter(worker => {
+      const matchesSearch =
+        (worker.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (worker.nameKana || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (worker.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = !filterRole || worker.role === filterRole;
+      return matchesSearch && matchesRole;
+    })
+    .slice()
+    .sort((a, b) => {
+      // 既定は役職ごとにまとめてから氏名順。役職が混ざらないようにする
+      if (sortKey === 'default') {
+        const byRole = compareBy(a, b, 'role');
+        return byRole !== 0 ? byRole : compareBy(a, b, 'name');
+      }
+      const result = compareBy(a, b, sortKey);
+      return sortDir === 'asc' ? result : -result;
+    });
+
+  const SortableHeader = ({ label, sortKey: key, className = '' }) => (
+    <th className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${className}`}>
+      <button type="button" onClick={() => toggleSort(key)} className="flex items-center gap-1 hover:text-blue-700">
+        {label}
+        <span className={sortKey === key ? 'text-blue-700' : 'text-gray-300'}>
+          {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
 
   if (loading) {
     return (
@@ -287,21 +345,13 @@ const WorkersList = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    名前
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    役職
-                  </th>
+                  <SortableHeader label="名前" sortKey="name" />
+                  <SortableHeader label="役職" sortKey="role" />
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                     連絡先
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                    入社日
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    状態
-                  </th>
+                  <SortableHeader label="入社日" sortKey="hireDate" className="hidden lg:table-cell" />
+                  <SortableHeader label="状態" sortKey="status" />
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     操作
                   </th>
@@ -324,7 +374,9 @@ const WorkersList = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{worker.name}</div>
-                          <div className="text-sm text-gray-500">{worker.email || '-'}</div>
+                          <div className="text-sm text-gray-500">
+                            {worker.nameKana || worker.email || '-'}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -373,10 +425,20 @@ const WorkersList = () => {
               </tbody>
             </table>
           </div>
-          <div className="bg-gray-50 px-6 py-3 border-t">
+          <div className="bg-gray-50 px-6 py-3 border-t flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-gray-500">
               {filteredWorkers.length}件の従業員
+              {sortKey === 'default' && '（役職ごとに氏名順）'}
             </p>
+            {sortKey !== 'default' && (
+              <button
+                type="button"
+                onClick={() => { setSortKey('default'); setSortDir('asc'); }}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                既定の並び（役職ごとに氏名順）に戻す
+              </button>
+            )}
           </div>
         </div>
       )}
