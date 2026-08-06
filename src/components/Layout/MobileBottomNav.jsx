@@ -25,11 +25,12 @@ const MobileBottomNav = () => {
       )
     },
     {
-      path: '/fertilizers',
-      label: '資材',
+      // 資材の登録は年に数回だが、EC・pHの測定は毎日行うため入れ替えている
+      path: '/nutrient-logs',
+      label: '養液',
       icon: (
         <svg className="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 21v-7a2 2 0 012-2h2a2 2 0 012 2v7" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3s6 6.5 6 10.5a6 6 0 01-12 0C6 9.5 12 3 12 3z" />
         </svg>
       )
     },
