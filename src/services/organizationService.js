@@ -317,7 +317,7 @@ export const getUserRoleInOrganization = async (organizationId, userId) => {
  * @param {string} invitedBy - 招待者のユーザーID
  * @returns {Promise<string>} 招待ID
  */
-export const inviteMemberToOrganization = async (organizationId, email, role, invitedBy) => {
+export const inviteMemberToOrganization = async (organizationId, email, role, invitedBy, organizationName = '') => {
   try {
     const inviteRef = doc(collection(db, 'organizationInvitations'));
     await setDoc(inviteRef, {
@@ -325,6 +325,8 @@ export const inviteMemberToOrganization = async (organizationId, email, role, in
       // 招待の照合はメールアドレスの完全一致で行うため、
       // 前後の空白と大文字小文字の違いで一致しなくなるのを防ぐ
       email: (email || '').trim().toLowerCase(),
+      // 招待された人は組織を読めないため、表示用に組織名を写しておく
+      organizationName,
       role,
       invitedBy,
       status: 'pending',
@@ -345,7 +347,7 @@ export const inviteMemberToOrganization = async (organizationId, email, role, in
  * 確認できないと、招待が届かない理由が分からなくなる。
  * @param {string} organizationId - 組織ID
  */
-export const getOrganizationInvitations = async (organizationId) => {
+export const getOrganizationInvitations = async (organizationId, organizationName = '') => {
   try {
     const invitationsQuery = query(
       collection(db, 'organizationInvitations'),
@@ -359,10 +361,18 @@ export const getOrganizationInvitations = async (organizationId) => {
     // 招待の照合はメールアドレスの完全一致で行う。過去に大文字や空白が
     // 混ざったまま保存された招待は相手の画面に出ないため、ここでそろえる。
     for (const inv of invitations) {
+      const patch = {};
       const normalized = (inv.email || '').trim().toLowerCase();
       if (normalized && normalized !== inv.email) {
-        await updateDoc(doc(db, 'organizationInvitations', inv.id), { email: normalized });
-        inv.email = normalized;
+        patch.email = normalized;
+      }
+      // 組織名の写しが無い招待は、相手の画面で組織名を出せないため補う
+      if (!inv.organizationName && organizationName) {
+        patch.organizationName = organizationName;
+      }
+      if (Object.keys(patch).length > 0) {
+        await updateDoc(doc(db, 'organizationInvitations', inv.id), patch);
+        Object.assign(inv, patch);
       }
     }
 
@@ -435,23 +445,39 @@ export const getUserInvitations = async (email) => {
     for (const inviteDoc of snapshot.docs) {
       const inviteData = inviteDoc.data();
 
-      // 有効期限チェック
-      if (inviteData.expiresAt.toDate() < new Date()) {
+      // 有効期限チェック（期限が入っていない古い招待は有効として扱う）
+      if (inviteData.expiresAt?.toDate && inviteData.expiresAt.toDate() < new Date()) {
         continue;
       }
 
-      const orgDoc = await getDoc(doc(db, 'organizations', inviteData.organizationId));
-
-      if (orgDoc.exists()) {
-        invitations.push({
-          id: inviteDoc.id,
-          ...inviteData,
-          organization: {
-            id: orgDoc.id,
-            ...orgDoc.data()
+      // 招待された人はまだ組織のメンバーではないため、組織ドキュメントを
+      // 読む権限がない。招待に写しておいた組織名を使い、無い場合だけ
+      // 読みに行く（失敗しても招待は表示する）。
+      let organization = {
+        id: inviteData.organizationId,
+        name: inviteData.organizationName || ''
+      };
+      if (!inviteData.organizationName) {
+        try {
+          const orgDoc = await getDoc(doc(db, 'organizations', inviteData.organizationId));
+          if (orgDoc.exists()) {
+            organization = { id: orgDoc.id, ...orgDoc.data() };
           }
-        });
+        } catch (orgError) {
+          firestoreLogger.info('招待元の組織を読み取れませんでした（未加入のため）', {
+            organizationId: inviteData.organizationId
+          });
+        }
       }
+      if (!organization.name) {
+        organization.name = '招待元の組織';
+      }
+
+      invitations.push({
+        id: inviteDoc.id,
+        ...inviteData,
+        organization
+      });
     }
 
     return invitations;

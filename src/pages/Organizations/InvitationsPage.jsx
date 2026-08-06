@@ -11,7 +11,7 @@ import { firestoreLogger } from '../../utils/logger';
 const InvitationsPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { invitations, fetchInvitations, refreshOrganizations } = useOrganization();
+  const { invitations, fetchInvitations, refreshOrganizations, invitationError } = useOrganization();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -73,6 +73,13 @@ const InvitationsPage = () => {
         <h1 className="text-2xl font-bold text-gray-800">組織への招待</h1>
         <p className="text-gray-600 mt-1">あなたへの組織招待を確認できます</p>
       </div>
+
+      {invitationError && (
+        <div className="bg-red-50 border-2 border-red-300 text-red-800 px-4 py-3 mb-4 rounded">
+          <p className="font-bold">招待の取得に失敗しました</p>
+          <p className="text-sm">{invitationError}</p>
+        </div>
+      )}
 
       {invitations.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">

@@ -79,7 +79,8 @@ const OrganizationSettings = () => {
         currentOrganization.id,
         inviteEmail,
         inviteRole,
-        currentUser.uid
+        currentUser.uid,
+        currentOrganization.name
       );
       // メールは送信されない。招待された本人が同じメールアドレスで
       // ログインし、自分で「招待一覧」から承認する必要がある
@@ -123,7 +124,9 @@ const OrganizationSettings = () => {
   const loadInvitations = async () => {
     if (!currentOrganization || !isAdmin) return;
     try {
-      setPendingInvitations(await getOrganizationInvitations(currentOrganization.id));
+      setPendingInvitations(
+        await getOrganizationInvitations(currentOrganization.id, currentOrganization.name)
+      );
     } catch (err) {
       firestoreLogger.error('招待一覧の取得に失敗しました', { organizationId: currentOrganization?.id }, err);
     }

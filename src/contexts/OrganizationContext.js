@@ -28,6 +28,7 @@ export function OrganizationProvider({ children }) {
   const [selfWorkerId, setSelfWorkerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [invitations, setInvitations] = useState([]);
+  const [invitationError, setInvitationError] = useState('');
 
   // ユーザーの組織一覧を取得
   const fetchUserOrganizations = async () => {
@@ -134,9 +135,12 @@ export function OrganizationProvider({ children }) {
     try {
       const invites = await getUserInvitations(currentUser.email);
       setInvitations(invites);
+      setInvitationError('');
     } catch (error) {
-      // 招待一覧は補助的な情報のためトーストは出さず、ログのみ残す
+      // 失敗を黙って握りつぶすと「招待がない」のか「取得に失敗した」のか
+      // 区別できなくなるため、画面に出せるよう控えておく
       firestoreLogger.error('招待一覧の取得エラー', {}, error);
+      setInvitationError(error?.message || '招待一覧の取得に失敗しました');
     }
   };
 
@@ -181,6 +185,7 @@ export function OrganizationProvider({ children }) {
     refreshOrganizations,
     fetchMembers,
     fetchInvitations,
+    invitationError,
     isAdmin: userRole === 'admin',
     isMember: userRole === 'member' || userRole === 'admin',
     isViewer: userRole === 'viewer'
