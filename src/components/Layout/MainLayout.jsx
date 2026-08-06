@@ -49,12 +49,12 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex app-shell bg-gray-100">
       {/* サイドバー（モバイルではトグル可能） */}
       <div 
         className={`bg-blue-800 text-white w-80 md:w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 overflow-y-auto min-h-screen max-h-full`}
+        } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 overflow-y-auto h-full`}
         style={{ backgroundColor: '#1e3a8a' }}
       >
         <div className="flex items-center justify-between px-3">
@@ -408,6 +408,8 @@ const MainLayout = () => {
             )}
           </div>
         </nav>
+        {/* 組み込みブラウザの下部バーに最後の項目が隠れないための余白 */}
+        <div className="h-24" aria-hidden="true" />
       </div>
       
       {/* モバイル用オーバーレイ */}
@@ -434,12 +436,20 @@ const MainLayout = () => {
 
             <div className="flex items-center space-x-2 md:space-x-4">
               {currentOrganization && (
-                <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded">
-                  <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                // サイドバーの一番下までスクロールしなくても組織を切り替えられるようにする
+                <Link
+                  to="/organizations/switch"
+                  className="flex items-center space-x-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded max-w-[45vw] md:max-w-none"
+                  title="組織を切り替える"
+                >
+                  <svg className="h-4 w-4 text-gray-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  <span className="text-sm font-medium text-gray-700">{currentOrganization.name}</span>
-                </div>
+                  <span className="text-sm font-medium text-gray-700 truncate">{currentOrganization.name}</span>
+                  <svg className="h-3 w-3 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                  </svg>
+                </Link>
               )}
               {currentUser && (
                 <>

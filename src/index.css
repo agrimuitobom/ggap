@@ -479,3 +479,18 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* アプリ全体の高さ。
+   100vh は、FileMaker Go などの組み込みブラウザ（WebView）では
+   実際に見えている領域より大きくなることがあり、画面の下の方が
+   スクロールしても届かなくなる。dvh に対応している環境では
+   そちらを使い、見えている高さに合わせる。 */
+.app-shell {
+  height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  .app-shell {
+    height: 100dvh;
+  }
+}
