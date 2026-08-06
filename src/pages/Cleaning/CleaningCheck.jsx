@@ -29,6 +29,10 @@ import {
   isAfter
 } from 'date-fns';
 
+// カレンダーの列幅（px）。項目名の列と日付の列で固定する
+const LABEL_COL_WIDTH = 176;
+const DAY_COL_WIDTH = 44;
+
 const CleaningCheck = () => {
   const { userProfile } = useAuth();
   const { currentOrganization, isMember } = useOrganization();
@@ -410,9 +414,21 @@ const CleaningCheck = () => {
             </div>
           ) : (
             <div className="bg-white shadow rounded-lg overflow-x-auto">
-              {/* table-fixed: 列幅を内容に左右されず一定に保つ
-                  （自動レイアウトだと2桁の日付の列だけ広くなってしまう） */}
-              <table className="border-collapse text-sm table-fixed">
+              {/* 列幅を内容に左右されず一定に保つ。
+                  table-fixed だけでは表全体の幅が auto のままで、結局
+                  内容に応じた幅になってしまうため、colgroup で各列の幅を
+                  指定し、表の総幅も明示する。これで1桁の日と2桁の日で
+                  列幅が変わらなくなる。 */}
+              <table
+                className="border-collapse text-sm table-fixed"
+                style={{ width: LABEL_COL_WIDTH + monthDays.length * DAY_COL_WIDTH }}
+              >
+                <colgroup>
+                  <col style={{ width: LABEL_COL_WIDTH }} />
+                  {monthDays.map((day) => (
+                    <col key={`col-${day.toISOString()}`} style={{ width: DAY_COL_WIDTH }} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 bg-gray-100 border px-3 py-2 text-left whitespace-nowrap w-44">
