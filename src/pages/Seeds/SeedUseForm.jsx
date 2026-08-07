@@ -20,6 +20,10 @@ const SeedUseForm = () => {
     amount: '',
     unit: '粒',
     method: '',
+    // FV-Smart 26.03: 育苗した種苗の病害虫モニタリング記録
+    pestStatus: 'なし',
+    pestDetail: '',
+    pestAction: '',
     notes: ''
   });
   const [loading, setLoading] = useState(false);
@@ -90,6 +94,9 @@ const SeedUseForm = () => {
               amount: data.amount?.toString() || '',
               unit: data.unit || '粒',
               method: data.method || '',
+              pestStatus: data.pestStatus || 'なし',
+              pestDetail: data.pestDetail || '',
+              pestAction: data.pestAction || '',
               notes: data.notes || ''
             });
           } else {
@@ -133,6 +140,17 @@ const SeedUseForm = () => {
       const selectedSeed = seeds.find(seed => seed.id === formData.seedId);
       const selectedField = fields.find(field => field.id === formData.fieldId);
       
+      if (formData.pestStatus === 'あり' && !formData.pestDetail.trim()) {
+        setError('病害虫の発生が「あり」の場合は、病害虫名・症状を入力してください。');
+        setLoading(false);
+        return;
+      }
+      if (formData.pestStatus === 'あり' && !formData.pestAction.trim()) {
+        setError('病害虫の発生が「あり」の場合は、とった対応を入力してください。');
+        setLoading(false);
+        return;
+      }
+
       const seedUseData = {
         date: new Date(formData.date),
         seedId: formData.seedId,
@@ -143,6 +161,10 @@ const SeedUseForm = () => {
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit || '粒',
         method: formData.method,
+        // 育苗時の病害虫モニタリング（FV-Smart 26.03）
+        pestStatus: formData.pestStatus || 'なし',
+        pestDetail: formData.pestStatus === 'あり' ? formData.pestDetail : '',
+        pestAction: formData.pestStatus === 'あり' ? formData.pestAction : '',
         notes: formData.notes,
         updatedAt: serverTimestamp()
       };
@@ -334,6 +356,73 @@ const SeedUseForm = () => {
           </select>
         </div>
         
+        {/* 病害虫のモニタリング記録。
+            育苗した種苗について「見て、どうだったか」を残さないと、
+            記録から発生の有無が読み取れない（FV-Smart 26.03）。 */}
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded p-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            病害虫の発生 <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-600 mb-3">
+            苗の状態を確認した結果を記録します。「なし」も確認した証拠になります。
+          </p>
+          <div className="flex gap-2 mb-3">
+            {['なし', 'あり'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setFormData({ ...formData, pestStatus: v })}
+                className={`flex-1 py-3 rounded border-2 font-medium ${
+                  formData.pestStatus === v
+                    ? v === 'あり'
+                      ? 'border-red-500 bg-red-50 text-red-800'
+                      : 'border-green-600 bg-green-50 text-green-800'
+                    : 'border-gray-200 bg-white text-gray-600'
+                }`}
+              >
+                {v === 'あり' ? '⚠️ あり' : '⭕ なし'}
+              </button>
+            ))}
+          </div>
+
+          {formData.pestStatus === 'あり' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-1" htmlFor="pestDetail">
+                  病害虫名・症状 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                  id="pestDetail"
+                  type="text"
+                  name="pestDetail"
+                  value={formData.pestDetail}
+                  onChange={handleChange}
+                  placeholder="例: アブラムシを数株で確認"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-1" htmlFor="pestAction">
+                  とった対応 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                  id="pestAction"
+                  type="text"
+                  name="pestAction"
+                  value={formData.pestAction}
+                  onChange={handleChange}
+                  placeholder="例: 該当株を抜き取り処分し、以後毎日観察"
+                />
+              </div>
+              <p className="text-xs text-amber-800">
+                発生を見つけたこと自体は不適合ではありません。見つけて対応した記録がある方が、
+                管理が機能している証拠になります。
+              </p>
+            </div>
+          )}
+        </div>
+
         <div className="mb-6">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="notes">
             備考

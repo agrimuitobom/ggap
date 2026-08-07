@@ -112,6 +112,7 @@ const SeedUsesList = () => {
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">圃場</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">使用量</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">方法</th>
+                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">病害虫</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">作業者</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">備考</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">操作</th>
@@ -128,6 +129,28 @@ const SeedUsesList = () => {
                   <td className="py-3 px-4 whitespace-nowrap">{use.fieldName || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.amount ? `${use.amount} ${use.unit || '粒'}` : '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.method || '-'}</td>
+                  {/* 記録から病害虫の発生の有無が読み取れるようにする（FV-Smart 26.03） */}
+                  <td className="py-3 px-4">
+                    {use.pestStatus === 'あり' ? (
+                      <div>
+                        <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 font-bold">
+                          あり
+                        </span>
+                        {use.pestDetail && (
+                          <div className="text-xs text-gray-600 mt-1">{use.pestDetail}</div>
+                        )}
+                        {use.pestAction && (
+                          <div className="text-xs text-gray-600">対応：{use.pestAction}</div>
+                        )}
+                      </div>
+                    ) : use.pestStatus === 'なし' ? (
+                      <span className="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">
+                        なし
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">未記録</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.plantedByName || '-'}</td>
                   <td className="py-3 px-4 max-w-xs truncate" title={use.notes}>{use.notes || '-'}</td>
                   <td onClick={(e) => e.stopPropagation()} className="py-3 px-4">
