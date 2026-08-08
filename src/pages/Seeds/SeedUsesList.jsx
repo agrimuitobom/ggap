@@ -108,6 +108,7 @@ const SeedUsesList = () => {
             <thead>
               <tr className="bg-gray-100">
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">作業日</th>
+                <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">ロットID</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">種子・苗</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">圃場</th>
                 <th className="py-3 px-4 text-left font-semibold whitespace-nowrap">使用量</th>
@@ -125,6 +126,13 @@ const SeedUsesList = () => {
                   onClick={() => navigate(`/seed-uses/edit/${use.id}`)}
                   className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                   <td className="py-3 px-4 whitespace-nowrap">{use.date?.toLocaleDateString() || '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {use.lotNumber ? (
+                      <span className="font-mono font-bold text-blue-800">{use.lotNumber}</span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.seedName || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.fieldName || '-'}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{use.amount ? `${use.amount} ${use.unit || '粒'}` : '-'}</td>

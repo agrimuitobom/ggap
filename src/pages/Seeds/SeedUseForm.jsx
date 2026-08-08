@@ -5,6 +5,7 @@ import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serv
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { uiLogger } from '../../utils/logger';
+import { nextLotNumber, isSowingMethod, lotPrefix } from '../../services/lotNumberService';
 
 const SeedUseForm = () => {
   const { id } = useParams();
@@ -12,6 +13,8 @@ const SeedUseForm = () => {
   const location = useLocation();
   const { currentOrganization } = useOrganization();
   const [seeds, setSeeds] = useState([]);
+  // 既存の播種記録。ロットIDの採番と、定植時の選択肢に使う
+  const [seedUses, setSeedUses] = useState([]);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -20,6 +23,8 @@ const SeedUseForm = () => {
     amount: '',
     unit: '粒',
     method: '',
+    // トレーサビリティの背番号。播種で採番し、定植・収穫へ引き継ぐ
+    lotNumber: '',
     // FV-Smart 26.03: 育苗した種苗の病害虫モニタリング記録
     pestStatus: 'なし',
     pestDetail: '',
@@ -65,6 +70,13 @@ const SeedUseForm = () => {
         });
         setSeeds(seedsList);
 
+        // 既存の播種・定植記録（ロットIDの採番と定植時の選択に使う）
+        const usesSnapshot = await getDocs(query(
+          collection(db, 'seedUses'),
+          where('organizationId', '==', currentOrganization.id)
+        ));
+        setSeedUses(usesSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+
         // 圃場データを取得（組織IDでフィルタリング）
         const fieldsQuery = query(
           collection(db, 'fields'),
@@ -94,6 +106,7 @@ const SeedUseForm = () => {
               amount: data.amount?.toString() || '',
               unit: data.unit || '粒',
               method: data.method || '',
+              lotNumber: data.lotNumber || '',
               pestStatus: data.pestStatus || 'なし',
               pestDetail: data.pestDetail || '',
               pestAction: data.pestAction || '',
@@ -114,6 +127,36 @@ const SeedUseForm = () => {
 
     fetchData();
   }, [id, isEditMode, navigate, currentOrganization]);
+
+  // 既存のロットID（播種で採番されたもの）
+  const existingLots = seedUses
+    .map((u) => u.lotNumber)
+    .filter(Boolean);
+
+  // 定植のときに選べるロット（新しい順）
+  const sowingLots = seedUses
+    .filter((u) => u.lotNumber && isSowingMethod(u.method))
+    .sort((a, b) => {
+      const da = a.date?.toDate ? a.date.toDate().getTime() : 0;
+      const dbb = b.date?.toDate ? b.date.toDate().getTime() : 0;
+      return dbb - da;
+    });
+
+  const sowing = isSowingMethod(formData.method);
+  const transplanting = formData.method === '定植';
+
+  const suggestLotNumber = () => {
+    // 編集中の記録自身のロットIDは、採番の対象から外す
+    const others = isEditMode
+      ? seedUses.filter((u) => u.id !== id).map((u) => u.lotNumber).filter(Boolean)
+      : existingLots;
+    const next = nextLotNumber(others, formData.date);
+    if (!next) {
+      setError('作業日から令和の年を判定できませんでした。');
+      return;
+    }
+    setFormData((prev) => ({ ...prev, lotNumber: next }));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -161,6 +204,7 @@ const SeedUseForm = () => {
         amount: formData.amount ? Number(formData.amount) : null,
         unit: formData.unit || '粒',
         method: formData.method,
+        lotNumber: (formData.lotNumber || '').trim(),
         // 育苗時の病害虫モニタリング（FV-Smart 26.03）
         pestStatus: formData.pestStatus || 'なし',
         pestDetail: formData.pestStatus === 'あり' ? formData.pestDetail : '',
@@ -356,6 +400,83 @@ const SeedUseForm = () => {
           </select>
         </div>
         
+        {/* ロットID。播種で採番し、定植・収穫へ引き継ぐ背番号 */}
+        {(sowing || transplanting) && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded p-4">
+            {sowing ? (
+              <>
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lotNumber">
+                  ロットID
+                </label>
+                <p className="text-xs text-gray-600 mb-2">
+                  この播種に背番号を付けます。定植・収穫・出荷まで引き継ぐことで、
+                  出荷先から播種までさかのぼれるようになります。
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    className="shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700"
+                    id="lotNumber"
+                    type="text"
+                    name="lotNumber"
+                    value={formData.lotNumber}
+                    onChange={handleChange}
+                    placeholder={`例: ${lotPrefix(formData.date) || 'R8.'}01`}
+                  />
+                  <button
+                    type="button"
+                    onClick={suggestLotNumber}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm whitespace-nowrap"
+                  >
+                    自動採番
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  「自動採番」を押すと、作業日の年（令和）とその年の通し番号から
+                  {lotPrefix(formData.date) || 'R8.'}01 の形で付けます。手で書き換えることもできます。
+                </p>
+              </>
+            ) : (
+              <>
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lotNumber">
+                  定植するロット
+                </label>
+                <p className="text-xs text-gray-600 mb-2">
+                  どの播種ロットを定植したのかを選びます。新しく採番はしません。
+                </p>
+                <select
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-2"
+                  value={sowingLots.some((u) => u.lotNumber === formData.lotNumber) ? formData.lotNumber : ''}
+                  onChange={(e) => setFormData({ ...formData, lotNumber: e.target.value })}
+                >
+                  <option value="">選択してください</option>
+                  {sowingLots.map((u) => (
+                    <option key={u.id} value={u.lotNumber}>
+                      {u.lotNumber}
+                      {u.date?.toDate ? `（${u.date.toDate().toLocaleDateString('ja-JP')} 播種）` : ''}
+                      {u.seedName ? ` ${u.seedName}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                  id="lotNumber"
+                  type="text"
+                  name="lotNumber"
+                  value={formData.lotNumber}
+                  onChange={handleChange}
+                  placeholder="一覧にない場合は直接入力（例: R8.01）"
+                />
+                {sowingLots.length === 0 && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    ロットIDの付いた播種記録がまだありません。直接入力するか、
+                    先に播種記録へロットIDを登録してください。
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* 病害虫のモニタリング記録。
             育苗した種苗について「見て、どうだったか」を残さないと、
             記録から発生の有無が読み取れない（FV-Smart 26.03）。 */}
