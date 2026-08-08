@@ -30,7 +30,7 @@ import {
 } from 'date-fns';
 
 // カレンダーの列幅（px）。項目名の列と日付の列で固定する
-const LABEL_COL_WIDTH = 176;
+const LABEL_COL_WIDTH = 208;
 const DAY_COL_WIDTH = 44;
 
 const CleaningCheck = () => {
@@ -431,7 +431,7 @@ const CleaningCheck = () => {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 bg-gray-100 border px-3 py-2 text-left whitespace-nowrap w-44">
+                    <th className="sticky left-0 z-10 bg-gray-100 border px-3 py-2 text-left align-bottom">
                       項目
                     </th>
                     {monthDays.map((day) => {
@@ -464,8 +464,8 @@ const CleaningCheck = () => {
                 <tbody>
                   {items.map((item) => (
                     <tr key={item.id}>
-                      <td className="sticky left-0 z-10 bg-white border px-3 py-2 whitespace-nowrap">
-                        <span className="font-medium">{item.name}</span>
+                      <td className="sticky left-0 z-10 bg-white border px-3 py-2 align-top break-words">
+                        <span className="block font-medium leading-snug">{item.name}</span>
                         {item.frequencyLabel && (
                           <span className="block text-[10px] text-gray-500">{item.frequencyLabel}</span>
                         )}
