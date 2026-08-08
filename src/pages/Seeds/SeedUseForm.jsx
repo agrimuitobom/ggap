@@ -7,6 +7,11 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { uiLogger } from '../../utils/logger';
 import { nextLotNumber, isSowingMethod, lotPrefix } from '../../services/lotNumberService';
 
+// 定植で選べるロットの表示件数。これを超える古いものは「その他」にまとめる
+const RECENT_LOT_COUNT = 20;
+// 「その他（それ以前のロット）」を選んだことを表す値
+const OLDER_LOTS = '__older__';
+
 const SeedUseForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,6 +20,8 @@ const SeedUseForm = () => {
   const [seeds, setSeeds] = useState([]);
   // 既存の播種記録。ロットIDの採番と、定植時の選択肢に使う
   const [seedUses, setSeedUses] = useState([]);
+  // 「その他」を選んで、古いロットの一覧を開いているか
+  const [showOlderLots, setShowOlderLots] = useState(false);
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -142,8 +149,20 @@ const SeedUseForm = () => {
       return dbb - da;
     });
 
+  const recentLots = sowingLots.slice(0, RECENT_LOT_COUNT);
+  const olderLots = sowingLots.slice(RECENT_LOT_COUNT);
+
   const sowing = isSowingMethod(formData.method);
   const transplanting = formData.method === '定植';
+
+  // 編集などで古いロットが選ばれている場合は、最初から古い一覧を開いておく
+  const selectedIsOlder = olderLots.some((u) => u.lotNumber === formData.lotNumber);
+  const olderOpen = showOlderLots || selectedIsOlder;
+
+  const lotLabel = (u) => {
+    const d = u.date?.toDate ? u.date.toDate().toLocaleDateString('ja-JP') : '';
+    return `${u.lotNumber}${d ? `（${d} 播種）` : ''}${u.seedName ? ` ${u.seedName}` : ''}`;
+  };
 
   const suggestLotNumber = () => {
     // 編集中の記録自身のロットIDは、採番の対象から外す
@@ -442,21 +461,63 @@ const SeedUseForm = () => {
                 </label>
                 <p className="text-xs text-gray-600 mb-2">
                   どの播種ロットを定植したのかを選びます。新しく採番はしません。
+                  新しい順に直近{RECENT_LOT_COUNT}件を表示し、それ以前は「その他」からたどれます。
                 </p>
+                {/* 新しい順に直近20件。それ以前は「その他」を選ぶと出す。
+                    ロットが増えても選択肢が長くなりすぎないようにする。 */}
                 <select
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-2"
-                  value={sowingLots.some((u) => u.lotNumber === formData.lotNumber) ? formData.lotNumber : ''}
-                  onChange={(e) => setFormData({ ...formData, lotNumber: e.target.value })}
+                  value={
+                    olderOpen
+                      ? OLDER_LOTS
+                      : recentLots.some((u) => u.lotNumber === formData.lotNumber)
+                      ? formData.lotNumber
+                      : ''
+                  }
+                  onChange={(e) => {
+                    if (e.target.value === OLDER_LOTS) {
+                      setShowOlderLots(true);
+                      return;
+                    }
+                    setShowOlderLots(false);
+                    setFormData({ ...formData, lotNumber: e.target.value });
+                  }}
                 >
                   <option value="">選択してください</option>
-                  {sowingLots.map((u) => (
-                    <option key={u.id} value={u.lotNumber}>
-                      {u.lotNumber}
-                      {u.date?.toDate ? `（${u.date.toDate().toLocaleDateString('ja-JP')} 播種）` : ''}
-                      {u.seedName ? ` ${u.seedName}` : ''}
-                    </option>
+                  {recentLots.map((u) => (
+                    <option key={u.id} value={u.lotNumber}>{lotLabel(u)}</option>
                   ))}
+                  {olderLots.length > 0 && (
+                    <option value={OLDER_LOTS}>
+                      その他（それ以前のロット {olderLots.length}件）…
+                    </option>
+                  )}
                 </select>
+
+                {olderOpen && olderLots.length > 0 && (
+                  <div className="mb-2">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      それ以前のロット（新しい順）
+                    </label>
+                    <select
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                      value={selectedIsOlder ? formData.lotNumber : ''}
+                      onChange={(e) => setFormData({ ...formData, lotNumber: e.target.value })}
+                    >
+                      <option value="">選択してください</option>
+                      {olderLots.map((u) => (
+                        <option key={u.id} value={u.lotNumber}>{lotLabel(u)}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => { setShowOlderLots(false); setFormData({ ...formData, lotNumber: '' }); }}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                    >
+                      直近のロットから選び直す
+                    </button>
+                  </div>
+                )}
                 <input
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
                   id="lotNumber"
