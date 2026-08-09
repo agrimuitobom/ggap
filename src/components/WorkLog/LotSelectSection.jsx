@@ -5,7 +5,7 @@
 // 既存の播種ロットを指す。ロットが増えても選びやすいよう、新しい順に
 // 直近だけを出し、それ以前は「その他」からたどる。
 import React, { useState } from 'react';
-import { isSowingMethod } from '../../services/lotNumberService';
+import { collectSelectableLots } from '../../services/lotNumberService';
 
 const RECENT_LOT_COUNT = 10;
 const OLDER_LOTS = '__older__';
@@ -13,13 +13,7 @@ const OLDER_LOTS = '__older__';
 const LotSelectSection = ({ formData, setFormData, seedUses = [] }) => {
   const [showOlder, setShowOlder] = useState(false);
 
-  const sowingLots = seedUses
-    .filter((u) => u.lotNumber && isSowingMethod(u.method))
-    .sort((a, b) => {
-      const da = a.date?.toDate ? a.date.toDate().getTime() : 0;
-      const dbb = b.date?.toDate ? b.date.toDate().getTime() : 0;
-      return dbb - da;
-    });
+  const sowingLots = collectSelectableLots(seedUses);
 
   const recentLots = sowingLots.slice(0, RECENT_LOT_COUNT);
   const olderLots = sowingLots.slice(RECENT_LOT_COUNT);
@@ -106,7 +100,7 @@ const LotSelectSection = ({ formData, setFormData, seedUses = [] }) => {
 
       {sowingLots.length === 0 && (
         <p className="text-xs text-amber-700 mt-1">
-          ロットIDの付いた播種記録がまだありません。直接入力するか、
+          ロットIDの付いた記録がまだありません。直接入力するか、
           先に播種の記録へロットIDを登録してください。
         </p>
       )}

@@ -5,7 +5,7 @@ import { addDoc, updateDoc, doc, getDoc, collection, query, where, getDocs, serv
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { uiLogger } from '../../utils/logger';
-import { nextLotNumber, isSowingMethod, lotPrefix } from '../../services/lotNumberService';
+import { nextLotNumber, collectSelectableLots, lotPrefix } from '../../services/lotNumberService';
 
 // 定植で選べるロットの表示件数。これを超える古いものは「その他」にまとめる
 const RECENT_LOT_COUNT = 10;
@@ -140,14 +140,11 @@ const SeedUseForm = () => {
     .map((u) => u.lotNumber)
     .filter(Boolean);
 
-  // 定植のときに選べるロット（新しい順）
-  const sowingLots = seedUses
-    .filter((u) => u.lotNumber && isSowingMethod(u.method))
-    .sort((a, b) => {
-      const da = a.date?.toDate ? a.date.toDate().getTime() : 0;
-      const dbb = b.date?.toDate ? b.date.toDate().getTime() : 0;
-      return dbb - da;
-    });
+  // 定植のときに選べるロット（新しい順）。
+  // 編集中の記録自身は候補から外す（自分を指してもたどれない）
+  const sowingLots = collectSelectableLots(
+    isEditMode ? seedUses.filter((u) => u.id !== id) : seedUses
+  );
 
   const recentLots = sowingLots.slice(0, RECENT_LOT_COUNT);
   const olderLots = sowingLots.slice(RECENT_LOT_COUNT);
@@ -550,8 +547,8 @@ const SeedUseForm = () => {
                 />
                 {sowingLots.length === 0 && (
                   <p className="text-xs text-amber-700 mt-1">
-                    ロットIDの付いた播種記録がまだありません。直接入力するか、
-                    先に播種記録へロットIDを登録してください。
+                    ロットIDの付いた記録がまだありません。直接入力するか、
+                    先に播種の記録へロットIDを登録してください。
                   </p>
                 )}
               </>

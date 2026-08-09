@@ -51,6 +51,42 @@ export const nextLotNumber = (existingLotNumbers = [], date = new Date(), digits
   return `${prefix}${String(maxSeq + 1).padStart(digits, '0')}`;
 };
 
-/** 播種にあたる作業か（定植・その他は新しく採番しない） */
+/** 播種にあたる作業か（採番の判定に使う） */
 export const isSowingMethod = (method) =>
   ['直播', '条播', '点播', '散播'].includes(method);
+
+/**
+ * 定植のときに選べるロットの一覧を作る。
+ *
+ * 方法が「播種」と入力されているとは限らない（作業日誌から自動作成された
+ * 記録は「その他」になる）ため、方法では絞り込まず、ロットIDが付いている
+ * 記録をすべて候補にする。定植の記録は同じロットIDを持つので、
+ * ロットIDごとに1件へまとめ、播種側（定植以外）を優先して残す。
+ *
+ * @param {Array} seedUses 播種・定植記録
+ * @returns {Array} 新しい順のロット候補
+ */
+export const collectSelectableLots = (seedUses = []) => {
+  const toTime = (u) => (u.date?.toDate ? u.date.toDate().getTime() : 0);
+
+  const byLot = new Map();
+  seedUses
+    .filter((u) => u.lotNumber)
+    .forEach((u) => {
+      const current = byLot.get(u.lotNumber);
+      if (!current) {
+        byLot.set(u.lotNumber, u);
+        return;
+      }
+      // 定植より播種側を優先し、同種なら古い方（＝播種した日）を残す
+      const currentIsTransplant = current.method === '定植';
+      const nextIsTransplant = u.method === '定植';
+      if (currentIsTransplant && !nextIsTransplant) {
+        byLot.set(u.lotNumber, u);
+      } else if (currentIsTransplant === nextIsTransplant && toTime(u) < toTime(current)) {
+        byLot.set(u.lotNumber, u);
+      }
+    });
+
+  return Array.from(byLot.values()).sort((a, b) => toTime(b) - toTime(a));
+};
