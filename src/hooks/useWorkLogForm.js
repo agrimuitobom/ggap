@@ -22,6 +22,10 @@ const initialFormData = {
   seedMethod: '',
   // トレーサビリティのロットID（播種で採番し、定植で選ぶ）
   lotNumber: '',
+  // 播種・定植記録側の病害虫モニタリング（作り直しで失われないよう保持する）
+  pestStatus: 'なし',
+  pestDetail: '',
+  pestAction: '',
   // 防除関連
   pesticideId: '',
   targetPest: '',

@@ -94,6 +94,22 @@ export const useWorkLogData = (editId = null) => {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+
+        // 作業日誌の更新時は関連記録を作り直すため、播種・定植記録の側で
+        // 入力したロットIDや病害虫の記録がそのままだと失われる。
+        // 読み込み時に引き継いでおき、保存で書き戻す。
+        let linkedSeedUse = null;
+        try {
+          const linkedSnapshot = await getDocs(query(
+            collection(db, 'seedUses'),
+            where('organizationId', '==', data.organizationId),
+            where('workLogId', '==', id)
+          ));
+          linkedSeedUse = linkedSnapshot.docs[0]?.data() || null;
+        } catch (linkErr) {
+          firestoreLogger.info('関連する播種・定植記録を取得できませんでした', { workLogId: id });
+        }
+
         return {
           date: data.date?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
           fieldId: data.fieldId || '',
@@ -107,7 +123,11 @@ export const useWorkLogData = (editId = null) => {
           fertilizerId: data.fertilizerId || '',
           fertilizerAmount: data.fertilizerAmount?.toString() || '',
           fertilizerUnit: data.fertilizerUnit || 'kg',
-          lotNumber: data.lotNumber || '',
+          lotNumber: data.lotNumber || linkedSeedUse?.lotNumber || '',
+          // 播種・定植記録側で入力された病害虫の記録を引き継ぐ
+          pestStatus: linkedSeedUse?.pestStatus || 'なし',
+          pestDetail: linkedSeedUse?.pestDetail || '',
+          pestAction: linkedSeedUse?.pestAction || '',
           fertilizerMethod: data.fertilizerMethod || '',
           // 播種関連
           seedId: data.seedId || '',
