@@ -8,7 +8,7 @@ import { uiLogger } from '../../utils/logger';
 import { nextLotNumber, isSowingMethod, lotPrefix } from '../../services/lotNumberService';
 
 // 定植で選べるロットの表示件数。これを超える古いものは「その他」にまとめる
-const RECENT_LOT_COUNT = 20;
+const RECENT_LOT_COUNT = 10;
 // 「その他（それ以前のロット）」を選んだことを表す値
 const OLDER_LOTS = '__older__';
 
