@@ -14,6 +14,8 @@ export const useWorkLogData = (editId = null) => {
   const [users, setUsers] = useState([]);
   const [fertilizers, setFertilizers] = useState([]);
   const [seeds, setSeeds] = useState([]);
+  // ロットIDの採番・選択に使う既存の播種・定植記録
+  const [seedUses, setSeedUses] = useState([]);
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,13 +35,15 @@ export const useWorkLogData = (editId = null) => {
           workersList,
           fertilizersSnapshot,
           seedsSnapshot,
-          pesticidesSnapshot
+          pesticidesSnapshot,
+          seedUsesSnapshot
         ] = await Promise.all([
           getDocs(query(collection(db, 'fields'), where('organizationId', '==', orgId))),
           getWorkers(orgId, currentUser.uid),
           getDocs(query(collection(db, 'fertilizers'), where('organizationId', '==', orgId))),
           getDocs(query(collection(db, 'seeds'), where('organizationId', '==', orgId))),
-          getDocs(query(collection(db, 'pesticides'), where('organizationId', '==', orgId)))
+          getDocs(query(collection(db, 'pesticides'), where('organizationId', '==', orgId))),
+          getDocs(query(collection(db, 'seedUses'), where('organizationId', '==', orgId)))
         ]);
 
         // データを配列に変換
@@ -69,6 +73,7 @@ export const useWorkLogData = (editId = null) => {
         setFertilizers(fertilizersList);
         setSeeds(seedsList);
         setPesticides(pesticidesList);
+        setSeedUses(seedUsesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
       } catch (err) {
         firestoreLogger.error('作業日誌フォームデータの取得エラー', { organizationId: currentOrganization?.id }, err);
@@ -102,6 +107,7 @@ export const useWorkLogData = (editId = null) => {
           fertilizerId: data.fertilizerId || '',
           fertilizerAmount: data.fertilizerAmount?.toString() || '',
           fertilizerUnit: data.fertilizerUnit || 'kg',
+          lotNumber: data.lotNumber || '',
           fertilizerMethod: data.fertilizerMethod || '',
           // 播種関連
           seedId: data.seedId || '',
@@ -136,6 +142,7 @@ export const useWorkLogData = (editId = null) => {
     users,
     fertilizers,
     seeds,
+    seedUses,
     pesticides,
     loading,
     error,

@@ -22,6 +22,7 @@ import { useWorkLogData } from '../../hooks/useWorkLogData';
 import BasicInfoSection from '../../components/WorkLog/BasicInfoSection';
 import FertilizerSection from '../../components/WorkLog/FertilizerSection';
 import SeedSection from '../../components/WorkLog/SeedSection';
+import LotSelectSection from '../../components/WorkLog/LotSelectSection';
 import PesticideSection from '../../components/WorkLog/PesticideSection';
 
 const WorkLogForm = () => {
@@ -39,7 +40,7 @@ const WorkLogForm = () => {
   const defaultsAppliedRef = useRef(false);
 
   // カスタムフックの使用
-  const { fields, users, fertilizers, seeds, pesticides, loading: fetchLoading, error: dataError, fetchExistingData } = useWorkLogData();
+  const { fields, users, fertilizers, seeds, seedUses, pesticides, loading: fetchLoading, error: dataError, fetchExistingData } = useWorkLogData();
   const {
     formData,
     setFormData,
@@ -280,18 +281,45 @@ const WorkLogForm = () => {
         seedName: selectedSeed ? `${selectedSeed.name} (${selectedSeed.variety})` : '',
         fieldId: formData.fieldId,
         fieldName: selectedField?.name || '',
-        plantedBy: currentOrganization.id,
-        plantedByName: currentOrganization.name || '',
+        plantedBy: currentUser?.uid || '',
+        plantedByName: appliedByName,
         organizationId: currentOrganization.id,
         amount: formData.seedAmount ? Number(formData.seedAmount) : null,
         unit: formData.seedUnit || '粒',
         method: formData.seedMethod,
+        lotNumber: (formData.lotNumber || '').trim(),
         notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
         workLogId: workLogRef.id,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       promises.push(addDoc(collection(db, 'seedUses'), seedUseData));
+    }
+
+    // 定植記録作成。どの播種ロットを定植したのかを残すことで、
+    // 播種 → 定植 → 収穫 がロットIDでつながる。
+    if (formData.workType === '定植' && formData.lotNumber) {
+      const sourceLot = seedUses.find((u) => u.lotNumber === formData.lotNumber);
+      const transplantData = {
+        date: new Date(formData.date),
+        seedId: sourceLot?.seedId || '',
+        seedName: sourceLot?.seedName || '',
+        fieldId: formData.fieldId,
+        fieldName: selectedField?.name || '',
+        plantedBy: currentUser?.uid || '',
+        plantedByName: appliedByName,
+        organizationId: currentOrganization.id,
+        amount: null,
+        unit: '',
+        method: '定植',
+        lotNumber: formData.lotNumber.trim(),
+        pestStatus: 'なし',
+        notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
+        workLogId: workLogRef.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      promises.push(addDoc(collection(db, 'seedUses'), transplantData));
     }
 
     // 防除記録作成
@@ -427,6 +455,8 @@ const WorkLogForm = () => {
         seedAmount: formData.workType === '播種' && formData.seedAmount ? Number(formData.seedAmount) : null,
         seedUnit: formData.workType === '播種' ? (formData.seedUnit || '粒') : null,
         seedMethod: formData.workType === '播種' ? formData.seedMethod : null,
+        // 播種・定植のロットID（作業日誌からもたどれるようにする）
+        lotNumber: ['播種', '定植'].includes(formData.workType) ? (formData.lotNumber || '') : '',
         // 防除関連
         pesticideId: formData.workType === '防除' ? formData.pesticideId : null,
         targetPest: formData.workType === '防除' ? formData.targetPest : null,
@@ -602,7 +632,17 @@ const WorkLogForm = () => {
             formData={formData}
             handleChange={handleChange}
             seeds={seeds}
+            seedUses={seedUses}
             setFormData={setFormData}
+          />
+        )}
+
+        {/* 定植の場合。どの播種ロットを定植したのかを残す */}
+        {formData.workType === '定植' && (
+          <LotSelectSection
+            formData={formData}
+            setFormData={setFormData}
+            seedUses={seedUses}
           />
         )}
 

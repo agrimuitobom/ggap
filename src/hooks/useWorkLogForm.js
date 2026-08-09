@@ -20,6 +20,8 @@ const initialFormData = {
   seedAmount: '',
   seedUnit: '粒',
   seedMethod: '',
+  // トレーサビリティのロットID（播種で採番し、定植で選ぶ）
+  lotNumber: '',
   // 防除関連
   pesticideId: '',
   targetPest: '',

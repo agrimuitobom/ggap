@@ -1,7 +1,8 @@
 // src/components/WorkLog/SeedSection.jsx
 import React from 'react';
+import { nextLotNumber, lotPrefix } from '../../services/lotNumberService';
 
-const SeedSection = ({ formData, handleChange, seeds, setFormData }) => {
+const SeedSection = ({ formData, handleChange, seeds, seedUses = [], setFormData }) => {
   return (
     <>
       <div className="mobile-form-section mb-4 border-t pt-4">
@@ -103,6 +104,44 @@ const SeedSection = ({ formData, handleChange, seeds, setFormData }) => {
           <option value="定植">定植</option>
           <option value="その他">その他</option>
         </select>
+      </div>
+
+      {/* ロットID。ここで採番して定植・収穫へ引き継ぐ */}
+      <div className="mobile-form-field mb-4 bg-blue-50 border border-blue-200 rounded p-4">
+        <label className="mobile-form-label block text-gray-700 text-sm font-bold mb-2" htmlFor="lotNumber">
+          ロットID
+        </label>
+        <p className="text-xs text-gray-600 mb-2">
+          この播種に背番号を付けます。定植・収穫・出荷まで引き継ぐことで、
+          出荷先から播種までさかのぼれます。
+        </p>
+        <div className="flex gap-2">
+          <input
+            className="mobile-input shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700"
+            id="lotNumber"
+            type="text"
+            name="lotNumber"
+            value={formData.lotNumber || ''}
+            onChange={handleChange}
+            placeholder={`例: ${lotPrefix(formData.date) || 'R8.'}01`}
+          />
+          <button
+            type="button"
+            onClick={() => setFormData({
+              ...formData,
+              lotNumber: nextLotNumber(
+                seedUses.map((u) => u.lotNumber).filter(Boolean),
+                formData.date
+              )
+            })}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm whitespace-nowrap"
+          >
+            自動採番
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          作業日の年（令和）とその年の通し番号から付けます。手で書き換えることもできます。
+        </p>
       </div>
     </>
   );
