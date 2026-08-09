@@ -152,7 +152,6 @@ const SeedUseForm = () => {
   const recentLots = sowingLots.slice(0, RECENT_LOT_COUNT);
   const olderLots = sowingLots.slice(RECENT_LOT_COUNT);
 
-  const sowing = isSowingMethod(formData.method);
   const transplanting = formData.method === '定植';
 
   // 編集などで古いロットが選ばれている場合は、最初から古い一覧を開いておく
@@ -420,15 +419,16 @@ const SeedUseForm = () => {
         </div>
         
         {/* ロットID。播種で採番し、定植・収穫へ引き継ぐ背番号 */}
-        {(sowing || transplanting) && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded p-4">
-            {sowing ? (
+        {/* 方法によらず常に表示する。作業日誌から自動作成された記録は
+            方法が「その他」になるため、条件を絞ると編集できなくなる。 */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded p-4">
+            {!transplanting ? (
               <>
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lotNumber">
                   ロットID
                 </label>
                 <p className="text-xs text-gray-600 mb-2">
-                  この播種に背番号を付けます。定植・収穫・出荷まで引き継ぐことで、
+                  この記録に背番号を付けます。定植・収穫・出荷まで引き継ぐことで、
                   出荷先から播種までさかのぼれるようになります。
                 </p>
                 <div className="flex gap-2">
@@ -453,6 +453,27 @@ const SeedUseForm = () => {
                   「自動採番」を押すと、作業日の年（令和）とその年の通し番号から
                   {lotPrefix(formData.date) || 'R8.'}01 の形で付けます。手で書き換えることもできます。
                 </p>
+
+                {sowingLots.length > 0 && (
+                  <div className="mt-3">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      既存のロットから選ぶ（同じロットの続きを記録する場合）
+                    </label>
+                    <select
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm"
+                      value={recentLots.some((u) => u.lotNumber === formData.lotNumber) ? formData.lotNumber : ''}
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        setFormData({ ...formData, lotNumber: e.target.value });
+                      }}
+                    >
+                      <option value="">選択してください</option>
+                      {recentLots.map((u) => (
+                        <option key={u.id} value={u.lotNumber}>{lotLabel(u)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -535,8 +556,7 @@ const SeedUseForm = () => {
                 )}
               </>
             )}
-          </div>
-        )}
+        </div>
 
         {/* 病害虫のモニタリング記録。
             育苗した種苗について「見て、どうだったか」を残さないと、
