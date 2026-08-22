@@ -20,7 +20,7 @@ const OrganizationSwitcher = () => {
     try {
       await switchOrganization(orgId);
       toast.success('組織を切り替えました');
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       firestoreLogger.error('組織の切り替えに失敗しました', { organizationId: orgId }, error);
       toast.error('組織の切り替えに失敗しました');

@@ -1,6 +1,6 @@
 // src/App.js
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
 import { Toaster } from 'react-hot-toast';
@@ -267,6 +267,9 @@ function App() {
             <Route path="organizations/switch" element={<OrganizationSwitcher />} />
             <Route path="organizations/invitations" element={<InvitationsPage />} />
           </Route>
+
+          {/* 該当するページが無いURLは、空白の画面にせずダッシュボードへ戻す */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
           </OrganizationProvider>
