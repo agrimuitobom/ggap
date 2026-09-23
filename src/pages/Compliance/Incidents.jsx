@@ -3,7 +3,7 @@
 // GAP認証では労働安全衛生の取り組みとして、事故発生時の記録と
 // 再発防止策、ヒヤリハットの収集が確認される。
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, deleteDoc, doc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';

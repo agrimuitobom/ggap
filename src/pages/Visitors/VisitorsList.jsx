@@ -1,7 +1,7 @@
 // src/pages/Visitors/VisitorsList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -65,13 +65,7 @@ const VisitorsList = () => {
     }
   ];
 
-  useEffect(() => {
-    if (currentOrganization) {
-      fetchVisitors();
-    }
-  }, [currentOrganization]);
-
-  const fetchVisitors = async () => {
+  const fetchVisitors = useCallback(async () => {
     if (!currentOrganization) return;
 
     try {
@@ -98,7 +92,13 @@ const VisitorsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchVisitors();
+    }
+  }, [currentOrganization, fetchVisitors]);
 
   const handleDelete = async (id) => {
     if (deleteConfirm !== id) {

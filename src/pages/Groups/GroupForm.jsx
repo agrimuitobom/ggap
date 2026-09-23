@@ -1,5 +1,5 @@
 // src/pages/Groups/GroupForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
@@ -25,16 +25,7 @@ const GroupForm = () => {
   const [error, setError] = useState('');
   const isEditMode = !!id;
 
-  useEffect(() => {
-    if (currentUser && currentOrganization) {
-      fetchWorkers();
-      if (isEditMode) {
-        fetchGroupData();
-      }
-    }
-  }, [id, isEditMode, currentUser, currentOrganization]);
-
-  const fetchWorkers = async () => {
+  const fetchWorkers = useCallback(async () => {
     if (!currentUser || !currentOrganization) return;
 
     try {
@@ -44,9 +35,9 @@ const GroupForm = () => {
       firestoreLogger.error('従業員一覧の取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('従業員データの取得中にエラーが発生しました');
     }
-  };
+  }, [currentUser, currentOrganization]);
 
-  const fetchGroupData = async () => {
+  const fetchGroupData = useCallback(async () => {
     try {
       setFetchLoading(true);
       const docRef = doc(db, 'groups', id);
@@ -70,7 +61,16 @@ const GroupForm = () => {
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (currentUser && currentOrganization) {
+      fetchWorkers();
+      if (isEditMode) {
+        fetchGroupData();
+      }
+    }
+  }, [id, isEditMode, currentUser, currentOrganization, fetchWorkers, fetchGroupData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

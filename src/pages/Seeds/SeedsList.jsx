@@ -1,7 +1,7 @@
 // src/pages/Seeds/SeedsList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,13 +18,7 @@ const SeedsList = () => {
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  useEffect(() => {
-    if (currentOrganization) {
-      fetchSeeds();
-    }
-  }, [currentOrganization]);
-
-  const fetchSeeds = async () => {
+  const fetchSeeds = useCallback(async () => {
     if (!currentOrganization) return;
 
     try {
@@ -51,7 +45,13 @@ const SeedsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchSeeds();
+    }
+  }, [currentOrganization, fetchSeeds]);
 
   const handleDelete = async (id) => {
     if (deleteConfirm !== id) {

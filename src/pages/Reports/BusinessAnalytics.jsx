@@ -1,5 +1,5 @@
 // src/pages/Reports/BusinessAnalytics.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import ReportService from '../../services/reportService';
@@ -28,7 +28,8 @@ const BusinessAnalytics = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('1year');
   const [monthlyData, setMonthlyData] = useState([]);
 
-  const reportService = new ReportService(currentOrganization?.id);
+  // 描画のたびに作り直すと、これを使う取得処理が毎回別物になり読み込みが連鎖するため、組織ごとに1つにする
+  const reportService = useMemo(() => new ReportService(currentOrganization?.id), [currentOrganization?.id]);
 
   const getPeriodDates = (period) => {
     const endDate = new Date();
@@ -51,26 +52,7 @@ const BusinessAnalytics = () => {
     return { startDate, endDate };
   };
 
-  const fetchAnalytics = async () => {
-    if (!currentUser || !currentOrganization) return;
-
-    setLoading(true);
-    try {
-      const { startDate, endDate } = getPeriodDates(selectedPeriod);
-      const data = await reportService.getBusinessAnalytics(startDate, endDate);
-      setAnalytics(data);
-
-      // 月別データを生成
-      await generateMonthlyData(startDate, endDate);
-    } catch (error) {
-      businessLogger.error('経営分析データの取得エラー', { component: 'BusinessAnalytics', period: selectedPeriod }, error);
-      toast.error('経営分析データの取得中にエラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateMonthlyData = async (startDate, endDate) => {
+  const generateMonthlyData = useCallback(async (startDate, endDate) => {
     try {
       const months = eachMonthOfInterval({ start: startDate, end: endDate });
       const monthlyAnalytics = [];
@@ -99,11 +81,30 @@ const BusinessAnalytics = () => {
     } catch (error) {
       businessLogger.error('月別データの生成エラー', { component: 'BusinessAnalytics', period: selectedPeriod }, error);
     }
-  };
+  }, [reportService, selectedPeriod]);
+
+  const fetchAnalytics = useCallback(async () => {
+    if (!currentUser || !currentOrganization) return;
+
+    setLoading(true);
+    try {
+      const { startDate, endDate } = getPeriodDates(selectedPeriod);
+      const data = await reportService.getBusinessAnalytics(startDate, endDate);
+      setAnalytics(data);
+
+      // 月別データを生成
+      await generateMonthlyData(startDate, endDate);
+    } catch (error) {
+      businessLogger.error('経営分析データの取得エラー', { component: 'BusinessAnalytics', period: selectedPeriod }, error);
+      toast.error('経営分析データの取得中にエラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, currentOrganization, selectedPeriod, reportService, generateMonthlyData]);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [currentUser, currentOrganization, selectedPeriod]);
+  }, [currentUser, currentOrganization, selectedPeriod, fetchAnalytics]);
 
   // 生産性指標の計算
   const calculateProductivityMetrics = () => {

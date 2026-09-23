@@ -1,7 +1,7 @@
 // src/pages/FieldManagement/FieldsList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,13 +17,7 @@ const FieldsList = () => {
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  useEffect(() => {
-    if (currentOrganization) {
-      fetchFields();
-    }
-  }, [currentOrganization]);
-
-  const fetchFields = async () => {
+  const fetchFields = useCallback(async () => {
     if (!currentOrganization) return;
 
     try {
@@ -47,7 +41,13 @@ const FieldsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchFields();
+    }
+  }, [currentOrganization, fetchFields]);
 
   const handleDelete = async (id) => {
     if (deleteConfirm !== id) {

@@ -1,7 +1,7 @@
 // src/pages/Fertilizers/FertilizersList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';

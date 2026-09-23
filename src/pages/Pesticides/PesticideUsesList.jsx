@@ -1,7 +1,7 @@
 // src/pages/Pesticides/PesticideUsesList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,13 +22,7 @@ const PesticideUsesList = () => {
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  useEffect(() => {
-    if (currentOrganization) {
-      fetchPesticideUses();
-    }
-  }, [currentOrganization, period]);
-
-  const fetchPesticideUses = async () => {
+  const fetchPesticideUses = useCallback(async () => {
     if (!currentOrganization) return;
 
     try {
@@ -55,7 +49,13 @@ const PesticideUsesList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization, period]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchPesticideUses();
+    }
+  }, [currentOrganization, fetchPesticideUses]);
 
   const handleDelete = async (id) => {
     if (deleteConfirm !== id) {

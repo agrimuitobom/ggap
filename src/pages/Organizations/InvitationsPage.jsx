@@ -18,7 +18,7 @@ const InvitationsPage = () => {
     if (currentUser) {
       fetchInvitations();
     }
-  }, [currentUser]);
+  }, [currentUser, fetchInvitations]);
 
   const handleAcceptInvitation = async (invitationId) => {
     setLoading(true);

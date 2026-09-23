@@ -1,7 +1,7 @@
 // src/pages/Workers/WorkersList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -76,11 +76,7 @@ const WorkersList = () => {
     }
   ];
 
-  useEffect(() => {
-    fetchWorkers();
-  }, [currentUser, currentOrganization]);
-
-  const fetchWorkers = async () => {
+  const fetchWorkers = useCallback(async () => {
     if (!currentUser || !currentOrganization) return;
 
     try {
@@ -93,7 +89,11 @@ const WorkersList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, currentOrganization]);
+
+  useEffect(() => {
+    fetchWorkers();
+  }, [fetchWorkers]);
 
   const handleDelete = async (workerId, workerName) => {
     if (!window.confirm(`「${workerName}」を削除してもよろしいですか？\n\n※この操作は取り消せません。`)) {

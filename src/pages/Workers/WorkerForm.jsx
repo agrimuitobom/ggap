@@ -1,5 +1,5 @@
 // src/pages/Workers/WorkerForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
@@ -49,13 +49,7 @@ const WorkerForm = () => {
     '退職'
   ];
 
-  useEffect(() => {
-    if (isEditMode && currentUser) {
-      fetchWorkerData();
-    }
-  }, [id, isEditMode, currentUser]);
-
-  const fetchWorkerData = async () => {
+  const fetchWorkerData = useCallback(async () => {
     try {
       setFetchLoading(true);
       const docRef = doc(db, 'workers', id);
@@ -89,7 +83,13 @@ const WorkerForm = () => {
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (isEditMode && currentUser) {
+      fetchWorkerData();
+    }
+  }, [id, isEditMode, currentUser, fetchWorkerData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

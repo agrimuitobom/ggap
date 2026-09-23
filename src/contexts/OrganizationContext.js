@@ -1,5 +1,5 @@
 // src/contexts/OrganizationContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import {
   getUserOrganizations,
@@ -129,7 +129,7 @@ export function OrganizationProvider({ children }) {
   };
 
   // 招待一覧を取得
-  const fetchInvitations = async () => {
+  const fetchInvitations = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -142,7 +142,7 @@ export function OrganizationProvider({ children }) {
       firestoreLogger.error('招待一覧の取得エラー', {}, error);
       setInvitationError(error?.message || '招待一覧の取得に失敗しました');
     }
-  };
+  }, [currentUser]);
 
   // 組織メンバーを取得
   const fetchMembers = async (organizationId) => {
@@ -160,6 +160,9 @@ export function OrganizationProvider({ children }) {
     await fetchUserOrganizations();
   };
 
+  // ログイン・ログアウトのときだけ組織を読み直す。
+  // fetchUserOrganizations は createPersonalOrganization・switchOrganization と
+  // 互いに呼び合う初期化処理のため、依存に入れると読み直しが連鎖する。
   useEffect(() => {
     if (currentUser) {
       fetchUserOrganizations();
@@ -172,6 +175,7 @@ export function OrganizationProvider({ children }) {
       setInvitations([]);
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
   const value = {

@@ -75,13 +75,10 @@ export const calcPesticideStock = (pesticide, uses, purchases = []) => {
 
   // マスタに書かれた購入量（旧方式）と、買い足した購入記録を合算する
   let purchaseAmount = Number(pesticide.purchaseAmount) || 0;
-  let approximate = false;
   purchases.forEach((p) => {
     const converted = convert(Number(p.amount) || 0, p.unit || purchaseUnit, purchaseUnit);
-    if (converted === null) {
-      approximate = true;
-      return;
-    }
+    // 単位を換算できない購入記録は合算しない
+    if (converted === null) return;
     purchaseAmount += converted;
   });
   if (!purchaseAmount) return null;
@@ -92,13 +89,9 @@ export const calcPesticideStock = (pesticide, uses, purchases = []) => {
     // 希釈倍率がある場合は原液量に換算（散布量 ÷ 希釈倍率）
     const dilution = Number(use.dilutionRate);
     const rawAmount = dilution > 0 ? Number(use.amount) / dilution : Number(use.amount);
-    if (!(dilution > 0)) approximate = true;
 
     const converted = convert(rawAmount, use.unit || purchaseUnit, purchaseUnit);
-    if (converted === null) {
-      approximate = true;
-      return;
-    }
+    if (converted === null) return;
     used += converted;
   });
 

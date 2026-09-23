@@ -102,7 +102,8 @@ const WorkLogForm = () => {
     return () => {
       isCancelled = true;
     };
-  }, [id, isEditMode, copyFromId]); // 最小限の依存関係のみ
+  // 依存する関数はフック側で固定してあるため、読み込みは id などが変わったときだけ走る
+  }, [id, isEditMode, copyFromId, fetchExistingData, navigate, setFormData, setFormErrors, setFormMessage]);
 
   // 新規入力時、前回使用した圃場・担当者を初期値として反映
   useEffect(() => {

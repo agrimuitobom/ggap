@@ -1,5 +1,5 @@
 // src/pages/Visitors/VisitorForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
@@ -48,13 +48,7 @@ const VisitorForm = () => {
     '圃場'
   ];
 
-  useEffect(() => {
-    if (isEditMode && currentOrganization) {
-      fetchVisitorData();
-    }
-  }, [id, isEditMode, currentOrganization]);
-
-  const fetchVisitorData = async () => {
+  const fetchVisitorData = useCallback(async () => {
     try {
       setFetchLoading(true);
       const docRef = doc(db, 'visitors', id);
@@ -88,7 +82,13 @@ const VisitorForm = () => {
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (isEditMode && currentOrganization) {
+      fetchVisitorData();
+    }
+  }, [id, isEditMode, currentOrganization, fetchVisitorData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

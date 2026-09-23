@@ -10,7 +10,6 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,

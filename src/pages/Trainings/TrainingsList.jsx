@@ -1,7 +1,7 @@
 // src/pages/Trainings/TrainingsList.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,13 +33,7 @@ const TrainingsList = () => {
   const [filterStart, setFilterStart] = useState('');
   const [filterEnd, setFilterEnd] = useState('');
 
-  useEffect(() => {
-    if (currentOrganization) {
-      fetchTrainings();
-    }
-  }, [currentOrganization]);
-
-  const fetchTrainings = async () => {
+  const fetchTrainings = useCallback(async () => {
     if (!currentOrganization) return;
 
     try {
@@ -69,7 +63,13 @@ const TrainingsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrganization]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchTrainings();
+    }
+  }, [currentOrganization, fetchTrainings]);
 
   const handleDelete = async (id) => {
     if (deleteConfirm !== id) {
@@ -190,21 +190,6 @@ const TrainingsList = () => {
     link.click();
     URL.revokeObjectURL(link.href);
     toast.success('CSVを書き出しました');
-  };
-
-  const getStatusBadge = (status) => {
-    const statusStyles = {
-      '完了': 'bg-green-100 text-green-800',
-      '進行中': 'bg-blue-100 text-blue-800',
-      '予定': 'bg-yellow-100 text-yellow-800',
-      '延期': 'bg-red-100 text-red-800'
-    };
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status || '-'}
-      </span>
-    );
   };
 
   if (loading) {

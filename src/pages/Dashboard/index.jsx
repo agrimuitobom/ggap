@@ -217,7 +217,7 @@ const Dashboard = () => {
     };
 
     fetchRecentData();
-  }, [currentOrganization, isAdmin]);
+  }, [currentOrganization, isAdmin, currentUser?.uid]);
 
   // 管理者以外（従業員）はシンプルなホームを表示
   if (!isAdmin) {

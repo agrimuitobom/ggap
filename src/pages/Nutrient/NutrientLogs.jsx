@@ -4,7 +4,7 @@
 // GGAP審査では養液・用水の管理記録が求められるため、
 // 「いつ・どの系統で・どんな値だったか・どう調整したか」を残す。
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, query, where, orderBy, limit, startAfter, getDocs, getCountFromServer, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, limit, startAfter, getDocs, getCountFromServer, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';

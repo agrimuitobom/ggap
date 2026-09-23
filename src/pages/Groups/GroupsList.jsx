@@ -1,7 +1,7 @@
 // src/pages/Groups/GroupsList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,11 +16,7 @@ const GroupsList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchGroups();
-  }, [currentUser, currentOrganization]);
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     if (!currentUser || !currentOrganization) return;
 
     try {
@@ -47,7 +43,11 @@ const GroupsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, currentOrganization]);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
   const handleDelete = async (groupId, groupName) => {
     if (!window.confirm(`「${groupName}」を削除してもよろしいですか？\n\n※グループに所属するメンバーは削除されません。`)) {

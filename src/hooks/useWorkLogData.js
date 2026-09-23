@@ -1,5 +1,5 @@
 // src/hooks/useWorkLogData.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -87,7 +87,8 @@ export const useWorkLogData = (editId = null) => {
   }, [currentUser, currentOrganization]);
 
   // 既存データを取得する関数
-  const fetchExistingData = async (id) => {
+  // 画面側の useEffect から呼ばれるため、描画のたびに作り直さない
+  const fetchExistingData = useCallback(async (id) => {
     try {
       const docRef = doc(db, 'workLogs', id);
       const docSnap = await getDoc(docRef);
@@ -155,7 +156,7 @@ export const useWorkLogData = (editId = null) => {
       firestoreLogger.error('作業日誌の既存データ取得エラー', { workLogId: id }, err);
       throw err;
     }
-  };
+  }, []);
 
   return {
     fields,

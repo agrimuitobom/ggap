@@ -74,17 +74,18 @@ export const useWorkLogForm = (existingData = null) => {
     setMessage('');
   };
 
-  const setFormErrors = (errorMessage) => {
+  // 画面側の useEffect から呼ばれるため、描画のたびに作り直さない
+  const setFormErrors = useCallback((errorMessage) => {
     setError(errorMessage);
-  };
+  }, []);
 
-  const setFormMessage = (successMessage) => {
+  const setFormMessage = useCallback((successMessage) => {
     setMessage(successMessage);
-  };
+  }, []);
 
-  const setFormLoading = (isLoading) => {
+  const setFormLoading = useCallback((isLoading) => {
     setLoading(isLoading);
-  };
+  }, []);
 
   // バリデーション関数
   const validateForm = (fields, users) => {

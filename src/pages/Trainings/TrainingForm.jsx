@@ -1,5 +1,5 @@
 // src/pages/Trainings/TrainingForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, query, getDocs, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
@@ -72,16 +72,7 @@ const TrainingForm = () => {
     'その他'
   ];
 
-  useEffect(() => {
-    if (currentOrganization) {
-      fetchData();
-      if (isEditMode) {
-        fetchTrainingData();
-      }
-    }
-  }, [id, isEditMode, currentOrganization]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!currentOrganization) return;
 
     try {
@@ -109,9 +100,9 @@ const TrainingForm = () => {
       firestoreLogger.error('従業員・グループの取得エラー', { organizationId: currentOrganization?.id }, err);
       toast.error('データの取得中にエラーが発生しました');
     }
-  };
+  }, [currentOrganization, currentUser?.uid]);
 
-  const fetchTrainingData = async () => {
+  const fetchTrainingData = useCallback(async () => {
     try {
       setFetchLoading(true);
       const docRef = doc(db, 'trainings', id);
@@ -157,7 +148,16 @@ const TrainingForm = () => {
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [id, currentOrganization, navigate]);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      fetchData();
+      if (isEditMode) {
+        fetchTrainingData();
+      }
+    }
+  }, [id, isEditMode, currentOrganization, fetchData, fetchTrainingData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

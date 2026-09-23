@@ -56,7 +56,7 @@ const BackupPage = () => {
   const [exportProgress, setExportProgress] = useState(null);
   const [lastBackup, setLastBackup] = useState(null);
 
-  const [file, setFile] = useState(null);
+  const [, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [restoreMode, setRestoreMode] = useState('missing');
   const [restoring, setRestoring] = useState(false);
