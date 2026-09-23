@@ -24,6 +24,8 @@ import BasicInfoSection from '../../components/WorkLog/BasicInfoSection';
 import FertilizerSection from '../../components/WorkLog/FertilizerSection';
 import SeedSection from '../../components/WorkLog/SeedSection';
 import LotSelectSection from '../../components/WorkLog/LotSelectSection';
+import SeedLotPicker from '../../components/common/SeedLotPicker';
+import { suggestLotForField } from '../../services/lotNumberService';
 import PesticideSection from '../../components/WorkLog/PesticideSection';
 
 const WorkLogForm = () => {
@@ -284,7 +286,8 @@ const WorkLogForm = () => {
         seedUnit: formData.workType === '播種' ? (formData.seedUnit || '粒') : null,
         seedMethod: formData.workType === '播種' ? formData.seedMethod : null,
         // 播種・定植のロットID（作業日誌からもたどれるようにする）
-        lotNumber: ['播種', '定植'].includes(formData.workType) ? (formData.lotNumber || '') : '',
+        // 播種・定植ではそのロット、収穫では「どの播種ロットを収穫したか」を残す
+        lotNumber: ['播種', '定植', '収穫'].includes(formData.workType) ? (formData.lotNumber || '') : '',
         // 防除関連
         pesticideId: formData.workType === '防除' ? formData.pesticideId : null,
         targetPest: formData.workType === '防除' ? formData.targetPest : null,
@@ -470,6 +473,19 @@ const WorkLogForm = () => {
             formData={formData}
             setFormData={setFormData}
             seedUses={seedUses}
+          />
+        )}
+
+        {/* 収穫の場合。どの播種ロットを収穫したのかを残し、出荷から播種までたどれるようにする */}
+        {formData.workType === '収穫' && (
+          <SeedLotPicker
+            className="mobile-form-group mb-4"
+            label="収穫した播種ロット"
+            description="どの播種ロットを収穫したのかを選びます。出荷先から播種日・種子までさかのぼれるようになります。"
+            value={formData.lotNumber || ''}
+            onChange={(lot) => setFormData({ ...formData, lotNumber: lot })}
+            seedUses={seedUses}
+            suggestion={suggestLotForField(seedUses, formData.fieldId, formData.date)}
           />
         )}
 

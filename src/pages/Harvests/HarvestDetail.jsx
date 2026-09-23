@@ -137,6 +137,15 @@ const HarvestDetail = () => {
               ロット番号: {harvest.lotNumber}
             </p>
           )}
+          {harvest.seedLotNumber ? (
+            <p className="mt-1 text-xs text-gray-600">
+              播種ロット: <span className="font-mono font-bold">{harvest.seedLotNumber}</span>
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-amber-700">
+              播種ロットが未入力です（編集から選ぶと、出荷から播種までたどれるようになります）
+            </p>
+          )}
         </div>
 
         <div className="px-6 py-5">

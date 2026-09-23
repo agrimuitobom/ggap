@@ -243,13 +243,38 @@ export class ReportService {
   // 収穫・出荷トレーサビリティレポート（拡張版）
   async getTraceabilityReport(startDate, endDate) {
     try {
-      // 並列でデータ取得
-      const [harvestsSnapshot, shipmentsSnapshot, pesticideUsesSnapshot, fertilizerUsesSnapshot, workLogsSnapshot] = await Promise.all([
+      // 収穫・出荷と、播種・定植記録（ロットの起点）を先に取得する
+      const [harvestsSnapshot, shipmentsSnapshot, seedUsesSnapshot] = await Promise.all([
         getDocs(this.createDateRangeQuery('harvests', 'harvestDate', startDate, endDate)),
         getDocs(this.createDateRangeQuery('shipments', 'shipmentDate', startDate, endDate)),
-        getDocs(this.createDateRangeQuery('pesticideUses', 'date', startDate, endDate)),
-        getDocs(this.createDateRangeQuery('fertilizerUses', 'date', startDate, endDate)),
-        getDocs(this.createDateRangeQuery('workLogs', 'date', startDate, endDate))
+        getDocs(query(collection(db, 'seedUses'), where('organizationId', '==', this.organizationId)))
+      ]);
+
+      const seedUses = seedUsesSnapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          date: data.date?.toDate ? data.date.toDate() : (data.date ? new Date(data.date) : null)
+        };
+      });
+
+      // 期間内に収穫したロットの播種日までさかのぼって、農薬・肥料・作業を取得する。
+      // 期間の開始日で切ると、期間より前に行った防除がロットの履歴から漏れるため。
+      const tracedLots = new Set(
+        harvestsSnapshot.docs.map((d) => d.data().seedLotNumber).filter(Boolean)
+      );
+      let historyStart = startDate;
+      seedUses.forEach((u) => {
+        if (u.lotNumber && tracedLots.has(u.lotNumber) && u.date && u.date < historyStart) {
+          historyStart = u.date;
+        }
+      });
+
+      const [pesticideUsesSnapshot, fertilizerUsesSnapshot, workLogsSnapshot] = await Promise.all([
+        getDocs(this.createDateRangeQuery('pesticideUses', 'date', historyStart, endDate)),
+        getDocs(this.createDateRangeQuery('fertilizerUses', 'date', historyStart, endDate)),
+        getDocs(this.createDateRangeQuery('workLogs', 'date', historyStart, endDate))
       ]);
 
       const harvests = [];
@@ -270,6 +295,8 @@ export class ReportService {
           unit: data.unit,
           qualityGrade: data.qualityGrade || data.quality,
           lotNumber: data.lotNumber,
+          // どの播種ロットを収穫したか
+          seedLotNumber: data.seedLotNumber || '',
           notes: data.notes
         });
       });
@@ -340,7 +367,7 @@ export class ReportService {
         });
       });
 
-      return { harvests, shipments, pesticideUses, fertilizerUses, workLogs };
+      return { harvests, shipments, pesticideUses, fertilizerUses, workLogs, seedUses };
     } catch (error) {
       businessLogger.error('トレーサビリティレポートの取得エラー', { operation: 'getTraceabilityReport', organizationId: this.organizationId }, error);
       throw error;

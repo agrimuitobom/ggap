@@ -76,6 +76,9 @@ export const syncHarvestFromWorkLog = async (organizationId, workLogId, workLog,
       fieldName: workLog.fieldName || '',
       plantingId: workLog.plantingId || null,
       plantingLabel: workLog.plantingLabel || '',
+      // どの播種ロットを収穫したか（出荷 → 収穫 → 播種 をたどるため）。
+      // 作業日誌で未入力なら、収穫記録の側で入力した値を残す
+      seedLotNumber: workLog.lotNumber || existing?.seedLotNumber || '',
       quantity,
       unit: 'kg',
       quality: existing?.quality || '良',

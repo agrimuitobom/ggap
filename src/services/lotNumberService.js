@@ -90,3 +90,30 @@ export const collectSelectableLots = (seedUses = []) => {
 
   return Array.from(byLot.values()).sort((a, b) => toTime(b) - toTime(a));
 };
+
+/**
+ * 収穫などで、どの播種ロットのものかを推測する。
+ * 同じ圃場で、その日以前に定植（なければ播種）された直近のロットを返す。
+ * 水耕では圃場（ベッド）ごとに順番に植え替えるため、直近の定植が収穫対象になる。
+ *
+ * @param {Array} seedUses 播種・定植記録
+ * @param {string} fieldId 圃場ID
+ * @param {string} dateKey 'YYYY-MM-DD'
+ * @returns {string} ロットID（推測できなければ ''）
+ */
+export const suggestLotForField = (seedUses = [], fieldId, dateKey) => {
+  if (!fieldId) return '';
+  const limit = dateKey ? new Date(`${dateKey}T23:59:59`).getTime() : Infinity;
+  const toTime = (u) => (u.date?.toDate ? u.date.toDate().getTime() : u.date ? new Date(u.date).getTime() : 0);
+
+  const candidates = seedUses
+    .filter((u) => u.lotNumber && u.fieldId === fieldId && toTime(u) <= limit)
+    .sort((a, b) => {
+      // 定植を優先し、同じ種類なら新しい方
+      const at = a.method === '定植' ? 1 : 0;
+      const bt = b.method === '定植' ? 1 : 0;
+      if (at !== bt) return bt - at;
+      return toTime(b) - toTime(a);
+    });
+  return candidates[0]?.lotNumber || '';
+};

@@ -16,7 +16,8 @@ const TraceabilityReport = () => {
     shipments: [],
     pesticideUses: [],
     fertilizerUses: [],
-    workLogs: []
+    workLogs: [],
+    seedUses: []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,26 +80,42 @@ const TraceabilityReport = () => {
         (shipment.cropName === harvest.cropName && shipment.fieldName === harvest.fieldName)
       );
 
-      // 関連する農薬使用記録（圃場と日付で紐付け）
+      // 播種ロットの記録（播種・定植）。ロットがわかれば、その播種日から
+      // 収穫日までに行った作業だけを「このロットの履歴」として扱える。
+      const lotRecords = harvest.seedLotNumber
+        ? (report.seedUses || []).filter((u) => u.lotNumber === harvest.seedLotNumber && u.date)
+        : [];
+      const lotStart = lotRecords.length > 0
+        ? new Date(Math.min(...lotRecords.map((u) => u.date.getTime())))
+        : null;
+      // ロットがわからない収穫は、従来どおり圃場の履歴すべてを対象にする
+      const inLotPeriod = (date) => date <= harvest.date && (!lotStart || date >= lotStart);
+
+      // 関連する農薬使用記録（圃場と、ロットの播種日〜収穫日で紐付け）
       const relatedPesticides = report.pesticideUses.filter(pu =>
         (pu.fieldId === harvest.fieldId || pu.fieldName === harvest.fieldName) &&
-        pu.date <= harvest.date
+        inLotPeriod(pu.date)
       );
 
       // 関連する肥料使用記録
       const relatedFertilizers = report.fertilizerUses.filter(fu =>
         (fu.fieldId === harvest.fieldId || fu.fieldName === harvest.fieldName) &&
-        fu.date <= harvest.date
+        inLotPeriod(fu.date)
       );
 
       // 関連する作業記録
       const relatedWorkLogs = report.workLogs.filter(wl =>
         (wl.fieldId === harvest.fieldId || wl.fieldName === harvest.fieldName) &&
-        wl.date <= harvest.date
+        inLotPeriod(wl.date)
       );
 
       // タイムラインイベントを構築
       const timelineEvents = [
+        ...lotRecords.map(u => ({
+          ...u,
+          eventType: u.method === '定植' ? 'transplant' : 'sowing',
+          icon: u.method === '定植' ? '🪴' : '🌰'
+        })),
         ...relatedPesticides.map(p => ({ ...p, eventType: 'pesticide', icon: '🧪' })),
         ...relatedFertilizers.map(f => ({ ...f, eventType: 'fertilizer', icon: '🌱' })),
         ...relatedWorkLogs.map(w => ({ ...w, eventType: 'workLog', icon: '🔧' })),
@@ -113,7 +130,9 @@ const TraceabilityReport = () => {
         fertilizers: relatedFertilizers,
         workLogs: relatedWorkLogs,
         timeline: timelineEvents,
-        lotNumber
+        lotNumber,
+        seedLotNumber: harvest.seedLotNumber || '',
+        lotStart
       };
     });
 
@@ -440,9 +459,21 @@ const TraceabilityReport = () => {
           {Object.entries(filteredChains).map(([lotNumber, chain]) => (
             <div key={lotNumber} className="mobile-card">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="mobile-text-base font-bold text-green-800">
-                  Lot: {lotNumber}
-                </h3>
+                <div>
+                  <h3 className="mobile-text-base font-bold text-green-800">
+                    Lot: {lotNumber}
+                  </h3>
+                  {chain.seedLotNumber ? (
+                    <p className="text-xs text-gray-600">
+                      播種ロット <span className="font-mono font-bold">{chain.seedLotNumber}</span>
+                      {chain.lotStart && `（${format(chain.lotStart, 'yyyy/MM/dd', { locale: ja })} 〜 収穫までの履歴）`}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-700">
+                      播種ロットが未入力のため、圃場のこれまでの履歴をすべて表示しています
+                    </p>
+                  )}
+                </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   chain.shipments.length > 0
                     ? 'bg-green-100 text-green-800'
@@ -465,6 +496,7 @@ const TraceabilityReport = () => {
                           event.eventType === 'shipment' ? 'bg-blue-500' :
                           event.eventType === 'pesticide' ? 'bg-red-400' :
                           event.eventType === 'fertilizer' ? 'bg-yellow-400' :
+                          event.eventType === 'sowing' || event.eventType === 'transplant' ? 'bg-lime-400' :
                           'bg-gray-400'
                         }`}>
                           {event.icon}
@@ -474,6 +506,7 @@ const TraceabilityReport = () => {
                           event.eventType === 'shipment' ? 'bg-blue-50' :
                           event.eventType === 'pesticide' ? 'bg-red-50' :
                           event.eventType === 'fertilizer' ? 'bg-yellow-50' :
+                          event.eventType === 'sowing' || event.eventType === 'transplant' ? 'bg-lime-50' :
                           'bg-gray-50'
                         }`}>
                           <div className="flex justify-between items-start">
@@ -485,6 +518,8 @@ const TraceabilityReport = () => {
                                event.eventType === 'shipment' ? '出荷' :
                                event.eventType === 'pesticide' ? '農薬散布' :
                                event.eventType === 'fertilizer' ? '施肥' :
+                               event.eventType === 'sowing' ? '播種' :
+                               event.eventType === 'transplant' ? '定植' :
                                '作業'}
                             </span>
                           </div>
@@ -500,6 +535,9 @@ const TraceabilityReport = () => {
                             )}
                             {event.eventType === 'fertilizer' && (
                               <span>{event.name} {event.amount}{event.unit}</span>
+                            )}
+                            {(event.eventType === 'sowing' || event.eventType === 'transplant') && (
+                              <span>{event.seedName || '種子名なし'}（ロット {event.lotNumber}）{event.fieldName ? ` ${event.fieldName}` : ''}</span>
                             )}
                             {event.eventType === 'workLog' && (
                               <span>{event.workType} ({event.workHours}h)</span>

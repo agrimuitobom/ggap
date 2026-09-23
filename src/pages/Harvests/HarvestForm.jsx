@@ -7,6 +7,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { checkPreHarvestInterval } from '../../services/phiService';
 import { getPlantings, plantingLabel } from '../../services/plantingService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
+import SeedLotPicker from '../../components/common/SeedLotPicker';
+import { suggestLotForField } from '../../services/lotNumberService';
 import DiscardReasonCounter from '../../components/Harvest/DiscardReasonCounter';
 import {
   emptyDiscardCounts,
@@ -34,6 +36,9 @@ const HarvestForm = () => {
   const [quality, setQuality] = useState('良');
   const [notes, setNotes] = useState('');
   const [lotNumber, setLotNumber] = useState('');
+  // どの播種ロットを収穫したか（出荷 → 収穫 → 播種 をたどるため）
+  const [seedLotNumber, setSeedLotNumber] = useState('');
+  const [seedUses, setSeedUses] = useState([]);
   const [disposalAmount, setDisposalAmount] = useState('');
   // 研究用: 作付（処理区）への紐づけと株数ベースの記録
   const [plantings, setPlantings] = useState([]);
@@ -115,6 +120,13 @@ const HarvestForm = () => {
 
         // 作付（処理区）も読み込み、収穫記録を紐づけられるようにする
         const plantingList = await getPlantings(currentOrganization.id);
+
+        // 播種ロットの候補
+        const seedUsesSnapshot = await getDocs(query(
+          collection(db, 'seedUses'),
+          where('organizationId', '==', currentOrganization.id)
+        ));
+        setSeedUses(seedUsesSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
         setPlantings(plantingList);
       } catch (error) {
         firestoreLogger.error('圃場データの取得に失敗しました', { organizationId: currentOrganization.id }, error);
@@ -150,6 +162,7 @@ const HarvestForm = () => {
             setQuality(data.quality || '良');
             setNotes(data.notes || '');
             setLotNumber(data.lotNumber || '');
+            setSeedLotNumber(data.seedLotNumber || '');
             setDisposalAmount(data.disposalAmount?.toString() || '');
             setDisposalReason(data.disposalReason || '');
             setPlantingId(data.plantingId || '');
@@ -248,6 +261,7 @@ const HarvestForm = () => {
       unit,
       quality,
       lotNumber: finalLotNumber,
+      seedLotNumber: (seedLotNumber || '').trim(),
       disposalAmount: disposalQty,
       disposalReason,
       disposalRate: parseFloat(calculatedDisposalRate.toFixed(1)),
@@ -507,10 +521,21 @@ const HarvestForm = () => {
                 </button>
               </div>
               <p className="mt-1 text-xs text-gray-500">
-                トレーサビリティ用の識別番号（空欄時は自動生成）
+                出荷記録から参照する収穫ロットの番号（空欄時は自動生成）
               </p>
             </div>
           </div>
+
+          {/* 播種ロット。収穫ロットと播種ロットをつなぎ、出荷から種子までたどれるようにする */}
+          <SeedLotPicker
+            className="mt-4"
+            label="収穫した播種ロット"
+            description="どの播種ロットを収穫したのかを選びます。出荷先から播種日・種子までさかのぼれるようになります。"
+            value={seedLotNumber}
+            onChange={setSeedLotNumber}
+            seedUses={seedUses}
+            suggestion={suggestLotForField(seedUses, fieldId, harvestDate)}
+          />
 
           {/* 作付（処理区）への紐づけ */}
           {plantings.length > 0 && (

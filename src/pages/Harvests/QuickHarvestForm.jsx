@@ -12,6 +12,8 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { checkPreHarvestInterval } from '../../services/phiService';
 import PhiWarningBanner from '../../components/Phi/PhiWarningBanner';
+import SeedLotPicker from '../../components/common/SeedLotPicker';
+import { suggestLotForField } from '../../services/lotNumberService';
 import VoiceInput from '../../components/common/VoiceInput';
 import DiscardReasonCounter from '../../components/Harvest/DiscardReasonCounter';
 import { emptyDiscardCounts, sumDiscardCounts } from '../../constants/discardReasons';
@@ -63,6 +65,11 @@ const QuickHarvestForm = () => {
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [phiResult, setPhiResult] = useState(null);
+  // どの播種ロットを収穫したか。圃場から自動で推測し、必要なときだけ変更する
+  const [seedUses, setSeedUses] = useState([]);
+  const [seedLotNumber, setSeedLotNumber] = useState('');
+  const [seedLotTouched, setSeedLotTouched] = useState(false);
+  const [showSeedLotPicker, setShowSeedLotPicker] = useState(false);
 
   const dateChips = [
     { key: 'today', label: '今日', date: new Date() },
@@ -77,13 +84,18 @@ const QuickHarvestForm = () => {
       if (!currentOrganization) return;
       try {
         setFetchLoading(true);
-        const [snapshot, plantingList] = await Promise.all([
+        const [snapshot, plantingList, seedUsesSnapshot] = await Promise.all([
           getDocs(query(
             collection(db, 'fields'),
             where('organizationId', '==', currentOrganization.id)
           )),
-          getPlantings(currentOrganization.id)
+          getPlantings(currentOrganization.id),
+          getDocs(query(
+            collection(db, 'seedUses'),
+            where('organizationId', '==', currentOrganization.id)
+          ))
         ]);
+        setSeedUses(seedUsesSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
         setFields(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
         setPlantings(plantingList.filter((p) => p.status === '栽培中'));
         const savedUnit = localStorage.getItem(unitStorageKey(currentOrganization.id));
@@ -120,6 +132,13 @@ const QuickHarvestForm = () => {
       setCropName(field.currentCrop);
     }
   };
+
+  // 圃場・日付が変わったら、手で選び直していない限り直近のロットを入れ直す
+  const selectedDateKey = toDateString(selectedDate);
+  useEffect(() => {
+    if (seedLotTouched) return;
+    setSeedLotNumber(suggestLotForField(seedUses, fieldId, selectedDateKey));
+  }, [seedUses, fieldId, selectedDateKey, seedLotTouched]);
 
   const resetForNext = () => {
     setQuantity('');
@@ -178,6 +197,7 @@ const QuickHarvestForm = () => {
         unit,
         quality,
         lotNumber,
+        seedLotNumber: (seedLotNumber || '').trim(),
         disposalAmount: 0,
         disposalReason: '',
         disposalRate: 0,
@@ -329,6 +349,37 @@ const QuickHarvestForm = () => {
       </div>
 
       <PhiWarningBanner phiResult={phiResult} />
+
+      {/* 播種ロット。圃場を選ぶと直近の定植ロットが自動で入る */}
+      {fieldId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-blue-900">
+              播種ロット：
+              <span className="font-mono font-bold ml-1">{seedLotNumber || '未選択'}</span>
+              {!seedLotTouched && seedLotNumber && (
+                <span className="text-xs text-blue-700 ml-2">（この圃場の直近のロット）</span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowSeedLotPicker((v) => !v)}
+              className="text-sm text-blue-700 underline shrink-0"
+            >
+              {showSeedLotPicker ? '閉じる' : '変更'}
+            </button>
+          </div>
+          {showSeedLotPicker && (
+            <SeedLotPicker
+              className="mt-2"
+              label="収穫した播種ロット"
+              value={seedLotNumber}
+              onChange={(lot) => { setSeedLotNumber(lot); setSeedLotTouched(true); }}
+              seedUses={seedUses}
+            />
+          )}
+        </div>
+      )}
 
       {/* 作物名 */}
       <div className="bg-white shadow rounded-lg p-4 mb-4">
