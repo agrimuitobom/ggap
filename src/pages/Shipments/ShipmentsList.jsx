@@ -8,12 +8,17 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
+import { usePeriod } from '../../hooks/usePeriod';
+import { periodWhere } from '../../utils/periodQuery';
+import PeriodSelect from '../../components/common/PeriodSelect';
 
 const ShipmentsList = () => {
   const navigate = useNavigate();
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentOrganization } = useOrganization();
+  // 表示期間（全件を毎回読まないように、既定は直近3か月）
+  const [period, setPeriod] = usePeriod('shipments');
   const { userProfile } = useAuth();
 
   useEffect(() => {
@@ -24,6 +29,7 @@ const ShipmentsList = () => {
         const shipmentsQuery = query(
           collection(db, 'shipments'),
           where('organizationId', '==', currentOrganization.id),
+          ...periodWhere('shipmentDate', period),
           orderBy('shipmentDate', 'desc')
         );
         
@@ -43,7 +49,7 @@ const ShipmentsList = () => {
     };
 
     fetchShipments();
-  }, [currentOrganization]);
+  }, [currentOrganization, period]);
 
   const handleDelete = async (id) => {
     if (window.confirm('この出荷記録を削除してもよろしいですか？')) {
@@ -72,6 +78,8 @@ const ShipmentsList = () => {
           </svg>
         </Link>
       </div>
+
+      <PeriodSelect value={period} onChange={setPeriod} count={loading ? undefined : shipments.length} className="mb-4" />
 
       {loading ? (
         <div className="flex justify-center items-center h-64">

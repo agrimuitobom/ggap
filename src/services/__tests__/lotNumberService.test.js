@@ -107,3 +107,21 @@ describe('収穫した播種ロットの推測', () => {
     expect(suggestLotForField(uses, '', '2026-06-10')).toBe('');
   });
 });
+
+// 一覧画面の表示期間
+import { periodStartDate } from '../../utils/period';
+
+describe('一覧の表示期間', () => {
+  test('今年度は4月1日から（1〜3月は前年の4月）', () => {
+    expect(periodStartDate('fy', new Date('2026-09-23'))).toEqual(new Date(2026, 3, 1));
+    expect(periodStartDate('fy', new Date('2027-02-10'))).toEqual(new Date(2026, 3, 1));
+  });
+
+  test('直近3か月', () => {
+    expect(periodStartDate('3m', new Date('2026-09-23T10:00:00'))).toEqual(new Date(2026, 5, 23));
+  });
+
+  test('全期間は条件なし', () => {
+    expect(periodStartDate('all')).toBeNull();
+  });
+});

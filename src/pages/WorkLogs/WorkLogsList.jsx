@@ -9,9 +9,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { deleteHarvestForWorkLog } from '../../services/harvestSyncService';
 import { firestoreLogger } from '../../utils/logger';
+import { usePeriod } from '../../hooks/usePeriod';
+import { periodWhere } from '../../utils/periodQuery';
+import { periodLabel } from '../../utils/period';
+import PeriodSelect from '../../components/common/PeriodSelect';
 
 const WorkLogsList = () => {
   const { currentOrganization } = useOrganization();
+  // 表示期間（全件を毎回読まないように、既定は直近3か月）
+  const [period, setPeriod] = usePeriod('workLogs');
   const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [workLogs, setWorkLogs] = useState([]);
@@ -32,6 +38,7 @@ const WorkLogsList = () => {
       const q = query(
         collection(db, 'workLogs'),
         where('organizationId', '==', currentOrganization.id),
+        ...periodWhere('date', period),
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(q);
@@ -52,13 +59,13 @@ const WorkLogsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization]);
+  }, [currentOrganization, period]);
 
   useEffect(() => {
     if (currentOrganization) {
       fetchWorkLogs();
     }
-  }, [currentOrganization, fetchWorkLogs]);
+  }, [currentOrganization, period, fetchWorkLogs]);
 
   const handleDelete = async (id) => {
     if (deleteConfirm !== id) {
@@ -183,6 +190,8 @@ const WorkLogsList = () => {
         </div>
       </div>
       
+      <PeriodSelect value={period} onChange={setPeriod} className="mb-4" />
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
           {error}
@@ -228,7 +237,7 @@ const WorkLogsList = () => {
               </button>
             )}
             <span className="text-sm text-gray-500 ml-auto">
-              {visibleLogs.length}件 / 全{workLogs.length}件
+              {visibleLogs.length}件 / {periodLabel(period)}の{workLogs.length}件
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-2">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,6 +42,11 @@ const HarvestsList = () => {
       const harvestsQuery = query(
         collection(db, 'harvests'),
         where('organizationId', '==', currentOrganization.id),
+        // 集計期間の開始日より前は読まない（全期間のときは全件）。
+        // 表示と集計が同じ範囲になるよう、集計期間をそのまま使う
+        ...(startDate
+          ? [where('harvestDate', '>=', Timestamp.fromDate(new Date(`${startDate}T00:00:00`)))]
+          : []),
         orderBy('harvestDate', 'desc')
       );
 
@@ -62,7 +67,7 @@ const HarvestsList = () => {
       toast.error('収穫記録の取得中にエラーが発生しました');
       setLoading(false);
     }
-  }, [currentOrganization]);
+  }, [currentOrganization, startDate]);
 
   useEffect(() => {
     fetchHarvests();

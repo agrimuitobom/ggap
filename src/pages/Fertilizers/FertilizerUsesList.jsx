@@ -7,12 +7,17 @@ import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import { usePeriod } from '../../hooks/usePeriod';
+import { periodWhere } from '../../utils/periodQuery';
+import PeriodSelect from '../../components/common/PeriodSelect';
 import toast from 'react-hot-toast';
 import { findRecordsWithWrongApplier, repairAppliers } from '../../services/applierRepairService';
 
 const FertilizerUsesList = () => {
   const navigate = useNavigate();
   const { currentOrganization } = useOrganization();
+  // 表示期間（全件を毎回読まないように、既定は直近3か月）
+  const [period, setPeriod] = usePeriod('fertilizerUses');
   const { userProfile } = useAuth();
   const [fertilizerUses, setFertilizerUses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +33,7 @@ const FertilizerUsesList = () => {
       checkAppliers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrganization]);
+  }, [currentOrganization, period]);
 
   const checkAppliers = async () => {
     if (!currentOrganization) return;
@@ -76,6 +81,7 @@ const FertilizerUsesList = () => {
       const q = query(
         collection(db, 'fertilizerUses'),
         where('organizationId', '==', currentOrganization.id),
+        ...periodWhere('date', period),
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(q);
@@ -170,6 +176,8 @@ const FertilizerUsesList = () => {
           </button>
         </div>
       )}
+
+      <PeriodSelect value={period} onChange={setPeriod} className="mb-4" />
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
