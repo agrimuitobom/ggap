@@ -1,7 +1,7 @@
 // src/pages/WorkLogs/WorkLogForm.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +11,7 @@ import { getWorkLogTemplates, saveWorkLogTemplate, deleteWorkLogTemplate } from 
 import { getCurrentPosition, fetchWeatherForDate } from '../../services/weatherService';
 import { getPlantings, plantingLabel } from '../../services/plantingService';
 import { syncHarvestFromWorkLog } from '../../services/harvestSyncService';
+import { buildRelatedRecords, syncRelatedRecords } from '../../services/workLogRelatedService';
 import QuickTemplateBar from '../../components/QuickActions/QuickTemplateBar';
 import toast from 'react-hot-toast';
 
@@ -210,202 +211,23 @@ const WorkLogForm = () => {
     }
   };
 
-  // 関連資材レコードを作成する関数
-  const createRelatedRecords = async (workLogRef, selectedField) => {
-    const promises = [];
-
-    // 施用者は組織名ではなく、実際に作業した担当者。審査では
-    // 「誰が施用したか」を必ず問われるため、作業日誌の担当者を引き継ぐ。
-    // 担当者が未入力の場合は、記録した人を残す。
-    const applierNames = users
-      .filter((user) => formData.workers.includes(user.id))
-      .map((user) => user.name);
-    const appliedByName = applierNames.length > 0
-      ? applierNames.join('、')
-      : (userProfile?.name || '');
-
-    // 施肥記録作成
-    if (formData.workType === '施肥' && formData.fertilizerId) {
-      const selectedFertilizer = fertilizers.find(fertilizer => fertilizer.id === formData.fertilizerId);
-
-      // デバッグログ: 選択された肥料のNPK成分を確認
-      firestoreLogger.debug('選択された肥料データを確認', {
-        fertilizerId: selectedFertilizer?.id,
-        fertilizerName: selectedFertilizer?.name,
-        nitrogenContent: selectedFertilizer?.nitrogenContent,
-        phosphorusContent: selectedFertilizer?.phosphorusContent,
-        potassiumContent: selectedFertilizer?.potassiumContent
-      });
-      const fertilizerUseData = {
-        date: new Date(formData.date),
-        fertilizerId: formData.fertilizerId,
-        fertilizerName: selectedFertilizer ? selectedFertilizer.name : '',
-        fieldId: formData.fieldId,
-        fieldName: selectedField?.name || '',
-        appliedBy: currentUser?.uid || '',
-        appliedByName,
-        organizationId: currentOrganization.id,
-        amount: formData.fertilizerAmount ? Number(formData.fertilizerAmount) : null,
-        unit: formData.fertilizerUnit,
-        method: formData.fertilizerMethod,
-        // NPK成分情報を追加
-        nitrogen: selectedFertilizer?.nitrogenContent || 0,
-        phosphorus: selectedFertilizer?.phosphorusContent || 0,
-        potassium: selectedFertilizer?.potassiumContent || 0,
-        notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
-        workLogId: workLogRef.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      // デバッグログ: fertilizerUsesコレクションに保存するデータを確認
-      firestoreLogger.debug('施肥記録の保存データを確認', {
-        fertilizerId: fertilizerUseData.fertilizerId,
-        fertilizerName: fertilizerUseData.fertilizerName,
-        nitrogen: fertilizerUseData.nitrogen,
-        phosphorus: fertilizerUseData.phosphorus,
-        potassium: fertilizerUseData.potassium,
-        amount: fertilizerUseData.amount,
-        unit: fertilizerUseData.unit
-      });
-
-      promises.push(addDoc(collection(db, 'fertilizerUses'), fertilizerUseData));
-    }
-
-    // 播種記録作成
-    if (formData.workType === '播種' && formData.seedId) {
-      const selectedSeed = seeds.find(seed => seed.id === formData.seedId);
-      const seedUseData = {
-        date: new Date(formData.date),
-        seedId: formData.seedId,
-        seedName: selectedSeed ? `${selectedSeed.name} (${selectedSeed.variety})` : '',
-        fieldId: formData.fieldId,
-        fieldName: selectedField?.name || '',
-        plantedBy: currentUser?.uid || '',
-        plantedByName: appliedByName,
-        organizationId: currentOrganization.id,
-        amount: formData.seedAmount ? Number(formData.seedAmount) : null,
-        unit: formData.seedUnit || '粒',
-        method: formData.seedMethod,
-        lotNumber: (formData.lotNumber || '').trim(),
-        // 播種・定植記録側で入力された内容を引き継ぐ（作り直しで消さない）
-        pestStatus: formData.pestStatus || 'なし',
-        pestDetail: formData.pestDetail || '',
-        pestAction: formData.pestAction || '',
-        notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
-        workLogId: workLogRef.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-      promises.push(addDoc(collection(db, 'seedUses'), seedUseData));
-    }
-
-    // 定植記録作成。どの播種ロットを定植したのかを残すことで、
-    // 播種 → 定植 → 収穫 がロットIDでつながる。
-    if (formData.workType === '定植' && formData.lotNumber) {
-      const sourceLot = seedUses.find((u) => u.lotNumber === formData.lotNumber);
-      const transplantData = {
-        date: new Date(formData.date),
-        seedId: sourceLot?.seedId || '',
-        seedName: sourceLot?.seedName || '',
-        fieldId: formData.fieldId,
-        fieldName: selectedField?.name || '',
-        plantedBy: currentUser?.uid || '',
-        plantedByName: appliedByName,
-        organizationId: currentOrganization.id,
-        amount: null,
-        unit: '',
-        method: '定植',
-        lotNumber: formData.lotNumber.trim(),
-        pestStatus: formData.pestStatus || 'なし',
-        pestDetail: formData.pestDetail || '',
-        pestAction: formData.pestAction || '',
-        notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
-        workLogId: workLogRef.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-      promises.push(addDoc(collection(db, 'seedUses'), transplantData));
-    }
-
-    // 防除記録作成
-    if (formData.workType === '防除' && formData.pesticideId) {
-      const selectedPesticide = pesticides.find(pesticide => pesticide.id === formData.pesticideId);
-      const pesticideUseData = {
-        date: new Date(formData.date),
-        pesticideId: formData.pesticideId,
-        pesticideName: selectedPesticide ? selectedPesticide.name : '',
-        fieldId: formData.fieldId,
-        fieldName: selectedField?.name || '',
-        targetPest: formData.targetPest,
-        appliedBy: currentUser?.uid || '',
-        appliedByName,
-        organizationId: currentOrganization.id,
-        dilutionRate: formData.dilutionRate ? Number(formData.dilutionRate) : null,
-        amount: formData.pesticideAmount ? Number(formData.pesticideAmount) : null,
-        unit: formData.pesticideUnit,
-        treatedArea: formData.treatedArea ? Number(formData.treatedArea) : null,
-        method: formData.pesticideMethod,
-        weather: formData.weather,
-        temperature: formData.temperature ? Number(formData.temperature) : null,
-        windSpeed: formData.windSpeed ? Number(formData.windSpeed) : null,
-        notes: `作業日誌より自動作成 (作業ID: ${workLogRef.id})`,
-        workLogId: workLogRef.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-      promises.push(addDoc(collection(db, 'pesticideUses'), pesticideUseData));
-    }
-
-    if (promises.length > 0) {
-      await Promise.all(promises);
-    }
-  };
-
-  // 関連資材レコードを削除する関数
-  // セキュリティルールがドキュメントの組織所属を要求するため、
-  // クエリにも organizationId 条件を含める（workLogId 単独だと権限エラーになる）
-  const deleteRelatedRecords = async (workLogId) => {
-    if (!currentOrganization) return;
-    const orgId = currentOrganization.id;
-    const promises = [];
-
-    // 肥料使用記録の削除
-    const fertilizerQuery = query(
-      collection(db, 'fertilizerUses'),
-      where('organizationId', '==', orgId),
-      where('workLogId', '==', workLogId)
-    );
-    const fertilizerSnapshot = await getDocs(fertilizerQuery);
-    fertilizerSnapshot.forEach(doc => {
-      promises.push(deleteDoc(doc.ref));
+  // 作業日誌から作る施肥・播種/定植・農薬使用記録を同期する。
+  // 作り直しではなく、作業日誌が持つ項目だけを更新するため、
+  // 各記録の側で入力した値（母液・病害虫・保護具など）は消えない。
+  const syncRelated = async (workLogId, selectedField) => {
+    const records = buildRelatedRecords({
+      formData,
+      workLogId,
+      selectedField,
+      users,
+      fertilizers,
+      seeds,
+      seedUses,
+      pesticides,
+      currentUid: currentUser?.uid || '',
+      fallbackName: userProfile?.name || ''
     });
-
-    // 播種記録の削除
-    const seedQuery = query(
-      collection(db, 'seedUses'),
-      where('organizationId', '==', orgId),
-      where('workLogId', '==', workLogId)
-    );
-    const seedSnapshot = await getDocs(seedQuery);
-    seedSnapshot.forEach(doc => {
-      promises.push(deleteDoc(doc.ref));
-    });
-
-    // 防除記録の削除
-    const pesticideQuery = query(
-      collection(db, 'pesticideUses'),
-      where('organizationId', '==', orgId),
-      where('workLogId', '==', workLogId)
-    );
-    const pesticideSnapshot = await getDocs(pesticideQuery);
-    pesticideSnapshot.forEach(doc => {
-      promises.push(deleteDoc(doc.ref));
-    });
-
-    if (promises.length > 0) {
-      await Promise.all(promises);
-    }
+    await syncRelatedRecords(currentOrganization.id, workLogId, records, userProfile?.name || '');
   };
 
   const handleSubmit = async (e) => {
@@ -486,8 +308,7 @@ const WorkLogForm = () => {
         await updateDoc(doc(db, 'workLogs', id), workLogData);
 
         // 関連レコードを一度削除して再作成（整合性を保つため）
-        await deleteRelatedRecords(id);
-        await createRelatedRecords(doc(db, 'workLogs', id), selectedField);
+        await syncRelated(id, selectedField);
 
         // 収穫は harvests に反映する（作り直しではなく更新するのでロット番号は保たれる）
         await syncHarvestFromWorkLog(currentOrganization.id, id, workLogData, {
@@ -502,7 +323,7 @@ const WorkLogForm = () => {
         const workLogRef = await addDoc(collection(db, 'workLogs'), workLogData);
 
         // 関連資材記録を作成
-        await createRelatedRecords(workLogRef, selectedField);
+        await syncRelated(workLogRef.id, selectedField);
 
         await syncHarvestFromWorkLog(currentOrganization.id, workLogRef.id, workLogData, {
           cropName: harvestCropName

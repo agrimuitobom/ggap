@@ -123,7 +123,7 @@ export const useWorkLogData = (editId = null) => {
           fertilizerId: data.fertilizerId || '',
           fertilizerAmount: data.fertilizerAmount?.toString() || '',
           fertilizerUnit: data.fertilizerUnit || 'kg',
-          lotNumber: data.lotNumber || linkedSeedUse?.lotNumber || '',
+          lotNumber: linkedSeedUse?.lotNumber || data.lotNumber || '',
           // 播種・定植記録側で入力された病害虫の記録を引き継ぐ
           pestStatus: linkedSeedUse?.pestStatus || 'なし',
           pestDetail: linkedSeedUse?.pestDetail || '',

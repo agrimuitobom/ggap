@@ -1,9 +1,10 @@
 // src/pages/WorkLogs/WorkLogsList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { moveToTrash } from '../../services/trashService';
+import { trashRelatedRecords } from '../../services/workLogRelatedService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { deleteHarvestForWorkLog } from '../../services/harvestSyncService';
@@ -68,6 +69,8 @@ const WorkLogsList = () => {
     try {
       // この作業日誌から作られた収穫記録も一緒に取り消す（集計に残らないように）
       await deleteHarvestForWorkLog(currentOrganization.id, id, userProfile?.name);
+      // 施肥・播種/定植・農薬使用記録も取り消す（集計や記録簿に残らないように）
+      await trashRelatedRecords(currentOrganization.id, id, userProfile?.name);
       await moveToTrash('workLogs', id, currentOrganization.id, userProfile?.name);
       setWorkLogs(workLogs.filter(log => log.id !== id));
       setDeleteConfirm(null);
