@@ -7,6 +7,7 @@ import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { calcPesticideStock, formatStock } from '../../services/inventoryService';
+import { getPurchases, findDuplicates, latestExpiry } from '../../services/materialPurchaseService';
 import { firestoreLogger } from '../../utils/logger';
 
 const STOCK_STYLES = {
@@ -35,7 +36,7 @@ const PesticidesList = () => {
 
     try {
       setLoading(true);
-      const [querySnapshot, usesSnapshot] = await Promise.all([
+      const [querySnapshot, usesSnapshot, purchaseList] = await Promise.all([
         getDocs(query(
           collection(db, 'pesticides'),
           where('organizationId', '==', currentOrganization.id),
@@ -44,8 +45,17 @@ const PesticidesList = () => {
         getDocs(query(
           collection(db, 'pesticideUses'),
           where('organizationId', '==', currentOrganization.id)
-        ))
+        )),
+        getPurchases('pesticide', currentOrganization.id)
       ]);
+
+      // 買い足した分は購入記録に入るため、在庫と有効期限の判定に含める
+      const purchasesByPesticide = {};
+      purchaseList.forEach((p) => {
+        if (!p.pesticideId) return;
+        if (!purchasesByPesticide[p.pesticideId]) purchasesByPesticide[p.pesticideId] = [];
+        purchasesByPesticide[p.pesticideId].push(p);
+      });
 
       // 農薬ごとの使用記録をまとめる
       const usesByPesticide = {};
@@ -61,14 +71,18 @@ const PesticidesList = () => {
       const pesticidesList = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        const purchases = purchasesByPesticide[doc.id] || [];
         pesticidesList.push({
           id: doc.id,
           ...data,
+          // 重複判定用に元の値も残す
+          rawPurchaseDate: data.purchaseDate,
           purchaseDate: data.purchaseDate?.toDate(),
-          expiryDate: data.expiryDate?.toDate(),
+          // 有効期限は、購入記録を含めて最も遅い期限で判定する
+          expiryDate: latestExpiry('pesticide', { id: doc.id, ...data }, purchases),
           stock: formatStock(
-            calcPesticideStock(data, usesByPesticide[doc.id] || []),
-            data.purchaseUnit
+            calcPesticideStock(data, usesByPesticide[doc.id] || [], purchases),
+            data.purchaseUnit || purchases[0]?.unit
           )
         });
       });
@@ -142,6 +156,20 @@ const PesticidesList = () => {
         </Link>
       </div>
       
+      {/* 買い足すたびに新規登録すると、選択欄で区別できず在庫・期限も分かれる */}
+      {findDuplicates('pesticide', pesticides.map((p) => ({ ...p, purchaseDate: p.rawPurchaseDate }))).length > 0 && (
+        <Link
+          to="/pesticide-purchases"
+          className="flex items-center justify-between bg-red-50 border-2 border-red-400 text-red-800 px-4 py-3 mb-4 rounded-lg hover:bg-red-100 transition-colors"
+        >
+          <span>
+            ⚠️ <span className="font-bold">同じ農薬として重複している登録があります</span>。
+            買い足すたびに新規登録すると、農薬使用記録の選択欄で区別できず、在庫や有効期限も分かれてしまいます。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">まとめる →</span>
+        </Link>
+      )}
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
           {error}

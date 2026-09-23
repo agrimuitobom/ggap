@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { uiLogger } from '../../utils/logger';
 import EmployeeHome from './EmployeeHome';
+import { getPurchases, latestExpiry } from '../../services/materialPurchaseService';
 import {
   getPpeItems,
   getPpeTransactions,
@@ -57,7 +58,10 @@ const Dashboard = () => {
           collection(db, 'pesticides'),
           where('organizationId', '==', currentOrganization.id)
         );
-        const pesticidesSnapshot = await getDocs(pesticidesQuery);
+        const [pesticidesSnapshot, pesticidePurchases] = await Promise.all([
+          getDocs(pesticidesQuery),
+          getPurchases('pesticide', currentOrganization.id)
+        ]);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -65,7 +69,13 @@ const Dashboard = () => {
         const expiring = [];
         pesticidesSnapshot.forEach((d) => {
           const data = d.data();
-          const expiry = data.expiryDate?.toDate ? data.expiryDate.toDate() : null;
+          // 買い足した購入記録を含め、最も遅い有効期限で判定する
+          // （新しいロットを買ったのに、古いロットの期限で警告し続けないように）
+          const expiry = latestExpiry(
+            'pesticide',
+            { id: d.id, ...data },
+            pesticidePurchases.filter((p) => p.pesticideId === d.id)
+          );
           if (!expiry) return;
           if (expiry < today) {
             expired.push({ id: d.id, name: data.name, expiryDate: expiry });

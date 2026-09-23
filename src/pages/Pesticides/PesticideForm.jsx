@@ -1,6 +1,6 @@
 // src/pages/Pesticides/PesticideForm.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { addDoc, updateDoc, doc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -164,6 +164,15 @@ const PesticideForm = () => {
   return (
     <div className="container mx-auto p-4 max-w-2xl">
       <h1 className="text-2xl font-bold mb-4">{isEditMode ? '農薬データ編集' : '農薬データ登録'}</h1>
+
+      {/* 買い足しのたびに新規登録すると重複する。新規登録のときだけ案内する */}
+      {!isEditMode && (
+        <div className="bg-amber-50 border border-amber-300 rounded p-3 mb-4 text-sm text-amber-900">
+          すでに登録済みの農薬を<strong>買い足した場合は、ここで新しく登録せず</strong>、
+          <Link to="/pesticide-purchases" className="underline font-medium mx-1">農薬の購入記録</Link>
+          に1行追加してください。同じ農薬を何度も登録すると、選択欄で区別できなくなります。
+        </div>
+      )}
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">

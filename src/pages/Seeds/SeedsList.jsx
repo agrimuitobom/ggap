@@ -7,6 +7,7 @@ import { moveToTrash } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import { findDuplicates } from '../../services/materialPurchaseService';
 
 const SeedsList = () => {
   const navigate = useNavigate();
@@ -106,6 +107,19 @@ const SeedsList = () => {
         </Link>
       </div>
       
+      {findDuplicates('seed', seeds).length > 0 && (
+        <Link
+          to="/seed-purchases"
+          className="flex items-center justify-between bg-red-50 border-2 border-red-400 text-red-800 px-4 py-3 mb-4 rounded-lg hover:bg-red-100 transition-colors"
+        >
+          <span>
+            ⚠️ <span className="font-bold">同じ種子（名称・品種が同じ）として重複している登録があります</span>。
+            買い足すたびに新規登録すると、播種記録の選択欄で区別できなくなります。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">まとめる →</span>
+        </Link>
+      )}
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
           {error}

@@ -50,7 +50,7 @@ const FertilizerForm = lazy(() => import('./pages/Fertilizers/FertilizerForm'));
 const FertilizerUseForm = lazy(() => import('./pages/Fertilizers/FertilizerUseForm'));
 const FertilizerUsesList = lazy(() => import('./pages/Fertilizers/FertilizerUsesList'));
 const StockSolutions = lazy(() => import('./pages/Fertilizers/StockSolutions'));
-const FertilizerPurchases = lazy(() => import('./pages/Fertilizers/FertilizerPurchases'));
+const MaterialPurchases = lazy(() => import('./pages/Materials/MaterialPurchases'));
 const PesticidesList = lazy(() => import('./pages/Pesticides/PesticidesList'));
 const PesticideForm = lazy(() => import('./pages/Pesticides/PesticideForm'));
 const PesticideUseForm = lazy(() => import('./pages/Pesticides/PesticideUseForm'));
@@ -201,7 +201,10 @@ function App() {
             <Route path="fertilizers/edit/:id" element={<FertilizerForm />} />
             <Route path="fertilizer-uses" element={<FertilizerUsesList />} />
             <Route path="stock-solutions" element={<StockSolutions />} />
-            <Route path="fertilizer-purchases" element={<FertilizerPurchases />} />
+            {/* 資材の購入（入荷）記録。種類ごとに同じ画面を使う */}
+            <Route path="fertilizer-purchases" element={<MaterialPurchases type="fertilizer" />} />
+            <Route path="pesticide-purchases" element={<MaterialPurchases type="pesticide" />} />
+            <Route path="seed-purchases" element={<MaterialPurchases type="seed" />} />
             <Route path="fertilizer-uses/new" element={<FertilizerUseForm />} />
             <Route path="fertilizer-uses/edit/:id" element={<FertilizerUseForm />} />
             

@@ -162,6 +162,9 @@ const MainLayout = () => {
                 <Link to="/pesticides/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   農薬登録
                 </Link>
+                <Link to="/pesticide-purchases" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  農薬の購入記録
+                </Link>
                 <Link to="/pesticide-uses" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   農薬使用記録一覧
                 </Link>
@@ -190,6 +193,9 @@ const MainLayout = () => {
                 </Link>
                 <Link to="/seeds/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   種子・苗登録
+                </Link>
+                <Link to="/seed-purchases" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  種子の購入記録
                 </Link>
                 <Link to="/seed-uses" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   播種・定植記録一覧

@@ -69,13 +69,24 @@ export const calcFertilizerStock = (fertilizer, uses, purchases = []) => {
  * @param {Object} pesticide - 農薬マスタ（purchaseAmount, purchaseUnit）
  * @param {Array} uses - その農薬の使用記録（amount, unit, dilutionRate）
  */
-export const calcPesticideStock = (pesticide, uses) => {
-  const purchaseAmount = Number(pesticide.purchaseAmount);
-  const purchaseUnit = pesticide.purchaseUnit;
-  if (!purchaseAmount || !purchaseUnit) return null;
+export const calcPesticideStock = (pesticide, uses, purchases = []) => {
+  const purchaseUnit = pesticide.purchaseUnit || purchases[0]?.unit;
+  if (!purchaseUnit) return null;
+
+  // マスタに書かれた購入量（旧方式）と、買い足した購入記録を合算する
+  let purchaseAmount = Number(pesticide.purchaseAmount) || 0;
+  let approximate = false;
+  purchases.forEach((p) => {
+    const converted = convert(Number(p.amount) || 0, p.unit || purchaseUnit, purchaseUnit);
+    if (converted === null) {
+      approximate = true;
+      return;
+    }
+    purchaseAmount += converted;
+  });
+  if (!purchaseAmount) return null;
 
   let used = 0;
-  let approximate = false;
   uses.forEach((use) => {
     if (!use.amount) return;
     // 希釈倍率がある場合は原液量に換算（散布量 ÷ 希釈倍率）
