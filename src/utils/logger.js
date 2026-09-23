@@ -29,12 +29,13 @@ const LOG_LEVEL_NAMES = {
 const getEnvironmentConfig = () => {
   const isDevelopment = process.env.NODE_ENV === 'development';
   const isProduction = process.env.NODE_ENV === 'production';
-  
+
+  // 本番以外（開発・テスト）はすべてのログを出す。本番はエラーのみ
   return {
     isDevelopment,
     isProduction,
-    logLevel: isDevelopment ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR,
-    enableConsoleOutput: isDevelopment,
+    logLevel: isProduction ? LOG_LEVELS.ERROR : LOG_LEVELS.DEBUG,
+    enableConsoleOutput: !isProduction,
     enableRemoteLogging: isProduction
   };
 };
@@ -130,7 +131,14 @@ const createLogEntry = (level, message, context = {}, error = null) => {
 const outputToConsole = (logEntry) => {
   const { level, message, context, error } = logEntry;
   const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
-  const logMessage = `[${timestamp}] ${level}: ${message}`;
+  // どの機能からのログかを先頭に付ける（本番のコンソールでも出どころがわかるように）。
+  // auth() などの補助メソッドで既に付いている場合は重ねない
+  // 分類はロガー自身のもの（auth / firestore など）を優先する。
+  // 呼び出し側が渡した component（画面名など）は詳細として context に残る
+  const category = logEntry.category || context?.component;
+  const tag = category ? `[${String(category).toUpperCase()}]` : '';
+  const taggedMessage = tag && !String(message).startsWith(tag) ? `${tag} ${message}` : message;
+  const logMessage = `[${timestamp}] ${level}: ${taggedMessage}`;
 
   switch (level) {
     case 'DEBUG':
@@ -169,8 +177,12 @@ const sendToRemoteService = async (logEntry) => {
 const outputLog = async (logEntry) => {
   const config = getEnvironmentConfig();
   
-  // コンソール出力
-  if (config.enableConsoleOutput) {
+  // コンソール出力。
+  // エラーはどの環境でも出す。本番でも出さないと、リモート送信が未実装の
+  // 現状ではエラーがどこにも残らず、不具合の原因を追えなくなる。
+  // （記録内容は sanitizeLogData でメールアドレス等を伏せてある）
+  const isError = logEntry.level === 'ERROR' || logEntry.level === 'FATAL';
+  if (config.enableConsoleOutput || isError) {
     outputToConsole(logEntry);
   }
   
@@ -215,6 +227,7 @@ class Logger {
       message, 
       { ...this.defaultContext, ...context }
     );
+    logEntry.category = this.defaultContext.component;
     outputLog(logEntry);
   }
 
@@ -229,6 +242,7 @@ class Logger {
       message, 
       { ...this.defaultContext, ...context }
     );
+    logEntry.category = this.defaultContext.component;
     outputLog(logEntry);
   }
 
@@ -243,6 +257,7 @@ class Logger {
       message, 
       { ...this.defaultContext, ...context }
     );
+    logEntry.category = this.defaultContext.component;
     outputLog(logEntry);
   }
 
@@ -258,6 +273,7 @@ class Logger {
       { ...this.defaultContext, ...context },
       error
     );
+    logEntry.category = this.defaultContext.component;
     outputLog(logEntry);
   }
 
@@ -273,6 +289,7 @@ class Logger {
       { ...this.defaultContext, ...context },
       error
     );
+    logEntry.category = this.defaultContext.component;
     outputLog(logEntry);
   }
 
