@@ -11,10 +11,46 @@ import {
   restoreBackup
 } from '../../services/backupService';
 import { firestoreLogger } from '../../utils/logger';
+import { collectPhotos, buildPhotoZip } from '../../services/photoBackupService';
 import toast from 'react-hot-toast';
 
 const BackupPage = () => {
   const { currentOrganization, isAdmin, isMember } = useOrganization();
+
+  // 写真のバックアップ（ZIP）
+  const [photoRunning, setPhotoRunning] = useState(false);
+  const [photoProgress, setPhotoProgress] = useState(null);
+  const [photoResult, setPhotoResult] = useState(null);
+
+  const handlePhotoBackup = async () => {
+    if (!currentOrganization) return;
+    setPhotoRunning(true);
+    setPhotoResult(null);
+    try {
+      const photos = await collectPhotos(currentOrganization.id);
+      if (photos.length === 0) {
+        setPhotoResult({ saved: 0, failed: [], total: 0 });
+        return;
+      }
+      setPhotoProgress({ done: 0, total: photos.length });
+      const result = await buildPhotoZip(photos, (done, total) => setPhotoProgress({ done, total }));
+      if (result.blob) {
+        const url = URL.createObjectURL(result.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `写真バックアップ_${currentOrganization.name || ''}_${new Date().toISOString().split('T')[0]}.zip`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+      setPhotoResult({ ...result, total: photos.length });
+    } catch (err) {
+      firestoreLogger.error('写真のバックアップに失敗しました', { organizationId: currentOrganization?.id }, err);
+      toast.error('写真のバックアップ中にエラーが発生しました');
+    } finally {
+      setPhotoRunning(false);
+      setPhotoProgress(null);
+    }
+  };
 
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(null);
@@ -267,6 +303,65 @@ const BackupPage = () => {
           </>
         )}
       </div>
+
+      {/* 写真のバックアップ。記録のバックアップ（JSON）には写真のURLしか入らないため */}
+      {isMember && (
+        <div className="bg-white rounded-lg shadow p-4 mt-6">
+          <h2 className="text-lg font-bold mb-1">📷 写真のバックアップ（ZIP）</h2>
+          <p className="text-sm text-gray-600 mb-3">
+            上の記録のバックアップには、写真の保存場所（URL）しか含まれません。
+            作業日誌と保護具の着用確認に添付した写真そのものを、ZIPファイルにまとめて保存します。
+            ファイル名は「記録の種類／日付_作業名」になるので、フォルダで開いて日付順に見られます。
+          </p>
+          <button
+            type="button"
+            onClick={handlePhotoBackup}
+            disabled={photoRunning}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:bg-gray-300"
+          >
+            {photoRunning ? '写真を集めています...' : '写真をZIPで保存する'}
+          </button>
+          {photoProgress && (
+            <p className="text-sm text-gray-600 mt-2">
+              {photoProgress.done} / {photoProgress.total} 枚
+            </p>
+          )}
+
+          {photoResult && photoResult.total === 0 && (
+            <p className="mt-3 text-sm text-gray-600">添付されている写真はありません。</p>
+          )}
+
+          {photoResult && photoResult.saved > 0 && (
+            <div className="mt-3 bg-green-50 border border-green-200 rounded p-3 text-sm text-green-900">
+              <p className="font-bold">{photoResult.saved}枚の写真を保存しました</p>
+              {photoResult.failed.length > 0 && (
+                <p className="text-amber-800">
+                  {photoResult.failed.length}枚は読み出せませんでした（写真が削除されている可能性があります）。
+                </p>
+              )}
+            </div>
+          )}
+
+          {photoResult && photoResult.corsLikely && (
+            <div className="mt-3 bg-amber-50 border-2 border-amber-300 rounded p-3 text-sm text-amber-900">
+              <p className="font-bold mb-1">写真を読み出せませんでした（最初に一度だけ設定が必要です）</p>
+              <p className="mb-2">
+                ブラウザから写真を取り出すには、Firebase の保存場所（Storage）に
+                「このアプリからの読み出しを許可する」設定（CORS）が必要です。
+                アプリのフォルダに入っている <code>cors.json</code> を使い、Mac のターミナルで次を一度だけ実行してください。
+              </p>
+              <pre className="bg-white border rounded p-2 text-xs overflow-x-auto">
+{`cd /Users/shogonoda/Documents/ggap
+gcloud storage buckets update gs://${process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || '（バケット名）'} --cors-file=cors.json`}
+              </pre>
+              <p className="mt-2">
+                設定後にもう一度「写真をZIPで保存する」を押してください。
+                写真そのものは無事で、アプリ内では今までどおり表示されます。
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
