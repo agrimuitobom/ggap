@@ -394,6 +394,13 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
     }
 
+    // 育苗中の病害虫モニタリング記録
+    match /nurseryChecks/{docId} {
+      allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);
+      allow create: if request.auth != null && canWriteToOrg(request.resource.data.organizationId);
+      allow update, delete: if request.auth != null && canWriteToOrg(resource.data.organizationId);
+    }
+
     // 母液（原液）の調製記録
     match /stockSolutions/{docId} {
       allow read: if request.auth != null && isMemberOfOrg(resource.data.organizationId);

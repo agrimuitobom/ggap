@@ -45,6 +45,7 @@ const SeedsList = lazy(() => import('./pages/Seeds/SeedsList'));
 const SeedForm = lazy(() => import('./pages/Seeds/SeedForm'));
 const SeedUseForm = lazy(() => import('./pages/Seeds/SeedUseForm'));
 const SeedUsesList = lazy(() => import('./pages/Seeds/SeedUsesList'));
+const NurseryChecks = lazy(() => import('./pages/Seeds/NurseryChecks'));
 const FertilizersList = lazy(() => import('./pages/Fertilizers/FertilizersList'));
 const FertilizerForm = lazy(() => import('./pages/Fertilizers/FertilizerForm'));
 const FertilizerUseForm = lazy(() => import('./pages/Fertilizers/FertilizerUseForm'));
@@ -191,6 +192,7 @@ function App() {
             <Route path="seeds" element={<SeedsList />} />
             <Route path="seeds/new" element={<SeedForm />} />
             <Route path="seeds/edit/:id" element={<SeedForm />} />
+            <Route path="nursery-checks" element={<NurseryChecks />} />
             <Route path="seed-uses" element={<SeedUsesList />} />
             <Route path="seed-uses/new" element={<SeedUseForm />} />
             <Route path="seed-uses/edit/:id" element={<SeedUseForm />} />

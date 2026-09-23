@@ -11,6 +11,13 @@ import { uiLogger } from '../../utils/logger';
 import EmployeeHome from './EmployeeHome';
 import { getPurchases, latestExpiry } from '../../services/materialPurchaseService';
 import {
+  lotsInNursery,
+  getNurseryChecks,
+  daysSinceLastNurseryCheck,
+  isNurseryCheckOverdue,
+  NURSERY_CHECK_INTERVAL_DAYS
+} from '../../services/nurseryCheckService';
+import {
   getPpeItems,
   getPpeTransactions,
   getPpeChecks,
@@ -34,6 +41,9 @@ const Dashboard = () => {
   const [lowStockPpe, setLowStockPpe] = useState([]);
   const [ppeCheckOverdue, setPpeCheckOverdue] = useState(false);
   const [ppeCheckDays, setPpeCheckDays] = useState(null);
+  const [nurseryOverdue, setNurseryOverdue] = useState(false);
+  const [nurseryDays, setNurseryDays] = useState(null);
+  const [nurseryLotCount, setNurseryLotCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -187,6 +197,16 @@ const Dashboard = () => {
         // 品目を1件も登録していない組織には警告を出さない
         setPpeCheckOverdue(ppeItems.length > 0 && isCheckOverdue(ppeChecks));
         setPpeCheckDays(daysSinceLastCheck(ppeChecks));
+
+        // 育苗の病害虫観察（FV-Smart 26.03）。育苗中のロットがあるときだけ警告する
+        const [seedUsesSnap, nurseryChecks] = await Promise.all([
+          getDocs(query(collection(db, 'seedUses'), where('organizationId', '==', currentOrganization.id))),
+          getNurseryChecks(currentOrganization.id)
+        ]);
+        const nurseryLots = lotsInNursery(seedUsesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setNurseryLotCount(nurseryLots.length);
+        setNurseryOverdue(isNurseryCheckOverdue(nurseryChecks, nurseryLots));
+        setNurseryDays(daysSinceLastNurseryCheck(nurseryChecks));
       } catch (err) {
         uiLogger.error('Error fetching dashboard data', { component: 'Dashboard', userId: currentUser?.uid }, err);
         setError('データの取得中にエラーが発生しました。');
@@ -233,6 +253,20 @@ const Dashboard = () => {
             期限切れ農薬の使用は審査で不適合になります。
           </span>
           <span className="shrink-0 ml-3 text-sm font-semibold">確認する →</span>
+        </Link>
+      )}
+
+      {nurseryOverdue && (
+        <Link
+          to="/nursery-checks"
+          className="flex items-center justify-between bg-amber-50 border-2 border-amber-300 text-amber-900 px-4 py-3 mb-4 rounded-lg hover:bg-amber-100 transition-colors"
+        >
+          <span>
+            🌱 <span className="font-bold">育苗中のロットが{nurseryLotCount}件あります</span>が、
+            {nurseryDays === null ? '病害虫の観察記録がまだありません' : `前回の観察から${nurseryDays}日たっています`}
+            （目安は{NURSERY_CHECK_INTERVAL_DAYS}日に1回）。
+          </span>
+          <span className="shrink-0 ml-3 text-sm font-semibold">記録する →</span>
         </Link>
       )}
 

@@ -194,6 +194,9 @@ const MainLayout = () => {
                 <Link to="/seeds/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   種子・苗登録
                 </Link>
+                <Link to="/nursery-checks" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
+                  育苗の病害虫観察
+                </Link>
                 <Link to="/seed-purchases" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
                   種子の購入記録
                 </Link>

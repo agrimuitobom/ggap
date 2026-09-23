@@ -38,6 +38,7 @@ export const COLLECTION_LABELS = {
   fertilizerPurchases: '肥料の購入記録',
   pesticidePurchases: '農薬の購入記録',
   seedPurchases: '種子の購入記録',
+  nurseryChecks: '育苗の病害虫観察',
   pesticides: '農薬',
   pesticideUses: '農薬使用記録',
   fieldInspections: '圃場点検',
