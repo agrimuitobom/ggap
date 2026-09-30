@@ -39,16 +39,17 @@ const QuickActionFAB = () => {
       color: 'bg-yellow-600 hover:bg-yellow-700'
     },
     {
-      label: '農薬記録',
-      icon: '🚿',
-      link: '/pesticide-uses/new',
-      color: 'bg-red-600 hover:bg-red-700'
-    },
-    {
       label: '播種記録',
       icon: '🌿',
       link: '/seed-uses/new',
       color: 'bg-purple-600 hover:bg-purple-700'
+    },
+    {
+      // 作業日誌を「定植」選択済みで開き、定植したロットIDを選べるようにする
+      label: '定植記録',
+      icon: '🪴',
+      link: '/work-logs/new?workType=定植',
+      color: 'bg-teal-600 hover:bg-teal-700'
     }
   ], []);
 

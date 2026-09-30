@@ -33,6 +33,8 @@ const WorkLogForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const copyFromId = searchParams.get('copyFrom');
+  // ＋ボタンの「定植記録」などから作業内容を指定して開いた場合
+  const presetWorkType = searchParams.get('workType');
   const { currentOrganization, selfWorkerId } = useOrganization();
   const { currentUser, userProfile } = useAuth();
   const isEditMode = !!id;
@@ -127,6 +129,12 @@ const WorkLogForm = () => {
     });
     defaultsAppliedRef.current = true;
   }, [isEditMode, copyFromId, fetchLoading, currentOrganization, fields, users, setFormData, selfWorkerId]);
+
+  // 作業内容の指定（?workType=定植）があれば新規入力の初期値にする
+  useEffect(() => {
+    if (isEditMode || copyFromId || !presetWorkType) return;
+    setFormData(prev => (prev.workType ? prev : { ...prev, workType: presetWorkType }));
+  }, [isEditMode, copyFromId, presetWorkType, setFormData]);
 
   // 栽培中の作付を読み込む
   useEffect(() => {

@@ -74,7 +74,8 @@ const BasicInfoSection = ({
           <option value="潅水">潅水</option>
           <option value="収穫">収穫</option>
           <option value="防除">防除</option>
-          <option value="清掃">清掃</option>
+          {/* 清掃は清掃チェックで記録する。過去の清掃記録を編集する場合のみ表示 */}
+          {formData.workType === '清掃' && <option value="清掃">清掃</option>}
           <option value="その他">その他</option>
         </select>
       </div>

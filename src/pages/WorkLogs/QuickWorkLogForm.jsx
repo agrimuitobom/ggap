@@ -27,7 +27,6 @@ const WORK_TYPES = [
   { value: '防除', icon: '🚿' },
   { value: '播種', icon: '🌰' },
   { value: '定植', icon: '🪴' },
-  { value: '清掃', icon: '🧹' },
   { value: 'その他', icon: '📝' }
 ];
 
