@@ -18,6 +18,8 @@ const FertilizerUsesList = () => {
     if (currentOrganization) {
       fetchFertilizerUses();
     }
+    // 依存配列のキーが変わったときだけ再取得する（取得関数は毎回作り直されるため含めない）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOrganization]);
 
   const fetchFertilizerUses = async () => {

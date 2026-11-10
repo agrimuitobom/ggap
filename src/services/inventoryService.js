@@ -64,19 +64,14 @@ export const calcPesticideStock = (pesticide, uses) => {
   if (!purchaseAmount || !purchaseUnit) return null;
 
   let used = 0;
-  let approximate = false;
   uses.forEach((use) => {
     if (!use.amount) return;
     // 希釈倍率がある場合は原液量に換算（散布量 ÷ 希釈倍率）
     const dilution = Number(use.dilutionRate);
     const rawAmount = dilution > 0 ? Number(use.amount) / dilution : Number(use.amount);
-    if (!(dilution > 0)) approximate = true;
 
     const converted = convert(rawAmount, use.unit || purchaseUnit, purchaseUnit);
-    if (converted === null) {
-      approximate = true;
-      return;
-    }
+    if (converted === null) return;
     used += converted;
   });
 

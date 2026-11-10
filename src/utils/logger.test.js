@@ -63,36 +63,52 @@ describe('Logger System', () => {
   });
 
   describe('Specialized Loggers', () => {
+    // INFO・DEBUG は開発環境でのみ出力される
+    let originalNodeEnv;
+    beforeEach(() => {
+      originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+    });
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
     test('should create auth logger with correct context', () => {
       authLogger.info('Test auth message', { userId: 'test123' });
-      
+
       expect(mockConsole.info).toHaveBeenCalled();
       const callArgs = mockConsole.info.mock.calls[0];
-      expect(callArgs[0]).toContain('[AUTH]');
+      expect(callArgs[1]).toMatchObject({ component: 'auth', userId: 'test123' });
     });
 
     test('should create firestore logger with correct context', () => {
       firestoreLogger.error('Test firestore error', { operation: 'read' });
-      
+
       expect(mockConsole.error).toHaveBeenCalled();
       const callArgs = mockConsole.error.mock.calls[0];
-      expect(callArgs[0]).toContain('[FIRESTORE]');
+      expect(callArgs[1]).toMatchObject({ component: 'firestore', operation: 'read' });
     });
 
     test('should create business logger with correct context', () => {
       businessLogger.info('Test business message', { action: 'calculation' });
-      
+
       expect(mockConsole.info).toHaveBeenCalled();
       const callArgs = mockConsole.info.mock.calls[0];
-      expect(callArgs[0]).toContain('[BUSINESS]');
+      expect(callArgs[1]).toMatchObject({ component: 'business', action: 'calculation' });
     });
 
     test('should create UI logger with correct context', () => {
-      uiLogger.debug('Test UI message', { component: 'Button' });
-      
+      uiLogger.debug('Test UI message', { action: 'click' });
+
       expect(mockConsole.debug).toHaveBeenCalled();
       const callArgs = mockConsole.debug.mock.calls[0];
-      expect(callArgs[0]).toContain('[UI]');
+      expect(callArgs[1]).toMatchObject({ component: 'ui', action: 'click' });
+    });
+
+    test('should prefix messages logged through the category helpers', () => {
+      logger.auth('Signed in');
+
+      expect(mockConsole.info.mock.calls[0][0]).toContain('[AUTH] Signed in');
     });
   });
 
@@ -126,9 +142,12 @@ describe('Logger System', () => {
 
   describe('Custom Logger Creation', () => {
     test('should create custom logger with provided context', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
       const customLogger = createLogger('CustomComponent', { version: '1.0.0' });
-      
+
       customLogger.info('Custom message', { action: 'test' });
+      process.env.NODE_ENV = originalNodeEnv;
       
       expect(mockConsole.info).toHaveBeenCalled();
       const callArgs = mockConsole.info.mock.calls[0];

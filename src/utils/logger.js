@@ -34,7 +34,9 @@ const getEnvironmentConfig = () => {
     isDevelopment,
     isProduction,
     logLevel: isDevelopment ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR,
-    enableConsoleOutput: isDevelopment,
+    // 開発以外でも ERROR 以上（logLevel を通過したもの）はコンソールに残す。
+    // リモート送信が未実装のため、ここを無効にすると本番のエラーがどこにも記録されない。
+    enableConsoleOutput: true,
     enableRemoteLogging: isProduction
   };
 };
