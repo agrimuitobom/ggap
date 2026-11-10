@@ -97,3 +97,28 @@ export const formatStock = (stock, unit) => {
   else if (stock.ratio <= 0.2) level = 'low';
   return { display, level, approximate: stock.approximate };
 };
+
+/**
+ * 在庫切れ・残りわずかの資材を抽出する
+ * @param {Array} materials - 資材マスタ（id, name, purchaseAmount, purchaseUnit）
+ * @param {Array} uses - 使用記録
+ * @param {string} idField - 使用記録側で資材を指すフィールド名（'pesticideId' など）
+ * @param {Function} calcStock - calcFertilizerStock / calcPesticideStock
+ * @returns {Array<{id, name, level: 'low'|'empty', display: string}>}
+ */
+export const findLowStock = (materials, uses, idField, calcStock) => {
+  const usesByMaterial = {};
+  uses.forEach((use) => {
+    const materialId = use[idField];
+    if (!materialId) return;
+    if (!usesByMaterial[materialId]) usesByMaterial[materialId] = [];
+    usesByMaterial[materialId].push(use);
+  });
+  return materials
+    .map((material) => {
+      const stock = formatStock(calcStock(material, usesByMaterial[material.id] || []), material.purchaseUnit);
+      if (!stock || stock.level === 'ok') return null;
+      return { id: material.id, name: material.name || '名称未設定', level: stock.level, display: stock.display };
+    })
+    .filter(Boolean);
+};

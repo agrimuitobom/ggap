@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, limit, getDocs } from 'firebase/fire
 import { db } from '../../services/firebase';
 import { getCleaningItems, getDayCheck, isItemApplicable, toDateKey } from '../../services/cleaningService';
 import { getSelfAssessments } from '../../services/selfAssessmentService';
+import { calcFertilizerStock, calcPesticideStock, findLowStock } from '../../services/inventoryService';
 import { uiLogger } from '../../utils/logger';
 import {
   DRAFT_COUNT_LIMIT,
@@ -14,6 +15,7 @@ import {
   sumByUnit,
   findOverdueEquipments,
   findOverdueWaterTests,
+  findFieldsInPhi,
   summarizeSelfAssessments
 } from './dashboardUtils';
 
@@ -32,6 +34,10 @@ const fetchDashboardData = async (orgId, now) => {
     inOrg(name, where(dateField, '>=', monthStart), orderBy(dateField, 'desc')).then((s) => toRecords(s, dateField));
   const all = (name) => inOrg(name).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })));
 
+  // 複数の集計で使うものは1回だけ取得して共有する
+  const pesticides = all('pesticides');
+  const pesticideUses = all('pesticideUses');
+
   // キー名 → 取得処理。失敗したキーは null になり、該当箇所だけ「取得できませんでした」と表示する。
   const tasks = {
     recentWorkLogs: recent('workLogs', 'date'),
@@ -43,7 +49,18 @@ const fetchDashboardData = async (orgId, now) => {
     monthHarvests: thisMonth('harvests', 'harvestDate'),
     monthShipments: thisMonth('shipments', 'shipmentDate'),
     draftCount: inOrg('workLogs', where('isDraft', '==', true), limit(DRAFT_COUNT_LIMIT)).then((s) => s.size),
-    pesticides: all('pesticides'),
+    pesticides,
+    fieldsInPhi: Promise.all([pesticideUses, pesticides]).then(
+      ([uses, list]) => findFieldsInPhi(uses, list, now)
+    ),
+    lowStock: Promise.all([pesticides, pesticideUses, all('fertilizers'), all('fertilizerUses')]).then(
+      ([pesticideList, pesticideUseList, fertilizers, fertilizerUses]) => [
+        ...findLowStock(pesticideList, pesticideUseList, 'pesticideId', calcPesticideStock)
+          .map((item) => ({ ...item, kind: 'pesticide' })),
+        ...findLowStock(fertilizers, fertilizerUses, 'fertilizerId', calcFertilizerStock)
+          .map((item) => ({ ...item, kind: 'fertilizer' }))
+      ]
+    ),
     cleaning: Promise.all([getCleaningItems(orgId), getDayCheck(orgId, toDateKey(now))]).then(
       ([items, checked]) => {
         const applicable = items.filter((item) => isItemApplicable(item, now));
