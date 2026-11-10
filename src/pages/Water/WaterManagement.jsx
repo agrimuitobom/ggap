@@ -8,6 +8,7 @@ import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import { findOverdueWaterTests } from '../../utils/complianceChecks';
 import toast from 'react-hot-toast';
 
 const SOURCE_TYPES = ['水道水', '井戸水', '雨水', '河川・用水路', 'ため池', 'その他'];
@@ -145,12 +146,9 @@ const WaterManagement = () => {
     }
   };
 
-  // 次回検査が近い/超過している水源を警告
+  // 水源ごとの最新の検査で、次回検査予定日を過ぎているものを警告
   const today = new Date();
-  const overdueTests = tests.filter((t) => {
-    const next = t.nextTestDate?.toDate ? t.nextTestDate.toDate() : null;
-    return next && next < today;
-  });
+  const overdueTests = findOverdueWaterTests(tests);
 
   const chip = (active) =>
     `px-3 py-2 rounded-full border text-sm ${

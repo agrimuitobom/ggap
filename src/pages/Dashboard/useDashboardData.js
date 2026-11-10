@@ -8,13 +8,14 @@ import { getCleaningItems, getDayCheck, isItemApplicable, toDateKey } from '../.
 import { getSelfAssessments } from '../../services/selfAssessmentService';
 import { calcFertilizerStock, calcPesticideStock, findLowStock } from '../../services/inventoryService';
 import { uiLogger } from '../../utils/logger';
+import { findOverdueEquipments, findOverdueWaterTests } from '../../utils/complianceChecks';
 import {
   DRAFT_COUNT_LIMIT,
   toDate,
   startOfMonth,
   sumByUnit,
-  findOverdueEquipments,
-  findOverdueWaterTests,
+  buildMonthlyTrend,
+  TREND_MONTHS,
   findFieldsInPhi,
   summarizeSelfAssessments
 } from './dashboardUtils';
@@ -26,12 +27,13 @@ const toRecords = (snapshot, dateField) =>
 
 const fetchDashboardData = async (orgId, now) => {
   const monthStart = startOfMonth(now);
+  const trendStart = new Date(now.getFullYear(), now.getMonth() - (TREND_MONTHS - 1), 1);
   const inOrg = (name, ...constraints) =>
     getDocs(query(collection(db, name), where('organizationId', '==', orgId), ...constraints));
   const recent = (name, dateField) =>
     inOrg(name, orderBy(dateField, 'desc'), limit(RECENT_LIMIT)).then((s) => toRecords(s, dateField));
-  const thisMonth = (name, dateField) =>
-    inOrg(name, where(dateField, '>=', monthStart), orderBy(dateField, 'desc')).then((s) => toRecords(s, dateField));
+  const since = (name, dateField, start) =>
+    inOrg(name, where(dateField, '>=', start), orderBy(dateField, 'desc')).then((s) => toRecords(s, dateField));
   const all = (name) => inOrg(name).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })));
 
   // 複数の集計で使うものは1回だけ取得して共有する
@@ -45,9 +47,10 @@ const fetchDashboardData = async (orgId, now) => {
     recentShipments: recent('shipments', 'shipmentDate'),
     recentTrainings: recent('trainings', 'trainingDate'),
     recentVisitors: recent('visitors', 'visitDate'),
-    monthWorkLogs: thisMonth('workLogs', 'date'),
-    monthHarvests: thisMonth('harvests', 'harvestDate'),
-    monthShipments: thisMonth('shipments', 'shipmentDate'),
+    monthWorkLogs: since('workLogs', 'date', monthStart),
+    // 推移グラフ用に直近数か月分を取得し、今月分はここから絞り込む
+    trendHarvests: since('harvests', 'harvestDate', trendStart),
+    trendShipments: since('shipments', 'shipmentDate', trendStart),
     draftCount: inOrg('workLogs', where('isDraft', '==', true), limit(DRAFT_COUNT_LIMIT)).then((s) => s.size),
     pesticides,
     fieldsInPhi: Promise.all([pesticideUses, pesticides]).then(
@@ -96,8 +99,16 @@ const fetchDashboardData = async (orgId, now) => {
     }
   });
 
+  const inThisMonth = (records) => records && records.filter((record) => record.date && record.date >= monthStart);
+  data.monthHarvests = inThisMonth(data.trendHarvests);
+  data.monthShipments = inThisMonth(data.trendShipments);
+
   return {
     ...data,
+    trend:
+      data.trendHarvests && data.trendShipments
+        ? buildMonthlyTrend(data.trendHarvests, data.trendShipments, now)
+        : null,
     monthSummary: {
       workLogCount: data.monthWorkLogs ? data.monthWorkLogs.length : null,
       harvestCount: data.monthHarvests ? data.monthHarvests.length : null,

@@ -1,12 +1,12 @@
 import {
   sumByUnit,
+  buildMonthlyTrend,
   classifyPesticideExpiry,
-  findOverdueEquipments,
-  findOverdueWaterTests,
   findFieldsInPhi,
   summarizeSelfAssessments,
   buildAlerts
 } from './dashboardUtils';
+import { findOverdueEquipments, findOverdueWaterTests, getEquipmentStatus } from '../../utils/complianceChecks';
 
 const NOW = new Date(2026, 10, 10, 9, 0); // 2026-11-10
 const daysAgo = (n) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
@@ -21,6 +21,33 @@ describe('sumByUnit', () => {
       { quantity: 3 },
       { quantity: 'abc', unit: 'kg' }
     ])).toEqual([{ unit: '袋', total: 10 }, { unit: 'kg', total: 6.75 }]);
+  });
+});
+
+describe('buildMonthlyTrend', () => {
+  const rec = (year, month, quantity, unit) => ({ date: new Date(year, month - 1, 15), quantity, unit });
+
+  it('直近6か月を古い順に並べ、最も多い単位だけを月ごとに合計する', () => {
+    const trend = buildMonthlyTrend(
+      [rec(2026, 11, 10, 'kg'), rec(2026, 11, 2.5, 'kg'), rec(2026, 9, 4, 'kg'), rec(2026, 11, 30, '袋'), rec(2026, 5, 99, 'kg')],
+      [rec(2026, 11, 8, 'kg'), rec(2026, 6, 3, 'kg')],
+      NOW
+    );
+    expect(trend.unit).toBe('kg');
+    expect(trend.rows.map((r) => r.label)).toEqual(['6月', '7月', '8月', '9月', '10月', '11月']);
+    expect(trend.rows.map((r) => r.harvest)).toEqual([0, 0, 0, 4, 0, 12.5]);
+    expect(trend.rows.map((r) => r.shipment)).toEqual([3, 0, 0, 0, 0, 8]);
+    expect(trend.hasOtherUnits).toBe(true);
+  });
+
+  it('年をまたいでも月を取り違えない', () => {
+    const trend = buildMonthlyTrend([rec(2025, 12, 5, 'kg')], [], new Date(2026, 1, 10));
+    expect(trend.rows.map((r) => r.label)).toEqual(['9月', '10月', '11月', '12月', '1月', '2月']);
+    expect(trend.rows[3].harvest).toBe(5);
+  });
+
+  it('記録がなければ単位は null', () => {
+    expect(buildMonthlyTrend([], [], NOW).unit).toBeNull();
   });
 });
 
@@ -52,6 +79,19 @@ describe('findOverdueEquipments', () => {
       { equipmentId: 'noInterval', date: ts(daysAgo(900)) }
     ];
     expect(findOverdueEquipments(equipments, checks, NOW).map((e) => e.id)).toEqual(['never', 'late']);
+  });
+});
+
+describe('getEquipmentStatus', () => {
+  it('最終実施日と次回予定日を返す', () => {
+    const [status] = getEquipmentStatus(
+      [{ id: 'e', name: 'EC計', intervalDays: 30 }],
+      [{ equipmentId: 'e', date: ts(daysAgo(40)) }, { equipmentId: 'e', date: daysAgo(10) }],
+      NOW
+    );
+    expect(status.last).toEqual(daysAgo(10));
+    expect(status.nextDue).toEqual(daysAgo(-20));
+    expect(status.overdue).toBe(false);
   });
 });
 
