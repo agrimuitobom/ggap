@@ -11,7 +11,6 @@ import {
   query,
   where,
   getDocs,
-  getDoc,
   setDoc,
   addDoc,
   updateDoc,
@@ -107,11 +106,17 @@ export const deleteCleaningItem = async (itemId) => {
   await deleteDoc(doc(db, 'cleaningItems', itemId));
 };
 
-/** 指定日のチェック記録を取得（なければ空配列） */
+/** 指定日のチェック記録を取得（なければ空配列）
+ * ドキュメントIDで直接読むと、その日の記録がまだ無いときにセキュリティルールが
+ * organizationId を確認できず permission-denied になる。そのためクエリで取得する
+ * （等価条件のみなので複合インデックスは不要）。 */
 export const getDayCheck = async (organizationId, dateKey) => {
-  const ref = doc(db, 'cleaningChecks', `${organizationId}_${dateKey}`);
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data().checkedItems || [] : [];
+  const snapshot = await getDocs(query(
+    collection(db, 'cleaningChecks'),
+    where('organizationId', '==', organizationId),
+    where('date', '==', dateKey)
+  ));
+  return snapshot.empty ? [] : snapshot.docs[0].data().checkedItems || [];
 };
 
 /** 指定日のチェック済み項目を保存（配列をそのまま設定） */

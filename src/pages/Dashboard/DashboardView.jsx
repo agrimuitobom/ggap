@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { buildAlerts } from './dashboardUtils';
+import TrendChart from './TrendChart';
 
 const CARD = 'bg-white rounded-lg shadow-sm border border-gray-200';
 
@@ -425,6 +426,8 @@ const DashboardView = ({ data, loading, onReload, organizationName, userName }) 
           </div>
         </section>
       </div>
+
+      <TrendChart trend={data.trend} className={`${CARD} p-4 sm:p-6 mb-6`} />
 
       <RecentRecords data={data} />
     </div>

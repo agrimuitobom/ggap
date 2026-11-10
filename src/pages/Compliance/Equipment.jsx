@@ -8,6 +8,7 @@ import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { firestoreLogger } from '../../utils/logger';
+import { getEquipmentStatus } from '../../utils/complianceChecks';
 import toast from 'react-hot-toast';
 
 const EQUIPMENT_TYPES = ['EC計', 'pH計', 'はかり・計量器', '噴霧器・散布機', '温湿度計', 'その他'];
@@ -135,21 +136,7 @@ const Equipment = () => {
   };
 
   // 機器ごとの最終実施日と次回予定を算出
-  const today = new Date();
-  const equipmentStatus = equipments.map((eq) => {
-    const last = records.find((r) => r.equipmentId === eq.id)?.date || null;
-    const interval = eq.intervalDays || 0;
-    let nextDue = null;
-    if (last && interval) {
-      nextDue = new Date(last.getTime() + interval * 24 * 60 * 60 * 1000);
-    }
-    return {
-      ...eq,
-      last,
-      nextDue,
-      overdue: !last || (nextDue && nextDue < today)
-    };
-  });
+  const equipmentStatus = getEquipmentStatus(equipments, records);
   const overdueList = equipmentStatus.filter((e) => e.overdue);
 
   return (

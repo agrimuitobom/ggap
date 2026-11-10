@@ -1,18 +1,15 @@
 // src/pages/Dashboard/dashboardUtils.js
 // ダッシュボードの集計・判定ロジック（Firestoreに依存しない純粋関数）。
 
+import { toDate } from '../../utils/complianceChecks';
+
+export { toDate };
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DAYS_PER_YEAR = 365;
 
 export const EXPIRY_WARNING_DAYS = 30;
 export const DRAFT_COUNT_LIMIT = 100;
-
-/** Firestoreのタイムスタンプ・Date・文字列のいずれも Date に変換（不正値は null） */
-export const toDate = (value) => {
-  if (!value) return null;
-  const date = value.toDate ? value.toDate() : value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
 
 export const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
@@ -34,6 +31,61 @@ export const sumByUnit = (records) => {
     .sort((a, b) => b.total - a.total);
 };
 
+export const TREND_MONTHS = 6;
+
+/**
+ * 直近の月ごとの収穫量・出荷量を集計する（グラフ用）。
+ * 単位の違う数量は足せないため、収穫記録で最も多く使われている単位だけを集計し、
+ * それ以外の単位の記録があれば hasOtherUnits で知らせる。
+ * @returns {{unit: string|null, rows: Array<{key, label, harvest, shipment}>, hasOtherUnits: boolean}}
+ */
+export const buildMonthlyTrend = (harvests, shipments, now = new Date(), months = TREND_MONTHS) => {
+  const rows = [];
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    rows.push({
+      key: `${month.getFullYear()}-${month.getMonth() + 1}`,
+      label: `${month.getMonth() + 1}月`,
+      harvest: 0,
+      shipment: 0
+    });
+  }
+  const rowByKey = Object.fromEntries(rows.map((row) => [row.key, row]));
+  const inRange = (record) => record.date && rowByKey[`${record.date.getFullYear()}-${record.date.getMonth() + 1}`];
+  const unitOf = (record) => record.unit || 'kg';
+  const hasQuantity = (record) => Number.isFinite(Number(record.quantity)) && Number(record.quantity) !== 0;
+
+  const usable = (records) => records.filter((record) => inRange(record) && hasQuantity(record));
+  const harvestRecords = usable(harvests);
+  const shipmentRecords = usable(shipments);
+
+  // 最も多く記録に使われている単位（収穫を優先し、収穫がなければ出荷から決める）
+  const unitCounts = {};
+  (harvestRecords.length > 0 ? harvestRecords : shipmentRecords).forEach((record) => {
+    unitCounts[unitOf(record)] = (unitCounts[unitOf(record)] || 0) + 1;
+  });
+  const unit = Object.keys(unitCounts).sort((a, b) => unitCounts[b] - unitCounts[a])[0] || null;
+
+  let hasOtherUnits = false;
+  const add = (records, field) => {
+    records.forEach((record) => {
+      if (unitOf(record) !== unit) {
+        hasOtherUnits = true;
+        return;
+      }
+      inRange(record)[field] += Number(record.quantity);
+    });
+  };
+  add(harvestRecords, 'harvest');
+  add(shipmentRecords, 'shipment');
+  rows.forEach((row) => {
+    row.harvest = Math.round(row.harvest * 100) / 100;
+    row.shipment = Math.round(row.shipment * 100) / 100;
+  });
+
+  return { unit, rows, hasOtherUnits };
+};
+
 /** 農薬の有効期限を「期限切れ」「期限間近」に分類 */
 export const classifyPesticideExpiry = (pesticides, now = new Date()) => {
   const today = startOfDay(now);
@@ -50,41 +102,6 @@ export const classifyPesticideExpiry = (pesticides, now = new Date()) => {
   expired.sort((a, b) => a.expiryDate - b.expiryDate);
   expiring.sort((a, b) => a.expiryDate - b.expiryDate);
   return { expired, expiring };
-};
-
-/** 校正・点検が未実施、または次回予定日を過ぎている機器 */
-export const findOverdueEquipments = (equipments, checks, now = new Date()) => {
-  const lastByEquipment = {};
-  checks.forEach((check) => {
-    const date = toDate(check.date);
-    if (!date || !check.equipmentId) return;
-    if (!lastByEquipment[check.equipmentId] || lastByEquipment[check.equipmentId] < date) {
-      lastByEquipment[check.equipmentId] = date;
-    }
-  });
-  return equipments.filter((equipment) => {
-    const last = lastByEquipment[equipment.id];
-    if (!last) return true;
-    if (!equipment.intervalDays) return false;
-    return new Date(last.getTime() + equipment.intervalDays * MS_PER_DAY) < now;
-  });
-};
-
-/** 水源ごとの最新の検査で、次回検査予定日を過ぎているもの */
-export const findOverdueWaterTests = (tests, now = new Date()) => {
-  const latestBySource = {};
-  tests.forEach((test) => {
-    const testDate = toDate(test.testDate);
-    const key = test.waterSourceId || test.waterSourceName;
-    if (!testDate || !key) return;
-    if (!latestBySource[key] || latestBySource[key].testDate < testDate) {
-      latestBySource[key] = { ...test, testDate };
-    }
-  });
-  return Object.values(latestBySource).filter((test) => {
-    const next = toDate(test.nextTestDate);
-    return next && next < startOfDay(now);
-  });
 };
 
 // 散布記録をさかのぼる日数（phiService と同じ）

@@ -3,7 +3,7 @@
 // 大きなボタン・今日やること・自分の今日の記録だけを表示し、迷わず使える。
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -21,14 +21,14 @@ const isSameDate = (a, b) =>
 
 const EmployeeHome = () => {
   const { currentUser, userProfile } = useAuth();
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, isMember } = useOrganization();
   const [cleaning, setCleaning] = useState({ total: 0, done: 0 });
   const [myRecords, setMyRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      if (!currentOrganization || !currentUser) return;
+      if (!currentOrganization || !currentUser || !isMember) return;
       try {
         setLoading(true);
         const today = new Date();
@@ -44,18 +44,20 @@ const EmployeeHome = () => {
         setCleaning({ total: applicable.length, done });
 
         // 自分の今日の記録（作業日誌・収穫）
+        // 件数で区切ると記録の多い日に自分の分が漏れるため、今日以降の日付で絞り込む
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const [workSnap, harvestSnap] = await Promise.all([
           getDocs(query(
             collection(db, 'workLogs'),
             where('organizationId', '==', orgId),
-            orderBy('date', 'desc'),
-            limit(40)
+            where('date', '>=', todayStart),
+            orderBy('date', 'desc')
           )),
           getDocs(query(
             collection(db, 'harvests'),
             where('organizationId', '==', orgId),
-            orderBy('harvestDate', 'desc'),
-            limit(40)
+            where('harvestDate', '>=', todayStart),
+            orderBy('harvestDate', 'desc')
           ))
         ]);
 
@@ -91,7 +93,7 @@ const EmployeeHome = () => {
       }
     };
     load();
-  }, [currentOrganization, currentUser]);
+  }, [currentOrganization, currentUser, isMember]);
 
   const cleaningDone = cleaning.total > 0 && cleaning.done >= cleaning.total;
 
@@ -100,6 +102,39 @@ const EmployeeHome = () => {
     { to: '/harvests/quick', icon: '🌾', label: '収穫を記録', color: 'bg-green-600 hover:bg-green-700' },
     { to: '/cleaning', icon: '🧹', label: '清掃チェック', color: 'bg-teal-600 hover:bg-teal-700' }
   ];
+
+  // 閲覧者（記録の権限なし）向け: 記録ボタンの代わりに一覧への入口を表示
+  const viewButtons = [
+    { to: '/work-logs', icon: '📋', label: '作業日誌を見る' },
+    { to: '/harvests', icon: '🌾', label: '収穫記録を見る' },
+    { to: '/cleaning', icon: '🧹', label: '清掃チェックを見る' },
+    { to: '/reports', icon: '📊', label: 'レポートを見る' }
+  ];
+
+  if (!isMember) {
+    return (
+      <div className="container mx-auto p-4 max-w-2xl pb-24">
+        <h1 className="text-2xl font-bold mb-1">
+          こんにちは、{userProfile?.name || 'おつかれさまです'}さん
+        </h1>
+        <p className="text-sm text-gray-500 mb-5">
+          閲覧専用のアカウントです。記録の追加・変更はできません。
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {viewButtons.map((b) => (
+            <Link
+              key={b.to}
+              to={b.to}
+              className="flex items-center gap-3 px-5 py-4 rounded-xl bg-white border border-gray-300 text-gray-800 font-bold text-lg shadow-sm hover:bg-gray-50"
+            >
+              <span className="text-2xl" aria-hidden="true">{b.icon}</span>
+              {b.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 max-w-2xl pb-24">
