@@ -87,6 +87,45 @@ export const findOverdueWaterTests = (tests, now = new Date()) => {
   });
 };
 
+// 散布記録をさかのぼる日数（phiService と同じ）
+const PHI_LOOKBACK_DAYS = 90;
+
+/**
+ * 収穫前日数（PHI）の期間中で、まだ収穫できない圃場を返す。
+ * 判定は phiService.checkPreHarvestInterval と同じ（散布日 + PHI日数 より前は収穫不可）。
+ * @returns {Array<{fieldId, fieldName, pesticideName, okFrom: Date}>} 収穫可能日が近い順
+ */
+export const findFieldsInPhi = (pesticideUses, pesticides, now = new Date()) => {
+  const today = startOfDay(now);
+  const lookbackStart = new Date(today.getTime() - PHI_LOOKBACK_DAYS * MS_PER_DAY);
+  const pesticideById = {};
+  pesticides.forEach((pesticide) => {
+    pesticideById[pesticide.id] = pesticide;
+  });
+
+  const byField = {};
+  pesticideUses.forEach((use) => {
+    const useDate = toDate(use.date);
+    if (!useDate || !use.fieldId) return;
+    const useDay = startOfDay(useDate);
+    if (useDay < lookbackStart || useDay > today) return;
+    const pesticide = pesticideById[use.pesticideId];
+    const phi = pesticide?.preHarvestInterval;
+    if (phi === undefined || phi === null || phi === '') return;
+    const okFrom = new Date(useDay.getTime() + Number(phi) * MS_PER_DAY);
+    if (!(today < okFrom)) return;
+    if (!byField[use.fieldId] || byField[use.fieldId].okFrom < okFrom) {
+      byField[use.fieldId] = {
+        fieldId: use.fieldId,
+        fieldName: use.fieldName || '名称未設定の圃場',
+        pesticideName: use.pesticideName || pesticide.name || '不明な農薬',
+        okFrom
+      };
+    }
+  });
+  return Object.values(byField).sort((a, b) => a.okFrom - b.okFrom);
+};
+
 /** 最新の自己点検の状況（実施からの経過日数・是正処置が未記入の不適合数） */
 export const summarizeSelfAssessments = (assessments, now = new Date()) => {
   const dated = assessments
@@ -143,6 +182,17 @@ export const buildAlerts = (data, now = new Date()) => {
     }
   }
 
+  if (data.fieldsInPhi && data.fieldsInPhi.length > 0) {
+    alerts.push({
+      id: 'phi-active',
+      severity: 'warning',
+      title: `農薬散布後でまだ収穫できない圃場が${data.fieldsInPhi.length}件`,
+      detail: namesPreview(data.fieldsInPhi, (f) => `${f.fieldName}（${formatShortDate(f.okFrom)}から収穫可）`),
+      to: '/pesticide-uses',
+      action: '確認する'
+    });
+  }
+
   if (data.openComplaints && data.openComplaints.length > 0) {
     alerts.push({
       id: 'complaints-open',
@@ -174,6 +224,34 @@ export const buildAlerts = (data, now = new Date()) => {
       to: '/equipment',
       action: '記録する'
     });
+  }
+
+  if (data.lowStock) {
+    // 在庫は購入量と使用記録からの推定値
+    const describe = (item) => `${item.name}（残り${item.display}）`;
+    const linkFor = (items) => (items.some((item) => item.kind === 'pesticide') ? '/pesticides' : '/fertilizers');
+    const empty = data.lowStock.filter((item) => item.level === 'empty');
+    const low = data.lowStock.filter((item) => item.level === 'low');
+    if (empty.length > 0) {
+      alerts.push({
+        id: 'stock-empty',
+        severity: 'warning',
+        title: `在庫切れ（推定）の資材が${empty.length}件`,
+        detail: `${namesPreview(empty)}。購入した場合は資材マスタの購入量を更新してください。`,
+        to: linkFor(empty),
+        action: '確認する'
+      });
+    }
+    if (low.length > 0) {
+      alerts.push({
+        id: 'stock-low',
+        severity: 'info',
+        title: `在庫が残り2割以下（推定）の資材が${low.length}件`,
+        detail: namesPreview(low, describe),
+        to: linkFor(low),
+        action: '確認する'
+      });
+    }
   }
 
   if (data.draftCount > 0) {

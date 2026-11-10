@@ -64,19 +64,14 @@ export const calcPesticideStock = (pesticide, uses) => {
   if (!purchaseAmount || !purchaseUnit) return null;
 
   let used = 0;
-  let approximate = false;
   uses.forEach((use) => {
     if (!use.amount) return;
     // 希釈倍率がある場合は原液量に換算（散布量 ÷ 希釈倍率）
     const dilution = Number(use.dilutionRate);
     const rawAmount = dilution > 0 ? Number(use.amount) / dilution : Number(use.amount);
-    if (!(dilution > 0)) approximate = true;
 
     const converted = convert(rawAmount, use.unit || purchaseUnit, purchaseUnit);
-    if (converted === null) {
-      approximate = true;
-      return;
-    }
+    if (converted === null) return;
     used += converted;
   });
 
@@ -101,4 +96,29 @@ export const formatStock = (stock, unit) => {
   if (stock.remaining <= 0) level = 'empty';
   else if (stock.ratio <= 0.2) level = 'low';
   return { display, level, approximate: stock.approximate };
+};
+
+/**
+ * 在庫切れ・残りわずかの資材を抽出する
+ * @param {Array} materials - 資材マスタ（id, name, purchaseAmount, purchaseUnit）
+ * @param {Array} uses - 使用記録
+ * @param {string} idField - 使用記録側で資材を指すフィールド名（'pesticideId' など）
+ * @param {Function} calcStock - calcFertilizerStock / calcPesticideStock
+ * @returns {Array<{id, name, level: 'low'|'empty', display: string}>}
+ */
+export const findLowStock = (materials, uses, idField, calcStock) => {
+  const usesByMaterial = {};
+  uses.forEach((use) => {
+    const materialId = use[idField];
+    if (!materialId) return;
+    if (!usesByMaterial[materialId]) usesByMaterial[materialId] = [];
+    usesByMaterial[materialId].push(use);
+  });
+  return materials
+    .map((material) => {
+      const stock = formatStock(calcStock(material, usesByMaterial[material.id] || []), material.purchaseUnit);
+      if (!stock || stock.level === 'ok') return null;
+      return { id: material.id, name: material.name || '名称未設定', level: stock.level, display: stock.display };
+    })
+    .filter(Boolean);
 };

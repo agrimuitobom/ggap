@@ -3,6 +3,7 @@ import {
   classifyPesticideExpiry,
   findOverdueEquipments,
   findOverdueWaterTests,
+  findFieldsInPhi,
   summarizeSelfAssessments,
   buildAlerts
 } from './dashboardUtils';
@@ -66,6 +67,35 @@ describe('findOverdueWaterTests', () => {
   });
 });
 
+describe('findFieldsInPhi', () => {
+  const pesticides = [
+    { id: 'p7', name: 'PHI7日', preHarvestInterval: 7 },
+    { id: 'p1', name: 'PHI1日', preHarvestInterval: 1 },
+    { id: 'pNone', name: 'PHI未登録', preHarvestInterval: null }
+  ];
+  const use = (fieldId, pesticideId, days) => ({
+    fieldId, fieldName: `圃場${fieldId}`, pesticideId, date: ts(daysAgo(days))
+  });
+
+  it('PHI期間中の圃場だけを、収穫可能日が近い順に返す', () => {
+    const result = findFieldsInPhi([
+      use('A', 'p7', 2),    // あと5日
+      use('B', 'p7', 6),    // あと1日
+      use('C', 'p7', 7),    // 今日から収穫可 → 対象外
+      use('D', 'p1', 3),    // 経過済み
+      use('E', 'pNone', 0)  // PHI未登録は判定しない
+    ], pesticides, NOW);
+    expect(result.map((f) => f.fieldId)).toEqual(['B', 'A']);
+    expect(result[0].okFrom).toEqual(new Date(2026, 10, 11));
+  });
+
+  it('同じ圃場に複数の散布があれば最も遅い収穫可能日を採用する', () => {
+    const result = findFieldsInPhi([use('A', 'p7', 5), use('A', 'p7', 1), use('A', 'p1', 0)], pesticides, NOW);
+    expect(result).toHaveLength(1);
+    expect(result[0].okFrom).toEqual(new Date(2026, 10, 16));
+  });
+});
+
 describe('summarizeSelfAssessments', () => {
   it('最新の点検について、是正処置が未記入の不適合を数える', () => {
     const summary = summarizeSelfAssessments([
@@ -99,7 +129,9 @@ describe('buildAlerts', () => {
     draftCount: 0,
     cleaning: { total: 5, done: 5 },
     selfAssessment: { latest: { id: 'x' }, daysSince: 10, openNonConformities: 0 },
-    lastRecallTestDate: daysAgo(10)
+    lastRecallTestDate: daysAgo(10),
+    fieldsInPhi: [],
+    lowStock: []
   };
 
   it('問題がなければ空', () => {
@@ -116,6 +148,24 @@ describe('buildAlerts', () => {
     }, NOW);
     expect(alerts.map((a) => a.id)).toEqual(['pesticide-expired', 'drafts', 'cleaning-today', 'recall-test-due']);
     expect(alerts[1].title).toContain('100件以上');
+  });
+
+  it('PHI期間中の圃場と在庫の警告を出す', () => {
+    const alerts = buildAlerts({
+      ...clean,
+      fieldsInPhi: [{ fieldId: 'A', fieldName: 'ベッドA', okFrom: new Date(2026, 10, 15) }],
+      lowStock: [
+        { id: 'f1', name: '液肥A', level: 'empty', display: '0 L', kind: 'fertilizer' },
+        { id: 'p1', name: '農薬B', level: 'low', display: '50 ml', kind: 'pesticide' }
+      ]
+    }, NOW);
+    expect(alerts.map((a) => [a.id, a.to])).toEqual([
+      ['phi-active', '/pesticide-uses'],
+      ['stock-empty', '/fertilizers'],
+      ['stock-low', '/pesticides']
+    ]);
+    expect(alerts[0].detail).toContain('ベッドA（11/15から収穫可）');
+    expect(alerts[2].detail).toContain('農薬B（残り50 ml）');
   });
 
   it('取得に失敗した項目（null / undefined）は判定しない', () => {
