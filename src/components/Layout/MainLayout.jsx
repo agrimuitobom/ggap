@@ -1,446 +1,292 @@
 // src/components/Layout/MainLayout.jsx
-import React, { useState } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import QuickActionFAB from '../QuickActions/QuickActionFAB';
 import MobileBottomNav from './MobileBottomNav';
+import LoadingScreen from '../common/LoadingScreen';
+import useOnlineStatus from '../../hooks/useOnlineStatus';
 import { authLogger } from '../../utils/logger';
+import { NAV_SECTIONS, HOME_ITEM, ICON_PATHS, findActiveNav } from './navigation';
+
+const ROLE_LABELS = { admin: '管理者', member: 'メンバー', viewer: '閲覧者' };
+
+const Icon = ({ name, className = 'h-5 w-5' }) => (
+  <svg className={`shrink-0 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ICON_PATHS[name]} />
+  </svg>
+);
+
+const Badge = ({ count }) =>
+  count > 0 ? (
+    <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+      {count}
+      <span className="sr-only">件の未対応</span>
+    </span>
+  ) : null;
 
 const MainLayout = () => {
   const { currentUser, userProfile, logout } = useAuth();
-  const { currentOrganization, invitations } = useOrganization();
+  const { currentOrganization, invitations, userRole, isMember } = useOrganization();
   const navigate = useNavigate();
-  const [error, setError] = useState('');
+  const { pathname } = useLocation();
+  const online = useOnlineStatus();
+  const mainRef = useRef(null);
+
+  const active = findActiveNav(pathname);
+  const activeSectionId = active?.section?.id;
+  const pageTitle = active?.item.label;
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    workManagement: false,
-    materialManagement: false,
-    seedManagement: false,
-    fieldManagement: false,
-    harvestShipment: false,
-    workerManagement: false,
-    others: false,
-    reports: false,
-    organization: false
-  });
+  // 現在地を含むセクションは最初から開いておく
+  const [expanded, setExpanded] = useState(() => ({
+    daily: true,
+    ...(activeSectionId ? { [activeSectionId]: true } : {})
+  }));
+
+  const badgeCounts = { invitations: invitations.length };
+  const sectionBadge = (section) =>
+    section.items.reduce((sum, item) => sum + (item.badge ? badgeCounts[item.badge] || 0 : 0), 0);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
+
+  // 画面を移動したら: メニューを閉じる・先頭へスクロール・現在地のセクションを開く
+  useEffect(() => {
+    setSidebarOpen(false);
+    mainRef.current?.scrollTo(0, 0);
+    if (activeSectionId) {
+      setExpanded((prev) => (prev[activeSectionId] ? prev : { ...prev, [activeSectionId]: true }));
+    }
+  }, [pathname, activeSectionId]);
+
+  useEffect(() => {
+    document.title = pageTitle && pathname !== '/' ? `${pageTitle} | GAPTracker` : 'GAPTracker';
+  }, [pageTitle, pathname]);
+
+  // Escキーでモバイルメニューを閉じる
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen]);
 
   const handleLogout = async () => {
-    setError('');
-    
     try {
       await logout();
       navigate('/login');
     } catch (error) {
-      setError('ログアウトに失敗しました');
+      toast.error('ログアウトに失敗しました');
       authLogger.error('ログアウトエラー', { component: 'MainLayout', userId: currentUser?.uid }, error);
     }
   };
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const toggleSection = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
+  const userName = userProfile?.name || currentUser?.displayName || currentUser?.email || '';
+  const isHome = pathname === '/';
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* サイドバー（モバイルではトグル可能） */}
-      <div 
-        className={`bg-blue-800 text-white w-80 md:w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 overflow-y-auto min-h-screen max-h-full`}
-        style={{ backgroundColor: '#1e3a8a' }}
+    <div className="app-shell flex bg-gray-100">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-white focus:text-green-800 focus:rounded-lg focus:shadow-lg"
       >
-        <div className="flex items-center justify-between px-3">
-          <h2 className="text-3xl font-semibold">GAPTracker</h2>
-          <button 
-            onClick={toggleSidebar} 
-            className="md:hidden touch-target mobile-btn mobile-btn-secondary"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <nav>
-          <Link to="/" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700 text-white">
-            ダッシュボード
-          </Link>
+        本文へ移動
+      </a>
 
-          <Link to="/cleaning" className="block py-2.5 px-4 mt-2 rounded transition duration-200 hover:bg-blue-700 text-white">
-            🧹 清掃チェック
-          </Link>
-
-          <Link to="/plantings" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
-            🌱 作付・処理区
-          </Link>
-
-          <Link to="/nutrient-logs" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
-            💧 養液管理記録
-          </Link>
-
-          <Link to="/water" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
-            🚰 水源・水質管理
-          </Link>
-
-          <Link to="/material-disposals" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
-            📦 保管・廃棄記録
-          </Link>
-
-          <Link to="/self-assessments" className="block py-2.5 px-4 mt-1 rounded transition duration-200 hover:bg-blue-700 text-white">
-            ✅ 自己点検
-          </Link>
-
-          {/* 作業管理 */}
-          <div className="mt-4">
-            <button
-              onClick={() => toggleSection('workManagement')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>作業管理</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.workManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.workManagement && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/work-logs" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  作業日誌一覧
-                </Link>
-                <Link to="/work-logs/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  作業日誌登録
-                </Link>
-              </div>
-            )}
-          </div>
-          
-          {/* 資材管理 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('materialManagement')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>資材管理</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.materialManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.materialManagement && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/fertilizers" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  肥料一覧
-                </Link>
-                <Link to="/fertilizers/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  肥料登録
-                </Link>
-                <Link to="/fertilizer-uses" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  施肥記録一覧
-                </Link>
-                <Link to="/fertilizer-uses/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  施肥記録登録
-                </Link>
-                <Link to="/pesticides" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  農薬一覧
-                </Link>
-                <Link to="/pesticides/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  農薬登録
-                </Link>
-                <Link to="/pesticide-uses" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  農薬使用記録一覧
-                </Link>
-                <Link to="/pesticide-uses/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  農薬使用記録登録
-                </Link>
-              </div>
-            )}
-          </div>
-          
-          {/* 種苗管理 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('seedManagement')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>種苗管理</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.seedManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.seedManagement && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/seeds" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  種子・苗一覧
-                </Link>
-                <Link to="/seeds/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  種子・苗登録
-                </Link>
-                <Link to="/seed-uses" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  播種・定植記録一覧
-                </Link>
-                <Link to="/seed-uses/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  播種・定植記録登録
-                </Link>
-              </div>
-            )}
-          </div>
-          
-          {/* 圃場管理 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('fieldManagement')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>圃場管理</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.fieldManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.fieldManagement && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/fields" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  圃場一覧
-                </Link>
-                <Link to="/fields/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  圃場登録
-                </Link>
-                <Link to="/field-inspections/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  圃場点検記録
-                </Link>
-              </div>
-            )}
-          </div>
-          
-          {/* 収穫・出荷管理 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('harvestShipment')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>収穫・出荷</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.harvestShipment ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.harvestShipment && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/harvests" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  収穫記録一覧
-                </Link>
-                <Link to="/harvests/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  収穫記録登録
-                </Link>
-                <Link to="/shipments" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  出荷記録一覧
-                </Link>
-                <Link to="/shipments/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  出荷記録登録
-                </Link>
-              </div>
-            )}
-          </div>
-          
-          {/* 従業員管理 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('workerManagement')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>従業員・グループ</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.workerManagement ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.workerManagement && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/workers" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  従業員一覧
-                </Link>
-                <Link to="/workers/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  従業員登録
-                </Link>
-                <Link to="/groups" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  グループ一覧
-                </Link>
-                <Link to="/groups/new" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  グループ登録
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* その他の記録 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('others')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>その他</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.others ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.others && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/visitors" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  訪問者記録
-                </Link>
-                <Link to="/trainings" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  教育・訓練記録
-                </Link>
-                <Link to="/incidents" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  事故・ヒヤリハット
-                </Link>
-                <Link to="/equipment" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  機器の校正・点検
-                </Link>
-                <Link to="/complaints" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  苦情・回収テスト
-                </Link>
-              </div>
-            )}
-          </div>
-          
-          {/* レポート・分析 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('reports')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span>レポート・分析</span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.reports ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.reports && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/reports" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  ダッシュボード
-                </Link>
-                <Link to="/reports/pesticide-usage" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  農薬使用記録簿
-                </Link>
-                <Link to="/reports/fertilizer-usage" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  肥料使用記録簿
-                </Link>
-                <Link to="/reports/mass-balance" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  マスバランス照合
-                </Link>
-                <Link to="/reports/business-analytics" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  経営分析
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* 組織管理 */}
-          <div className="mt-2">
-            <button
-              onClick={() => toggleSection('organization')}
-              className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-blue-300 hover:text-white hover:bg-blue-700 rounded transition duration-200"
-            >
-              <span className="flex items-center">
-                組織管理
-                {invitations.length > 0 && (
-                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                    {invitations.length}
-                  </span>
-                )}
-              </span>
-              <svg className={`w-4 h-4 transform transition-transform ${expandedSections.organization ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {expandedSections.organization && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link to="/organizations/switch" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  組織の切り替え
-                </Link>
-                <Link to="/organizations/settings" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100">
-                  組織設定
-                </Link>
-                <Link to="/organizations/invitations" className="block py-2 px-4 text-sm rounded transition duration-200 hover:bg-blue-700 text-blue-100 flex items-center justify-between">
-                  <span>招待一覧</span>
-                  {invitations.length > 0 && (
-                    <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                      {invitations.length}
-                    </span>
-                  )}
-                </Link>
-              </div>
-            )}
-          </div>
-        </nav>
-      </div>
-      
       {/* モバイル用オーバーレイ */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" 
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={closeSidebar} aria-hidden="true" />
       )}
-      
-      {/* メインコンテンツエリア */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* ヘッダー */}
-        <header className="bg-white shadow-md z-10 mobile-header">
-          <div className="h-16 px-4 flex items-center justify-between">
-            <button
-              onClick={toggleSidebar}
-              className="md:hidden touch-target mobile-btn mobile-btn-secondary"
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
 
-            <div className="flex items-center space-x-2 md:space-x-4">
-              {currentOrganization && (
-                <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded">
-                  <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-700">{currentOrganization.name}</span>
-                </div>
-              )}
-              {currentUser && (
-                <>
-                  <span className="hidden md:inline mobile-text-sm">{userProfile?.name || currentUser.email}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="mobile-btn mobile-btn-primary"
-                  >
-                    ログアウト
-                  </button>
-                </>
-              )}
+      {/* サイドバー（モバイルではドロワー） */}
+      <aside
+        id="app-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-green-900 text-white transition-[transform,visibility] duration-200 ease-in-out md:static md:z-auto md:w-64 md:max-w-none md:translate-x-0 md:visible ${
+          sidebarOpen ? 'translate-x-0 visible shadow-2xl' : '-translate-x-full invisible'
+        }`}
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b border-white/10">
+          <Link to="/" className="flex items-center gap-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
+            <img src={`${process.env.PUBLIC_URL}/icon-192.png`} alt="" className="h-9 w-9 rounded-lg" />
+            <span className="text-xl font-bold tracking-tight">GAPTracker</span>
+          </Link>
+          <button
+            type="button"
+            onClick={closeSidebar}
+            className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg text-green-100 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            aria-label="メニューを閉じる"
+          >
+            <Icon name="close" className="h-6 w-6" />
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1" aria-label="メインメニュー">
+          <Link
+            to={HOME_ITEM.to}
+            aria-current={isHome ? 'page' : undefined}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+              isHome ? 'bg-white/15 text-white' : 'text-green-50 hover:bg-white/10'
+            }`}
+          >
+            <Icon name={HOME_ITEM.icon} />
+            {HOME_ITEM.label}
+          </Link>
+
+          {NAV_SECTIONS.map((section) => {
+            const isOpen = !!expanded[section.id];
+            const containsActive = activeSectionId === section.id;
+            return (
+              <div key={section.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`nav-section-${section.id}`}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                    containsActive ? 'text-white' : 'text-green-50'
+                  }`}
+                >
+                  <Icon name={section.icon} />
+                  <span className="flex-1 text-left">{section.label}</span>
+                  {!isOpen && <Badge count={sectionBadge(section)} />}
+                  <Icon
+                    name="chevronDown"
+                    className={`h-4 w-4 text-green-200 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isOpen && (
+                  <ul id={`nav-section-${section.id}`} className="mt-1 mb-2 ml-5 space-y-0.5 border-l border-white/15 pl-2">
+                    {section.items.map((item) => {
+                      const isActive = active?.item.to === item.to;
+                      return (
+                        <li key={item.to}>
+                          <Link
+                            to={item.to}
+                            aria-current={isActive ? 'page' : undefined}
+                            className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                              isActive
+                                ? 'bg-white/15 font-semibold text-white'
+                                : 'text-green-100 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <span>{item.label}</span>
+                            {item.badge && <Badge count={badgeCounts[item.badge]} />}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* ログイン中のユーザー */}
+        {currentUser && (
+          <div className="shrink-0 border-t border-white/10 p-3 app-safe-bottom">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-base font-bold"
+                aria-hidden="true"
+              >
+                {userName.charAt(0).toUpperCase() || '?'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{userName}</p>
+                <p className="truncate text-xs text-green-200">
+                  {[currentOrganization?.name, ROLE_LABELS[userRole]].filter(Boolean).join(' ・ ')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-green-100 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="ログアウト"
+                title="ログアウト"
+              >
+                <Icon name="logout" className="h-6 w-6" />
+              </button>
             </div>
           </div>
-        </header>
-        
-        {/* メインコンテンツ */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 mobile-container">
-          {error && (
-            <div className="mobile-alert mobile-alert-error">
-              {error}
-            </div>
+        )}
+      </aside>
+
+      {/* メインコンテンツエリア */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-2 md:h-16 md:px-6">
+          <button
+            type="button"
+            onClick={openSidebar}
+            className="md:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+            aria-label="メニューを開く"
+            aria-expanded={sidebarOpen}
+            aria-controls="app-sidebar"
+          >
+            <Icon name="menu" className="h-6 w-6" />
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-bold text-gray-900 md:text-lg">
+              {pageTitle || 'GAPTracker'}
+            </p>
+            {currentOrganization && (
+              <p className="truncate text-xs text-gray-500 md:hidden">{currentOrganization.name}</p>
+            )}
+          </div>
+
+          {!online && (
+            <span
+              className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800"
+              role="status"
+              title="記録は端末に保存され、通信が回復すると自動で同期されます"
+            >
+              オフライン
+            </span>
           )}
-          <Outlet />
+
+          {currentOrganization && (
+            <Link
+              to="/organizations/switch"
+              className="hidden md:flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+              title="組織を切り替える"
+            >
+              <Icon name="organization" className="h-4 w-4 text-gray-500" />
+              <span className="max-w-[16rem] truncate">{currentOrganization.name}</span>
+            </Link>
+          )}
+        </header>
+
+        {!online && (
+          <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 md:px-6">
+            オフラインです。記録は端末に保存され、通信が回復すると自動で同期されます。
+          </div>
+        )}
+
+        <main
+          id="main-content"
+          ref={mainRef}
+          tabIndex={-1}
+          className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 focus:outline-none"
+        >
+          {/* ページの遅延読み込み中もサイドバーとヘッダーは表示したままにする */}
+          <Suspense fallback={<LoadingScreen />}>
+            <Outlet />
+          </Suspense>
         </main>
+
+        <MobileBottomNav onOpenMenu={openSidebar} menuOpen={sidebarOpen} />
       </div>
-      
-      {/* クイックアクションFAB（モバイル用） */}
-      <QuickActionFAB />
-      
-      {/* モバイル用ボトムナビゲーション */}
-      <MobileBottomNav />
+
+      {/* クイックアクション（記録できる権限があるときのみ） */}
+      {isMember && <QuickActionFAB />}
     </div>
   );
 };

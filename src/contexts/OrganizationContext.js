@@ -13,6 +13,7 @@ import {
 import { ensureSelfWorker } from '../services/selfWorkerService';
 import { firestoreLogger } from '../utils/logger';
 import toast from 'react-hot-toast';
+import LoadingScreen from '../components/common/LoadingScreen';
 
 const OrganizationContext = createContext();
 
@@ -158,6 +159,8 @@ export function OrganizationProvider({ children }) {
 
   useEffect(() => {
     if (currentUser) {
+      // ログイン直後に組織が未確定のまま画面が描画されないよう、取得完了まで待機表示にする
+      setLoading(true);
       fetchUserOrganizations();
       fetchInvitations();
     } else {
@@ -190,7 +193,7 @@ export function OrganizationProvider({ children }) {
 
   return (
     <OrganizationContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <LoadingScreen fullScreen message="組織情報を読み込み中…" /> : children}
     </OrganizationContext.Provider>
   );
 }

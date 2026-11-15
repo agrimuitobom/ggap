@@ -6,11 +6,13 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   updateProfile
 } from 'firebase/auth';
 import { auth, db, googleProvider } from '../services/firebase';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { authLogger } from '../utils/logger';
+import LoadingScreen from '../components/common/LoadingScreen';
 
 const AuthContext = createContext();
 
@@ -85,6 +87,10 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
+  function resetPassword(email) {
+    return sendPasswordResetEmail(auth, email);
+  }
+
   async function fetchUserProfile(user) {
     if (!user) return null;
     
@@ -145,12 +151,13 @@ export function AuthProvider({ children }) {
     signup,
     login,
     loginWithGoogle,
-    logout
+    logout,
+    resetPassword
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <LoadingScreen fullScreen /> : children}
     </AuthContext.Provider>
   );
 }
