@@ -8,6 +8,14 @@ import {
   removeMemberFromOrganization,
   updateMemberRole
 } from '../../services/organizationService';
+import {
+  createViewerAccount,
+  generateViewerPassword,
+  validateViewerId,
+  validateViewerPassword,
+  normalizeViewerId,
+  VIEWER_PASSWORD_MIN_LENGTH
+} from '../../services/viewerAccountService';
 import toast from 'react-hot-toast';
 import { firestoreLogger } from '../../utils/logger';
 
@@ -22,6 +30,14 @@ const OrganizationSettings = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [showViewerForm, setShowViewerForm] = useState(false);
+  const [viewerId, setViewerId] = useState('');
+  const [viewerPassword, setViewerPassword] = useState('');
+  const [viewerName, setViewerName] = useState('');
+  const [viewerError, setViewerError] = useState('');
+  const [viewerSaving, setViewerSaving] = useState(false);
+  // 発行直後に一度だけ表示する IDとパスワード
+  const [issuedViewer, setIssuedViewer] = useState(null);
 
   useEffect(() => {
     if (currentOrganization) {
@@ -82,6 +98,63 @@ const OrganizationSettings = () => {
     } catch (error) {
       firestoreLogger.error('メンバーの招待に失敗しました', { organizationId: currentOrganization.id, inviteEmail, inviteRole }, error);
       toast.error('メンバーの招待に失敗しました');
+    }
+  };
+
+  const closeViewerForm = () => {
+    setShowViewerForm(false);
+    setViewerId('');
+    setViewerPassword('');
+    setViewerName('');
+    setViewerError('');
+  };
+
+  const handleCreateViewer = async (e) => {
+    e.preventDefault();
+
+    const validationError = validateViewerId(viewerId) || validateViewerPassword(viewerPassword);
+    if (validationError) {
+      setViewerError(validationError);
+      return;
+    }
+
+    try {
+      setViewerError('');
+      setViewerSaving(true);
+      const id = normalizeViewerId(viewerId);
+      await createViewerAccount({
+        organizationId: currentOrganization.id,
+        viewerId: id,
+        password: viewerPassword,
+        displayName: viewerName
+      });
+      setIssuedViewer({ id, password: viewerPassword });
+      closeViewerForm();
+      toast.success('閲覧用IDを発行しました');
+      await loadMembers();
+    } catch (error) {
+      if (error.code === 'auth/email-already-in-use') {
+        setViewerError('この閲覧用IDは既に使われています。別のIDを指定してください');
+      } else if (error.code === 'auth/weak-password') {
+        setViewerError('パスワードが弱すぎます。より複雑なパスワードにしてください');
+      } else if (error.code === 'auth/network-request-failed') {
+        setViewerError('通信できませんでした。電波状況を確認してください');
+      } else {
+        setViewerError('閲覧用IDの発行に失敗しました: ' + error.message);
+      }
+    } finally {
+      setViewerSaving(false);
+    }
+  };
+
+  const handleCopyIssued = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `閲覧用ID: ${issuedViewer.id}\nパスワード: ${issuedViewer.password}\nURL: ${window.location.origin}/login`
+      );
+      toast.success('コピーしました');
+    } catch (error) {
+      toast.error('コピーできませんでした。表示内容を控えてください');
     }
   };
 
@@ -233,14 +306,153 @@ const OrganizationSettings = () => {
             メンバー ({members.length})
           </h2>
           {isAdmin && (
-            <button
-              onClick={() => setShowInviteForm(!showInviteForm)}
-              className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300"
-            >
-              メンバーを招待
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowViewerForm(!showViewerForm);
+                  setShowInviteForm(false);
+                }}
+                className="bg-white hover:bg-gray-50 text-green-700 border border-green-600 py-2 px-4 rounded transition duration-300"
+              >
+                閲覧用IDを発行
+              </button>
+              <button
+                onClick={() => {
+                  setShowInviteForm(!showInviteForm);
+                  setShowViewerForm(false);
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300"
+              >
+                メンバーを招待
+              </button>
+            </div>
           )}
         </div>
+
+        {/* 発行した閲覧用IDの控え */}
+        {issuedViewer && isAdmin && (
+          <div className="px-6 py-4 bg-green-50 border-b border-green-200" role="status">
+            <p className="text-sm font-semibold text-green-900">閲覧用IDを発行しました</p>
+            <p className="text-sm text-green-800 mt-1">
+              パスワードはこの画面を閉じると再表示できません。今のうちに控えて、閲覧する方へ伝えてください。
+            </p>
+            <dl className="mt-3 grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-gray-600">閲覧用ID</dt>
+              <dd className="font-mono font-semibold text-gray-900 break-all">{issuedViewer.id}</dd>
+              <dt className="text-gray-600">パスワード</dt>
+              <dd className="font-mono font-semibold text-gray-900 break-all">{issuedViewer.password}</dd>
+            </dl>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleCopyIssued}
+                className="bg-green-600 hover:bg-green-700 text-white text-sm py-2 px-4 rounded transition duration-300"
+              >
+                IDとパスワードをコピー
+              </button>
+              <button
+                type="button"
+                onClick={() => setIssuedViewer(null)}
+                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-sm py-2 px-4 rounded transition duration-300"
+              >
+                控えたので閉じる
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 閲覧用ID発行フォーム */}
+        {showViewerForm && isAdmin && (
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <form onSubmit={handleCreateViewer} className="space-y-4">
+              <p className="text-sm text-gray-600">
+                メールアドレスを持たない方（審査員・取引先など）に、記録を見るだけのIDとパスワードを発行します。
+                発行したIDでは記録の追加・変更・削除はできません。
+              </p>
+              {viewerError && (
+                <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {viewerError}
+                </div>
+              )}
+              <div>
+                <label htmlFor="viewer-id" className="block text-sm font-medium text-gray-700 mb-1">
+                  閲覧用ID
+                </label>
+                <input
+                  id="viewer-id"
+                  type="text"
+                  value={viewerId}
+                  onChange={(e) => setViewerId(e.target.value)}
+                  placeholder="例: shinsa-2026"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  半角の英小文字・数字・「.」「_」「-」で3〜30文字。他の農場と重複するIDは使えません。
+                </p>
+              </div>
+              <div>
+                <label htmlFor="viewer-password" className="block text-sm font-medium text-gray-700 mb-1">
+                  パスワード
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="viewer-password"
+                    type="text"
+                    value={viewerPassword}
+                    onChange={(e) => setViewerPassword(e.target.value)}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    minLength={VIEWER_PASSWORD_MIN_LENGTH}
+                    className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-green-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setViewerPassword(generateViewerPassword())}
+                    className="shrink-0 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-2 px-3 rounded-lg text-sm"
+                  >
+                    自動生成
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">{VIEWER_PASSWORD_MIN_LENGTH}文字以上</p>
+              </div>
+              <div>
+                <label htmlFor="viewer-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  表示名（任意）
+                </label>
+                <input
+                  id="viewer-name"
+                  type="text"
+                  value={viewerName}
+                  onChange={(e) => setViewerName(e.target.value)}
+                  placeholder="例: JGAP審査員"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  type="submit"
+                  disabled={viewerSaving}
+                  className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-60"
+                >
+                  {viewerSaving ? '発行中…' : '発行する'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeViewerForm}
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded transition duration-300"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* 招待フォーム */}
         {showInviteForm && isAdmin && (
@@ -315,7 +527,9 @@ const OrganizationSettings = () => {
                       <h3 className="text-sm font-medium text-gray-900">
                         {member.user.name || member.user.email}
                       </h3>
-                      <p className="text-sm text-gray-500">{member.user.email}</p>
+                      <p className="text-sm text-gray-500">
+                        {member.user.isViewerAccount ? `閲覧用ID: ${member.user.loginId}` : member.user.email}
+                      </p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-medium rounded ${getRoleBadgeColor(member.role)}`}>
                       {getRoleLabel(member.role)}
@@ -324,6 +538,7 @@ const OrganizationSettings = () => {
                 </div>
                 {isAdmin && member.userId !== currentUser.uid && (
                   <div className="flex items-center space-x-2">
+                    {!member.user.isViewerAccount && (
                     <select
                       value={member.role}
                       onChange={(e) => handleUpdateRole(member.userId, e.target.value)}
@@ -333,6 +548,7 @@ const OrganizationSettings = () => {
                       <option value="member">メンバー</option>
                       <option value="viewer">閲覧のみ</option>
                     </select>
+                    )}
                     <button
                       onClick={() => handleRemoveMember(member.userId, member.user.name || member.user.email)}
                       className="text-red-600 hover:text-red-800 text-sm"

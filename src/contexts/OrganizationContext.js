@@ -13,6 +13,7 @@ import {
 import { ensureSelfWorker } from '../services/selfWorkerService';
 import { firestoreLogger } from '../utils/logger';
 import toast from 'react-hot-toast';
+import { isViewerEmail } from '../services/viewerAccountService';
 import LoadingScreen from '../components/common/LoadingScreen';
 
 const OrganizationContext = createContext();
@@ -22,7 +23,7 @@ export function useOrganization() {
 }
 
 export function OrganizationProvider({ children }) {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [currentOrganization, setCurrentOrganization] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -39,7 +40,11 @@ export function OrganizationProvider({ children }) {
       setOrganizations(orgs);
 
       // 組織が存在しない場合、個人組織を自動作成
-      if (orgs.length === 0) {
+      if (orgs.length === 0 && isViewerEmail(currentUser.email)) {
+        // 閲覧用IDは発行元の組織専用。組織から外されたら個人組織は作らずログアウトする
+        toast.error('この閲覧用IDは現在使用できません。管理者にお問い合わせください。', { duration: 6000 });
+        await logout();
+      } else if (orgs.length === 0) {
         await createPersonalOrganization();
       } else {
         // ローカルストレージから前回選択した組織を復元

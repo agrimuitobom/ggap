@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authLogger } from '../../utils/logger';
+import { loginIdToEmail } from '../../services/viewerAccountService';
 import {
   AuthLayout,
   TextField,
@@ -19,9 +20,9 @@ const loginErrorMessage = (error) => {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
-      return 'メールアドレスまたはパスワードが正しくありません';
+      return 'メールアドレス（または閲覧用ID）かパスワードが正しくありません';
     case 'auth/invalid-email':
-      return '無効なメールアドレス形式です';
+      return 'メールアドレスまたは閲覧用IDの形式が正しくありません';
     case 'auth/user-disabled':
       return 'このアカウントは無効になっています。管理者に連絡してください';
     case 'auth/too-many-requests':
@@ -79,10 +80,10 @@ const Login = () => {
     try {
       setError('');
       setLoading(true);
-      await login(email, password);
+      await login(loginIdToEmail(email), password);
       navigate(destination, { replace: true });
     } catch (error) {
-      authLogger.error('ログインエラー', { email, errorCode: error.code }, error);
+      authLogger.error('ログインエラー', { errorCode: error.code }, error);
       setError(loginErrorMessage(error));
       setLoading(false);
     }
@@ -121,6 +122,7 @@ const Login = () => {
         <form className="space-y-4" onSubmit={handleReset}>
           <p className="text-sm text-gray-600">
             登録したメールアドレスを入力してください。再設定用のリンクをお送りします。
+            閲覧用IDのパスワードは、発行した管理者にお問い合わせください。
           </p>
           <TextField
             id="reset-email"
@@ -153,11 +155,13 @@ const Login = () => {
       <form className="space-y-4" onSubmit={handleSubmit}>
         <TextField
           id="email-address"
-          label="メールアドレス"
+          label="メールアドレス または 閲覧用ID"
           name="email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
