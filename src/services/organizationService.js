@@ -218,12 +218,16 @@ export const removeMemberFromOrganization = async (organizationId, userId) => {
     const memberRef = doc(db, 'organizationMembers', `${userId}_${organizationId}`);
     await deleteDoc(memberRef);
 
-    // ユーザーの所属組織リストを更新
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      organizations: arrayRemove(organizationId),
-      updatedAt: serverTimestamp()
-    });
+    // ユーザーの所属組織リストを更新。他人のプロフィールはセキュリティルールで
+    // 書き込めないため失敗しうるが、所属の判定はメンバーシップ側で行うので無視してよい
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        organizations: arrayRemove(organizationId),
+        updatedAt: serverTimestamp()
+      });
+    } catch (profileError) {
+      firestoreLogger.warn('所属組織リストの更新をスキップ', { userId, error: profileError?.message });
+    }
   } catch (error) {
     firestoreLogger.error('Error removing member from organization', {}, error);
     throw error;

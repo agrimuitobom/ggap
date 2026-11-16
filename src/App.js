@@ -12,6 +12,8 @@ import Register from './pages/Auth/Register';
 import PrivateRoute from './components/Auth/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import InstallPrompt from './components/PWA/InstallPrompt';
+import LoadingScreen from './components/common/LoadingScreen';
+import NotFound from './pages/NotFound';
 
 // その他のページは遅延読み込み（起動時のJSを小さくする）
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -80,7 +82,7 @@ function App() {
         <AuthProvider>
           <OrganizationProvider>
             <InstallPrompt />
-            <Toaster position="top-right" toastOptions={{
+            <Toaster position="top-center" toastOptions={{
           duration: 3000,
           style: {
             background: '#fff',
@@ -100,11 +102,7 @@ function App() {
             duration: 4000,
           },
         }} />
-        <Suspense fallback={
-          <div className="flex justify-center items-center h-screen bg-gray-100">
-            <span className="text-gray-500">読み込み中...</span>
-          </div>
-        }>
+        <Suspense fallback={<LoadingScreen fullScreen />}>
         <Routes>
           {/* 認証ページ */}
           <Route path="/login" element={<Login />} />
@@ -225,6 +223,9 @@ function App() {
             <Route path="organizations/settings" element={<OrganizationSettings />} />
             <Route path="organizations/switch" element={<OrganizationSwitcher />} />
             <Route path="organizations/invitations" element={<InvitationsPage />} />
+
+            {/* 存在しないURL */}
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
         </Suspense>
